@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
@@ -84,7 +85,19 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-black px-4">
       <div className="w-full max-w-md rounded-xl border border-border bg-background p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold text-foreground">Admin Login</h1>
+        <div className="flex flex-col items-center text-center">
+          <Image
+            src="/logo/logo.png"
+            alt="AOAC logo"
+            width={72}
+            height={72}
+            className="mb-3"
+            priority
+          />
+          <h1 className="text-2xl font-semibold text-foreground">
+            AOAC Admin panal
+          </h1>
+        </div>
         <p className="mt-2 text-sm text-muted-foreground">
           Use your email or phone number to receive a one-time password.
         </p>
