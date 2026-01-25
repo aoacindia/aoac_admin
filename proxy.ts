@@ -1,6 +1,6 @@
+import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
 
 const publicRoutes = ["/login", "/api/auth"];
 
@@ -12,6 +12,7 @@ const roleBasedRoutes: Record<string, string[]> = {
   "/dashboard/products/categories": ["ADMIN", "MANAGER"],
   "/dashboard/products/create": ["ADMIN", "MANAGER"],
   "/dashboard/products/[id]/edit": ["ADMIN", "MANAGER"],
+  "/dashboard/products/discounts": ["ADMIN", "MANAGER"],
   "/dashboard/customers": ["ADMIN", "MANAGER"],
 };
 
@@ -36,22 +37,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
-  if (!secret) {
-    return NextResponse.json(
-      { error: "Auth secret is not configured" },
-      { status: 500 }
-    );
-  }
-
   if (pathname.startsWith("/api") && !pathname.startsWith("/api/auth")) {
-    const token = await getToken({
-      req: request,
-      secret,
-    });
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     return NextResponse.next();
   }
 
@@ -59,13 +45,9 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith(route)
   );
 
-  const token = await getToken({
-    req: request,
-    secret,
-  });
-
-  const isAuthenticated = Boolean(token);
-  const userRole = (token?.role as string | undefined) ?? null;
+  const session = await auth();
+  const isAuthenticated = Boolean(session);
+  const userRole = session?.user?.role ?? null;
 
   if (isAuthenticated) {
     if (!hasRoleAccess(pathname, userRole)) {
