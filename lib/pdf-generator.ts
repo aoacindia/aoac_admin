@@ -116,6 +116,62 @@ interface Customer {
   order: Order[];
 }
 
+async function launchPdfBrowser() {
+  const isVercel = process.env.VERCEL === '1' || Boolean(process.env.VERCEL_ENV);
+
+  if (isVercel) {
+    const puppeteer = await import('puppeteer-core');
+    const chromiumModule = await import('@sparticuz/chromium-min');
+    const chromium = chromiumModule.default;
+
+    const executablePath = await chromium.executablePath();
+    return puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath,
+      headless: chromium.headless,
+    });
+  }
+
+  try {
+    const puppeteerFull = await import('puppeteer');
+    return puppeteerFull.default.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+  } catch (error) {
+    const puppeteer = await import('puppeteer-core');
+    const fs = await import('fs');
+
+    const possiblePaths: (string | undefined)[] = [
+      process.env.PUPPETEER_EXECUTABLE_PATH,
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      process.env.CHROME_PATH,
+    ].filter((path): path is string => typeof path === 'string' && path.length > 0);
+
+    let executablePath: string | undefined;
+    for (const path of possiblePaths) {
+      if (path && fs.existsSync(path)) {
+        executablePath = path;
+        break;
+      }
+    }
+
+    if (!executablePath) {
+      throw new Error(
+        'Chromium executable not found. Please install puppeteer or set PUPPETEER_EXECUTABLE_PATH'
+      );
+    }
+
+    return puppeteer.launch({
+      executablePath,
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+  }
+}
+
 export async function generateCustomerPDF(
   customer: Customer,
   sections: string[]
@@ -602,60 +658,7 @@ export async function generateCustomerPDF(
   `;
 
   // Generate PDF using Puppeteer
-  const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV;
-  
-  let browser;
-  
-  if (isVercel) {
-    const puppeteer = await import('puppeteer-core');
-    const chromiumModule = await import('@sparticuz/chromium');
-    const Chromium = chromiumModule.default;
-    
-    const executablePath: string = await Chromium.executablePath();
-    browser = await puppeteer.launch({
-      args: Chromium.args,
-      executablePath,
-      headless: true,
-    });
-  } else {
-    try {
-      const puppeteerFull = await import('puppeteer');
-      browser = await puppeteerFull.default.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      });
-    } catch (error) {
-      const puppeteer = await import('puppeteer-core');
-      const fs = await import('fs');
-      
-      const possiblePaths: (string | undefined)[] = [
-        process.env.PUPPETEER_EXECUTABLE_PATH,
-        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-        process.env.CHROME_PATH,
-      ].filter((path): path is string => typeof path === 'string' && path.length > 0);
-
-      let executablePath: string | undefined;
-      for (const path of possiblePaths) {
-        if (path && fs.existsSync(path)) {
-          executablePath = path;
-          break;
-        }
-      }
-
-      if (!executablePath) {
-        throw new Error(
-          'Chromium executable not found. Please install puppeteer or set PUPPETEER_EXECUTABLE_PATH'
-        );
-      }
-
-      browser = await puppeteer.launch({
-        executablePath,
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      });
-    }
-  }
+  const browser = await launchPdfBrowser();
 
   const page = await browser.newPage();
   
@@ -1286,60 +1289,7 @@ export async function generateInvoicePDF(order: InvoiceOrder): Promise<Uint8Arra
   `;
 
   // Generate PDF using Puppeteer (same method as customer PDF)
-  const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV;
-  
-  let browser;
-  
-  if (isVercel) {
-    const puppeteer = await import('puppeteer-core');
-    const chromiumModule = await import('@sparticuz/chromium');
-    const Chromium = chromiumModule.default;
-    
-    const executablePath: string = await Chromium.executablePath();
-    browser = await puppeteer.launch({
-      args: Chromium.args,
-      executablePath,
-      headless: true,
-    });
-  } else {
-    try {
-      const puppeteerFull = await import('puppeteer');
-      browser = await puppeteerFull.default.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      });
-    } catch (error) {
-      const puppeteer = await import('puppeteer-core');
-      const fs = await import('fs');
-      
-      const possiblePaths: (string | undefined)[] = [
-        process.env.PUPPETEER_EXECUTABLE_PATH,
-        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-        process.env.CHROME_PATH,
-      ].filter((path): path is string => typeof path === 'string' && path.length > 0);
-
-      let executablePath: string | undefined;
-      for (const path of possiblePaths) {
-        if (path && fs.existsSync(path)) {
-          executablePath = path;
-          break;
-        }
-      }
-
-      if (!executablePath) {
-        throw new Error(
-          'Chromium executable not found. Please install puppeteer or set PUPPETEER_EXECUTABLE_PATH'
-        );
-      }
-
-      browser = await puppeteer.launch({
-        executablePath,
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      });
-    }
-  }
+  const browser = await launchPdfBrowser();
 
   const page = await browser.newPage();
   
