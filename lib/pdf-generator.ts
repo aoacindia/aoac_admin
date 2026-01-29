@@ -117,9 +117,7 @@ interface Customer {
 }
 
 async function launchPdfBrowser() {
-  const isVercel = process.env.VERCEL === '1' || Boolean(process.env.VERCEL_ENV);
-
-  if (isVercel) {
+  try {
     const puppeteer = await import('puppeteer-core');
     const chromiumModule = await import('@sparticuz/chromium-min');
     const chromium = chromiumModule.default;
@@ -127,48 +125,47 @@ async function launchPdfBrowser() {
     const executablePath = await chromium.executablePath();
     return puppeteer.launch({
       args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
       executablePath,
-      headless: chromium.headless,
-    });
-  }
-
-  try {
-    const puppeteerFull = await import('puppeteer');
-    return puppeteerFull.default.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
   } catch (error) {
-    const puppeteer = await import('puppeteer-core');
-    const fs = await import('fs');
+    try {
+      const puppeteerFull = await import('puppeteer');
+      return puppeteerFull.default.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+    } catch (innerError) {
+      const puppeteer = await import('puppeteer-core');
+      const fs = await import('fs');
 
-    const possiblePaths: (string | undefined)[] = [
-      process.env.PUPPETEER_EXECUTABLE_PATH,
-      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-      process.env.CHROME_PATH,
-    ].filter((path): path is string => typeof path === 'string' && path.length > 0);
+      const possiblePaths: (string | undefined)[] = [
+        process.env.PUPPETEER_EXECUTABLE_PATH,
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        process.env.CHROME_PATH,
+      ].filter((path): path is string => typeof path === 'string' && path.length > 0);
 
-    let executablePath: string | undefined;
-    for (const path of possiblePaths) {
-      if (path && fs.existsSync(path)) {
-        executablePath = path;
-        break;
+      let executablePath: string | undefined;
+      for (const path of possiblePaths) {
+        if (path && fs.existsSync(path)) {
+          executablePath = path;
+          break;
+        }
       }
-    }
 
-    if (!executablePath) {
-      throw new Error(
-        'Chromium executable not found. Please install puppeteer or set PUPPETEER_EXECUTABLE_PATH'
-      );
-    }
+      if (!executablePath) {
+        throw new Error(
+          'Chromium executable not found. Please install puppeteer or set PUPPETEER_EXECUTABLE_PATH'
+        );
+      }
 
-    return puppeteer.launch({
-      executablePath,
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
+      return puppeteer.launch({
+        executablePath,
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+    }
   }
 }
 
