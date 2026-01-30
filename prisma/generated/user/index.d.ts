@@ -7479,6 +7479,7 @@ export namespace Prisma {
     InvoiceNumber: string | null
     invoiceType: string | null
     invoiceSequenceNumber: number | null
+    invoiceOfficeId: string | null
     deliveryCharge: number | null
     deliveryPartner: string | null
     deliveryPartnerName: string | null
@@ -7524,6 +7525,7 @@ export namespace Prisma {
     InvoiceNumber: string | null
     invoiceType: string | null
     invoiceSequenceNumber: number | null
+    invoiceOfficeId: string | null
     deliveryCharge: number | null
     deliveryPartner: string | null
     deliveryPartnerName: string | null
@@ -7569,6 +7571,7 @@ export namespace Prisma {
     InvoiceNumber: number
     invoiceType: number
     invoiceSequenceNumber: number
+    invoiceOfficeId: number
     deliveryCharge: number
     deliveryPartner: number
     deliveryPartnerName: number
@@ -7640,6 +7643,7 @@ export namespace Prisma {
     InvoiceNumber?: true
     invoiceType?: true
     invoiceSequenceNumber?: true
+    invoiceOfficeId?: true
     deliveryCharge?: true
     deliveryPartner?: true
     deliveryPartnerName?: true
@@ -7685,6 +7689,7 @@ export namespace Prisma {
     InvoiceNumber?: true
     invoiceType?: true
     invoiceSequenceNumber?: true
+    invoiceOfficeId?: true
     deliveryCharge?: true
     deliveryPartner?: true
     deliveryPartnerName?: true
@@ -7730,6 +7735,7 @@ export namespace Prisma {
     InvoiceNumber?: true
     invoiceType?: true
     invoiceSequenceNumber?: true
+    invoiceOfficeId?: true
     deliveryCharge?: true
     deliveryPartner?: true
     deliveryPartnerName?: true
@@ -7862,6 +7868,7 @@ export namespace Prisma {
     InvoiceNumber: string | null
     invoiceType: string | null
     invoiceSequenceNumber: number | null
+    invoiceOfficeId: string | null
     deliveryCharge: number | null
     deliveryPartner: string | null
     deliveryPartnerName: string | null
@@ -7926,6 +7933,7 @@ export namespace Prisma {
     InvoiceNumber?: boolean
     invoiceType?: boolean
     invoiceSequenceNumber?: boolean
+    invoiceOfficeId?: boolean
     deliveryCharge?: boolean
     deliveryPartner?: boolean
     deliveryPartnerName?: boolean
@@ -7978,6 +7986,7 @@ export namespace Prisma {
     InvoiceNumber?: boolean
     invoiceType?: boolean
     invoiceSequenceNumber?: boolean
+    invoiceOfficeId?: boolean
     deliveryCharge?: boolean
     deliveryPartner?: boolean
     deliveryPartnerName?: boolean
@@ -7992,7 +8001,7 @@ export namespace Prisma {
     shippingAddressId?: boolean
   }
 
-  export type OrderOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "orderBy" | "orderDate" | "status" | "totalAmount" | "discountAmount" | "paidAmount" | "packed" | "refund" | "customOrder" | "r_orderId" | "r_paymentId" | "paymentLinkUrl" | "paymentMethod" | "paymentBank" | "paymentVpa" | "courierId" | "shippingId" | "shippingOrderId" | "shippingAmount" | "awsCode" | "shippingInvoiceNumber" | "shippingCourierName" | "estimatedDeliveryDate" | "pickupScheduled" | "deliveredAt" | "manifestGenerated" | "InvoiceNumber" | "invoiceType" | "invoiceSequenceNumber" | "deliveryCharge" | "deliveryPartner" | "deliveryPartnerName" | "roundedOffAmount" | "invoiceAmount" | "refundId" | "refundReceipt" | "refundArn" | "refundCreatedAt" | "isDifferentSupplier" | "supplierId" | "shippingAddressId", ExtArgs["result"]["order"]>
+  export type OrderOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "orderBy" | "orderDate" | "status" | "totalAmount" | "discountAmount" | "paidAmount" | "packed" | "refund" | "customOrder" | "r_orderId" | "r_paymentId" | "paymentLinkUrl" | "paymentMethod" | "paymentBank" | "paymentVpa" | "courierId" | "shippingId" | "shippingOrderId" | "shippingAmount" | "awsCode" | "shippingInvoiceNumber" | "shippingCourierName" | "estimatedDeliveryDate" | "pickupScheduled" | "deliveredAt" | "manifestGenerated" | "InvoiceNumber" | "invoiceType" | "invoiceSequenceNumber" | "invoiceOfficeId" | "deliveryCharge" | "deliveryPartner" | "deliveryPartnerName" | "roundedOffAmount" | "invoiceAmount" | "refundId" | "refundReceipt" | "refundArn" | "refundCreatedAt" | "isDifferentSupplier" | "supplierId" | "shippingAddressId", ExtArgs["result"]["order"]>
   export type OrderInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     supplier?: boolean | Order$supplierArgs<ExtArgs>
     orderItems?: boolean | Order$orderItemsArgs<ExtArgs>
@@ -8040,6 +8049,7 @@ export namespace Prisma {
       InvoiceNumber: string | null
       invoiceType: string | null
       invoiceSequenceNumber: number | null
+      invoiceOfficeId: string | null
       deliveryCharge: number | null
       deliveryPartner: string | null
       deliveryPartnerName: string | null
@@ -8455,6 +8465,7 @@ export namespace Prisma {
     readonly InvoiceNumber: FieldRef<"Order", 'String'>
     readonly invoiceType: FieldRef<"Order", 'String'>
     readonly invoiceSequenceNumber: FieldRef<"Order", 'Int'>
+    readonly invoiceOfficeId: FieldRef<"Order", 'String'>
     readonly deliveryCharge: FieldRef<"Order", 'Float'>
     readonly deliveryPartner: FieldRef<"Order", 'String'>
     readonly deliveryPartnerName: FieldRef<"Order", 'String'>
@@ -17558,6 +17569,7 @@ export namespace Prisma {
     InvoiceNumber: 'InvoiceNumber',
     invoiceType: 'invoiceType',
     invoiceSequenceNumber: 'invoiceSequenceNumber',
+    invoiceOfficeId: 'invoiceOfficeId',
     deliveryCharge: 'deliveryCharge',
     deliveryPartner: 'deliveryPartner',
     deliveryPartnerName: 'deliveryPartnerName',
@@ -17796,6 +17808,7 @@ export namespace Prisma {
     estimatedDeliveryDate: 'estimatedDeliveryDate',
     InvoiceNumber: 'InvoiceNumber',
     invoiceType: 'invoiceType',
+    invoiceOfficeId: 'invoiceOfficeId',
     deliveryPartner: 'deliveryPartner',
     deliveryPartnerName: 'deliveryPartnerName',
     refundId: 'refundId',
@@ -18431,6 +18444,7 @@ export namespace Prisma {
     InvoiceNumber?: StringNullableFilter<"Order"> | string | null
     invoiceType?: StringNullableFilter<"Order"> | string | null
     invoiceSequenceNumber?: IntNullableFilter<"Order"> | number | null
+    invoiceOfficeId?: StringNullableFilter<"Order"> | string | null
     deliveryCharge?: FloatNullableFilter<"Order"> | number | null
     deliveryPartner?: StringNullableFilter<"Order"> | string | null
     deliveryPartnerName?: StringNullableFilter<"Order"> | string | null
@@ -18480,6 +18494,7 @@ export namespace Prisma {
     InvoiceNumber?: SortOrderInput | SortOrder
     invoiceType?: SortOrderInput | SortOrder
     invoiceSequenceNumber?: SortOrderInput | SortOrder
+    invoiceOfficeId?: SortOrderInput | SortOrder
     deliveryCharge?: SortOrderInput | SortOrder
     deliveryPartner?: SortOrderInput | SortOrder
     deliveryPartnerName?: SortOrderInput | SortOrder
@@ -18533,6 +18548,7 @@ export namespace Prisma {
     InvoiceNumber?: StringNullableFilter<"Order"> | string | null
     invoiceType?: StringNullableFilter<"Order"> | string | null
     invoiceSequenceNumber?: IntNullableFilter<"Order"> | number | null
+    invoiceOfficeId?: StringNullableFilter<"Order"> | string | null
     deliveryCharge?: FloatNullableFilter<"Order"> | number | null
     deliveryPartner?: StringNullableFilter<"Order"> | string | null
     deliveryPartnerName?: StringNullableFilter<"Order"> | string | null
@@ -18582,6 +18598,7 @@ export namespace Prisma {
     InvoiceNumber?: SortOrderInput | SortOrder
     invoiceType?: SortOrderInput | SortOrder
     invoiceSequenceNumber?: SortOrderInput | SortOrder
+    invoiceOfficeId?: SortOrderInput | SortOrder
     deliveryCharge?: SortOrderInput | SortOrder
     deliveryPartner?: SortOrderInput | SortOrder
     deliveryPartnerName?: SortOrderInput | SortOrder
@@ -18635,6 +18652,7 @@ export namespace Prisma {
     InvoiceNumber?: StringNullableWithAggregatesFilter<"Order"> | string | null
     invoiceType?: StringNullableWithAggregatesFilter<"Order"> | string | null
     invoiceSequenceNumber?: IntNullableWithAggregatesFilter<"Order"> | number | null
+    invoiceOfficeId?: StringNullableWithAggregatesFilter<"Order"> | string | null
     deliveryCharge?: FloatNullableWithAggregatesFilter<"Order"> | number | null
     deliveryPartner?: StringNullableWithAggregatesFilter<"Order"> | string | null
     deliveryPartnerName?: StringNullableWithAggregatesFilter<"Order"> | string | null
@@ -19799,6 +19817,7 @@ export namespace Prisma {
     InvoiceNumber?: string | null
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
+    invoiceOfficeId?: string | null
     deliveryCharge?: number | null
     deliveryPartner?: string | null
     deliveryPartnerName?: string | null
@@ -19846,6 +19865,7 @@ export namespace Prisma {
     InvoiceNumber?: string | null
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
+    invoiceOfficeId?: string | null
     deliveryCharge?: number | null
     deliveryPartner?: string | null
     deliveryPartnerName?: string | null
@@ -19891,6 +19911,7 @@ export namespace Prisma {
     InvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
+    invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
     deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
@@ -19938,6 +19959,7 @@ export namespace Prisma {
     InvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
+    invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
     deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
@@ -19984,6 +20006,7 @@ export namespace Prisma {
     InvoiceNumber?: string | null
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
+    invoiceOfficeId?: string | null
     deliveryCharge?: number | null
     deliveryPartner?: string | null
     deliveryPartnerName?: string | null
@@ -20028,6 +20051,7 @@ export namespace Prisma {
     InvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
+    invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
     deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
@@ -20071,6 +20095,7 @@ export namespace Prisma {
     InvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
+    invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
     deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
@@ -21357,6 +21382,7 @@ export namespace Prisma {
     InvoiceNumber?: SortOrder
     invoiceType?: SortOrder
     invoiceSequenceNumber?: SortOrder
+    invoiceOfficeId?: SortOrder
     deliveryCharge?: SortOrder
     deliveryPartner?: SortOrder
     deliveryPartnerName?: SortOrder
@@ -21414,6 +21440,7 @@ export namespace Prisma {
     InvoiceNumber?: SortOrder
     invoiceType?: SortOrder
     invoiceSequenceNumber?: SortOrder
+    invoiceOfficeId?: SortOrder
     deliveryCharge?: SortOrder
     deliveryPartner?: SortOrder
     deliveryPartnerName?: SortOrder
@@ -21459,6 +21486,7 @@ export namespace Prisma {
     InvoiceNumber?: SortOrder
     invoiceType?: SortOrder
     invoiceSequenceNumber?: SortOrder
+    invoiceOfficeId?: SortOrder
     deliveryCharge?: SortOrder
     deliveryPartner?: SortOrder
     deliveryPartnerName?: SortOrder
@@ -22940,6 +22968,7 @@ export namespace Prisma {
     InvoiceNumber?: string | null
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
+    invoiceOfficeId?: string | null
     deliveryCharge?: number | null
     deliveryPartner?: string | null
     deliveryPartnerName?: string | null
@@ -22985,6 +23014,7 @@ export namespace Prisma {
     InvoiceNumber?: string | null
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
+    invoiceOfficeId?: string | null
     deliveryCharge?: number | null
     deliveryPartner?: string | null
     deliveryPartnerName?: string | null
@@ -23236,6 +23266,7 @@ export namespace Prisma {
     InvoiceNumber?: StringNullableFilter<"Order"> | string | null
     invoiceType?: StringNullableFilter<"Order"> | string | null
     invoiceSequenceNumber?: IntNullableFilter<"Order"> | number | null
+    invoiceOfficeId?: StringNullableFilter<"Order"> | string | null
     deliveryCharge?: FloatNullableFilter<"Order"> | number | null
     deliveryPartner?: StringNullableFilter<"Order"> | string | null
     deliveryPartnerName?: StringNullableFilter<"Order"> | string | null
@@ -23651,6 +23682,7 @@ export namespace Prisma {
     InvoiceNumber?: string | null
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
+    invoiceOfficeId?: string | null
     deliveryCharge?: number | null
     deliveryPartner?: string | null
     deliveryPartnerName?: string | null
@@ -23697,6 +23729,7 @@ export namespace Prisma {
     InvoiceNumber?: string | null
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
+    invoiceOfficeId?: string | null
     deliveryCharge?: number | null
     deliveryPartner?: string | null
     deliveryPartnerName?: string | null
@@ -24191,6 +24224,7 @@ export namespace Prisma {
     InvoiceNumber?: string | null
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
+    invoiceOfficeId?: string | null
     deliveryCharge?: number | null
     deliveryPartner?: string | null
     deliveryPartnerName?: string | null
@@ -24237,6 +24271,7 @@ export namespace Prisma {
     InvoiceNumber?: string | null
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
+    invoiceOfficeId?: string | null
     deliveryCharge?: number | null
     deliveryPartner?: string | null
     deliveryPartnerName?: string | null
@@ -24297,6 +24332,7 @@ export namespace Prisma {
     InvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
+    invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
     deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
@@ -24343,6 +24379,7 @@ export namespace Prisma {
     InvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
+    invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
     deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
@@ -24723,6 +24760,7 @@ export namespace Prisma {
     InvoiceNumber?: string | null
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
+    invoiceOfficeId?: string | null
     deliveryCharge?: number | null
     deliveryPartner?: string | null
     deliveryPartnerName?: string | null
@@ -24769,6 +24807,7 @@ export namespace Prisma {
     InvoiceNumber?: string | null
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
+    invoiceOfficeId?: string | null
     deliveryCharge?: number | null
     deliveryPartner?: string | null
     deliveryPartnerName?: string | null
@@ -24874,6 +24913,7 @@ export namespace Prisma {
     InvoiceNumber?: string | null
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
+    invoiceOfficeId?: string | null
     deliveryCharge?: number | null
     deliveryPartner?: string | null
     deliveryPartnerName?: string | null
@@ -25038,6 +25078,7 @@ export namespace Prisma {
     InvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
+    invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
     deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25083,6 +25124,7 @@ export namespace Prisma {
     InvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
+    invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
     deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25128,6 +25170,7 @@ export namespace Prisma {
     InvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
+    invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
     deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25212,6 +25255,7 @@ export namespace Prisma {
     InvoiceNumber?: string | null
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
+    invoiceOfficeId?: string | null
     deliveryCharge?: number | null
     deliveryPartner?: string | null
     deliveryPartnerName?: string | null
@@ -25255,6 +25299,7 @@ export namespace Prisma {
     InvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
+    invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
     deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25301,6 +25346,7 @@ export namespace Prisma {
     InvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
+    invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
     deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25346,6 +25392,7 @@ export namespace Prisma {
     InvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
+    invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
     deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25426,6 +25473,7 @@ export namespace Prisma {
     InvoiceNumber?: string | null
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
+    invoiceOfficeId?: string | null
     deliveryCharge?: number | null
     deliveryPartner?: string | null
     deliveryPartnerName?: string | null
@@ -25469,6 +25517,7 @@ export namespace Prisma {
     InvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
+    invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
     deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25515,6 +25564,7 @@ export namespace Prisma {
     InvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
+    invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
     deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25560,6 +25610,7 @@ export namespace Prisma {
     InvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
+    invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
     deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
     deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null

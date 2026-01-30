@@ -152,6 +152,7 @@ export async function PUT(
       deliveryPartnerName,
       addressId,
       invoiceType, // Optional - for updating invoice
+      invoiceOfficeId,
       paymentMethod,
       status,
       orderDate,
@@ -227,6 +228,10 @@ export async function PUT(
 
     if (paymentMethod !== undefined) {
       updateData.paymentMethod = paymentMethod || null;
+    }
+
+    if (invoiceOfficeId !== undefined) {
+      updateData.invoiceOfficeId = invoiceOfficeId || null;
     }
 
     if (status !== undefined) {

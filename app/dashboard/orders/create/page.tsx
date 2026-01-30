@@ -13,6 +13,7 @@ interface Customer {
   email: string;
   phone: string;
   businessName?: string;
+  gstNumber?: string | null;
 }
 
 interface Address {
@@ -59,6 +60,14 @@ interface Supplier {
   type: string;
 }
 
+interface Office {
+  id: string;
+  gstin: string;
+  address: string;
+  state: string;
+  stateCode: string;
+}
+
 export default function CreateOrderPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -66,14 +75,18 @@ export default function CreateOrderPage() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [offices, setOffices] = useState<Office[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [loadingAddresses, setLoadingAddresses] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [loadingSuppliers, setLoadingSuppliers] = useState(false);
+  const [loadingOffices, setLoadingOffices] = useState(false);
 
   const [invoiceType, setInvoiceType] = useState<"PI" | "TAX_INVOICE">("PI");
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [customerSearch, setCustomerSearch] = useState<string>("");
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
+  const [selectedInvoiceOfficeId, setSelectedInvoiceOfficeId] = useState<string>("");
   const [isDifferentSupplier, setIsDifferentSupplier] = useState(false);
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>("");
   const [items, setItems] = useState<OrderItem[]>([
@@ -102,6 +115,7 @@ export default function CreateOrderPage() {
     fetchCustomers();
     fetchProducts();
     fetchSuppliers();
+    fetchOffices();
   }, []);
 
   // Fetch addresses when customer is selected
@@ -114,10 +128,14 @@ export default function CreateOrderPage() {
     }
   }, [selectedCustomerId]);
 
-  const fetchCustomers = async () => {
+  const fetchCustomers = async (search?: string) => {
     try {
       setLoadingCustomers(true);
-      const response = await fetch("/api/customers");
+      const trimmedSearch = search?.trim();
+      const url = trimmedSearch
+        ? `/api/customers?search=${encodeURIComponent(trimmedSearch)}`
+        : "/api/customers";
+      const response = await fetch(url);
       const data = await response.json();
       if (data.success) {
         setCustomers(data.data);
@@ -175,6 +193,22 @@ export default function CreateOrderPage() {
       alert("Error fetching suppliers: " + error.message);
     } finally {
       setLoadingSuppliers(false);
+    }
+  };
+
+  const fetchOffices = async () => {
+    try {
+      setLoadingOffices(true);
+      const response = await fetch("/api/offices");
+      const data = await response.json();
+      if (data.success) {
+        setOffices(data.data);
+      }
+    } catch (error: any) {
+      console.error("Error fetching offices:", error);
+      alert("Error fetching offices: " + error.message);
+    } finally {
+      setLoadingOffices(false);
     }
   };
 
@@ -337,6 +371,12 @@ export default function CreateOrderPage() {
         return;
       }
 
+      if (!selectedInvoiceOfficeId) {
+        alert("Please select an invoice office");
+        setLoading(false);
+        return;
+      }
+
       if (items.some((item) => !item.productId || item.quantity <= 0)) {
         alert("Please fill in all item details correctly");
         setLoading(false);
@@ -357,6 +397,7 @@ export default function CreateOrderPage() {
 
       const payload = {
         invoiceType,
+        invoiceOfficeId: selectedInvoiceOfficeId,
         customerId: selectedCustomerId,
         addressId: selectedAddressId,
         isDifferentSupplier: isDifferentSupplier || false,
@@ -445,11 +486,59 @@ export default function CreateOrderPage() {
             </div>
           </div>
 
+          {/* Invoice Office Selection */}
+          <div className="mb-6">
+            <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+              Invoice Office <span className="text-red-500">*</span>
+            </Label>
+            {loadingOffices ? (
+              <p className="text-sm text-zinc-500 mt-1">Loading offices...</p>
+            ) : offices.length === 0 ? (
+              <p className="text-sm text-zinc-500 mt-1">No offices found</p>
+            ) : (
+              <Select
+                value={selectedInvoiceOfficeId}
+                onChange={(e) => setSelectedInvoiceOfficeId(e.target.value)}
+                required
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Select an office</option>
+                {offices.map((office) => (
+                  <option key={office.id} value={office.id}>
+                    {office.gstin} - {office.state} ({office.stateCode})
+                  </option>
+                ))}
+              </Select>
+            )}
+          </div>
+
           {/* Customer Selection */}
           <div className="mb-6">
             <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
               Customer <span className="text-red-500">*</span>
             </Label>
+            <div className="flex flex-col md:flex-row gap-2 mb-2">
+              <Input
+                value={customerSearch}
+                onChange={(e) => setCustomerSearch(e.target.value)}
+                placeholder="Search by name, business name, or GST number"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    fetchCustomers(customerSearch);
+                  }
+                }}
+                className="w-full"
+              />
+              <Button
+                type="button"
+                onClick={() => fetchCustomers(customerSearch)}
+                disabled={loadingCustomers}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Find Customer
+              </Button>
+            </div>
             <Select
               value={selectedCustomerId}
               onChange={(e) => setSelectedCustomerId(e.target.value)}
@@ -460,7 +549,9 @@ export default function CreateOrderPage() {
               <option value="">Select a customer</option>
               {customers.map((customer) => (
                 <option key={customer.id} value={customer.id}>
-                  {customer.name} {customer.businessName ? `(${customer.businessName})` : ""} - {customer.email}
+                  {customer.name}
+                  {customer.businessName ? ` (${customer.businessName})` : ""}
+                  {customer.gstNumber ? ` - GST: ${customer.gstNumber}` : ""}
                 </option>
               ))}
             </Select>

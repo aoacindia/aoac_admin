@@ -116,6 +116,16 @@ exports.Prisma.OtpVerificationScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.OfficeScalarFieldEnum = {
+  id: 'id',
+  gstin: 'gstin',
+  address: 'address',
+  state: 'state',
+  stateCode: 'stateCode',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -139,6 +149,14 @@ exports.Prisma.OtpVerificationOrderByRelevanceFieldEnum = {
   token: 'token',
   otp: 'otp'
 };
+
+exports.Prisma.OfficeOrderByRelevanceFieldEnum = {
+  id: 'id',
+  gstin: 'gstin',
+  address: 'address',
+  state: 'state',
+  stateCode: 'stateCode'
+};
 exports.AdminRole = exports.$Enums.AdminRole = {
   ADMIN: 'ADMIN',
   MANAGER: 'MANAGER',
@@ -147,7 +165,8 @@ exports.AdminRole = exports.$Enums.AdminRole = {
 
 exports.Prisma.ModelName = {
   User: 'User',
-  OtpVerification: 'OtpVerification'
+  OtpVerification: 'OtpVerification',
+  Office: 'Office'
 };
 /**
  * Create the Client
@@ -197,13 +216,13 @@ const config = {
       }
     }
   },
-  "inlineSchema": "// prisma/admin.schema.prisma\ndatasource db {\n  provider = \"mysql\"\n  url      = env(\"ADMIN_DATABASE_URL\")\n}\n\ngenerator client {\n  provider = \"prisma-client-js\"\n  output   = \"./generated/admin\"\n}\n\nmodel User {\n  id               String    @id @default(cuid())\n  name             String\n  email            String    @unique\n  role             AdminRole @default(STAFF)\n  suspended        Boolean   @default(false)\n  suspended_number Int       @default(0)\n  terminated       Boolean   @default(false)\n  phone            String    @unique\n  createdAt        DateTime  @default(now())\n  updatedAt        DateTime  @updatedAt\n}\n\nenum AdminRole {\n  ADMIN\n  MANAGER\n  STAFF\n}\n\nmodel OtpVerification {\n  id        String   @id @default(cuid())\n  email     String?\n  token     String   @unique\n  otp       String\n  expiresAt DateTime\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@index([email])\n  @@index([token])\n}\n",
-  "inlineSchemaHash": "659f9e3bab5c296d7ab32c46f490d47a3d50b6f39b22eb9caa7fc3039a6fdeae",
+  "inlineSchema": "// prisma/admin.schema.prisma\ndatasource db {\n  provider = \"mysql\"\n  url      = env(\"ADMIN_DATABASE_URL\")\n}\n\ngenerator client {\n  provider = \"prisma-client-js\"\n  output   = \"./generated/admin\"\n}\n\nmodel User {\n  id               String    @id @default(cuid())\n  name             String\n  email            String    @unique\n  role             AdminRole @default(STAFF)\n  suspended        Boolean   @default(false)\n  suspended_number Int       @default(0)\n  terminated       Boolean   @default(false)\n  phone            String    @unique\n  createdAt        DateTime  @default(now())\n  updatedAt        DateTime  @updatedAt\n}\n\nenum AdminRole {\n  ADMIN\n  MANAGER\n  STAFF\n}\n\nmodel OtpVerification {\n  id        String   @id @default(cuid())\n  email     String?\n  token     String   @unique\n  otp       String\n  expiresAt DateTime\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@index([email])\n  @@index([token])\n}\n\nmodel Office {\n  id        String   @id @default(cuid())\n  gstin     String   @unique\n  address   String\n  state     String\n  stateCode String\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n",
+  "inlineSchemaHash": "39d025e2ef66cb65eeadf1afb96eeb3bf83ab560b8c77d1c8e36068ff39ee445",
   "copyEngine": true
 }
 config.dirname = '/'
 
-config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"role\",\"kind\":\"enum\",\"type\":\"AdminRole\"},{\"name\":\"suspended\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"suspended_number\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"terminated\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"phone\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"OtpVerification\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"token\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"otp\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
+config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"role\",\"kind\":\"enum\",\"type\":\"AdminRole\"},{\"name\":\"suspended\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"suspended_number\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"terminated\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"phone\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"OtpVerification\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"token\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"otp\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"Office\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"gstin\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"address\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"state\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"stateCode\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
 defineDmmfProperty(exports.Prisma, config.runtimeDataModel)
 config.engineWasm = {
   getRuntime: async () => require('./query_engine_bg.js'),

@@ -1,4 +1,7 @@
 import 'server-only';
+import fs from 'fs';
+import path from 'path';
+import { PDFDocument, PageSizes, StandardFonts, rgb, PDFPage, PDFFont, PDFImage } from 'pdf-lib';
 
 interface SuspensionReason {
   id: string;
@@ -59,6 +62,14 @@ interface ShippingAddress {
   pincode: string;
 }
 
+interface InvoiceOffice {
+  id: string;
+  gstin: string;
+  address: string;
+  state: string;
+  stateCode: string;
+}
+
 interface Order {
   id: string;
   orderDate: Date;
@@ -116,577 +127,518 @@ interface Customer {
   order: Order[];
 }
 
-async function launchPdfBrowser() {
-  try {
-    const puppeteer = await import('puppeteer-core');
-    const chromiumModule = await import('@sparticuz/chromium-min');
-    const chromium = chromiumModule.default;
+interface PdfContext {
+  pdfDoc: PDFDocument;
+  page: PDFPage;
+  font: PDFFont;
+  boldFont: PDFFont;
+  margin: number;
+  pageWidth: number;
+  pageHeight: number;
+}
 
-    const executablePath = await chromium.executablePath();
-    return puppeteer.launch({
-      args: chromium.args,
-      executablePath,
-      headless: true,
-    });
-  } catch (error) {
-    try {
-      const puppeteerFull = await import('puppeteer');
-      return puppeteerFull.default.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      });
-    } catch (innerError) {
-      const puppeteer = await import('puppeteer-core');
-      const fs = await import('fs');
+const PAGE_MARGIN = 36;
+const ROW_HEIGHT = 18;
+const HEADER_FONT_SIZE = 10;
+const SECTION_TITLE_SIZE = 8;
+const BODY_FONT_SIZE = 7;
+const COMPANY_ADDRESS_SIZE = 6;
+const LINE_HEIGHT = 9;
 
-      const possiblePaths: (string | undefined)[] = [
-        process.env.PUPPETEER_EXECUTABLE_PATH,
-        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-        process.env.CHROME_PATH,
-      ].filter((path): path is string => typeof path === 'string' && path.length > 0);
+function drawPageBorder(ctx: PdfContext) {
+  ctx.page.drawRectangle({
+    x: ctx.margin / 2,
+    y: ctx.margin / 2,
+    width: ctx.pageWidth - ctx.margin,
+    height: ctx.pageHeight - ctx.margin,
+    borderWidth: 1,
+    borderColor: rgb(0, 0, 0)
+  });
+}
 
-      let executablePath: string | undefined;
-      for (const path of possiblePaths) {
-        if (path && fs.existsSync(path)) {
-          executablePath = path;
-          break;
+function formatValue(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (value instanceof Date) return value.toLocaleString();
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+
+function flattenObject(
+  obj: Record<string, unknown>,
+  prefix = ''
+): Array<{ key: string; value: string }> {
+  const rows: Array<{ key: string; value: string }> = [];
+
+  Object.entries(obj).forEach(([key, value]) => {
+    const fullKey = prefix ? `${prefix}.${key}` : key;
+    if (value instanceof Date) {
+      rows.push({ key: fullKey, value: value.toLocaleString() });
+      return;
+    }
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        rows.push({ key: fullKey, value: '' });
+        return;
+      }
+      value.forEach((item, index) => {
+        const arrayKey = `${fullKey}[${index}]`;
+        if (item && typeof item === 'object' && !(item instanceof Date)) {
+          rows.push(...flattenObject(item as Record<string, unknown>, arrayKey));
+        } else {
+          rows.push({ key: arrayKey, value: formatValue(item) });
         }
-      }
-
-      if (!executablePath) {
-        throw new Error(
-          'Chromium executable not found. Please install puppeteer or set PUPPETEER_EXECUTABLE_PATH'
-        );
-      }
-
-      return puppeteer.launch({
-        executablePath,
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
       });
+      return;
+    }
+    if (value && typeof value === 'object') {
+      rows.push(...flattenObject(value as Record<string, unknown>, fullKey));
+      return;
+    }
+    rows.push({ key: fullKey, value: formatValue(value) });
+  });
+
+  return rows;
+}
+
+function toPdfY(ctx: PdfContext, yFromTop: number, fontSize: number): number {
+  return ctx.pageHeight - yFromTop - fontSize;
+}
+
+function truncateText(text: string, maxWidth: number, font: PDFFont, fontSize: number): string {
+  if (!text) return '';
+  if (font.widthOfTextAtSize(text, fontSize) <= maxWidth) return text;
+  const ellipsis = '...';
+  const ellipsisWidth = font.widthOfTextAtSize(ellipsis, fontSize);
+  if (ellipsisWidth > maxWidth) return '';
+  let truncated = text;
+  while (
+    truncated.length > 0 &&
+    font.widthOfTextAtSize(truncated, fontSize) + ellipsisWidth > maxWidth
+  ) {
+    truncated = truncated.slice(0, -1);
+  }
+  return `${truncated}${ellipsis}`;
+}
+
+function drawTextLine(
+  ctx: PdfContext,
+  text: string,
+  x: number,
+  yFromTop: number,
+  size: number,
+  font: PDFFont = ctx.font
+) {
+  ctx.page.drawText(text, {
+    x,
+    y: toPdfY(ctx, yFromTop, size),
+    size,
+    font,
+    color: rgb(0, 0, 0)
+  });
+}
+
+function drawCenteredText(ctx: PdfContext, text: string, yFromTop: number, size: number, font: PDFFont = ctx.font) {
+  const textWidth = font.widthOfTextAtSize(text, size);
+  const x = Math.max(ctx.margin, (ctx.pageWidth - textWidth) / 2);
+  drawTextLine(ctx, text, x, yFromTop, size, font);
+}
+
+function drawImageAtTopLeft(
+  ctx: PdfContext,
+  image: PDFImage,
+  x: number,
+  yFromTop: number,
+  width: number,
+  height: number
+) {
+  ctx.page.drawImage(image, {
+    x,
+    y: ctx.pageHeight - yFromTop - height,
+    width,
+    height
+  });
+}
+
+function drawHorizontalLine(ctx: PdfContext, yFromTop: number) {
+  ctx.page.drawLine({
+    start: { x: ctx.margin, y: ctx.pageHeight - yFromTop },
+    end: { x: ctx.pageWidth - ctx.margin, y: ctx.pageHeight - yFromTop },
+    thickness: 1,
+    color: rgb(0, 0, 0)
+  });
+}
+
+function wrapText(text: string, maxWidth: number, font: PDFFont, fontSize: number): string[] {
+  if (!text) return [''];
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let line = '';
+  words.forEach((word) => {
+    const testLine = line ? `${line} ${word}` : word;
+    if (font.widthOfTextAtSize(testLine, fontSize) <= maxWidth) {
+      line = testLine;
+      return;
+    }
+    if (line) lines.push(line);
+    line = word;
+  });
+  if (line) lines.push(line);
+  return lines.length ? lines : [''];
+}
+
+function wrapTextLinesWithStyle(
+  items: Array<{ text: string; bold: boolean }>,
+  maxWidth: number,
+  font: PDFFont,
+  fontSize: number
+): Array<{ text: string; bold: boolean }> {
+  return items.flatMap((item) =>
+    wrapText(item.text, maxWidth, font, fontSize).map((line) => ({
+      text: line,
+      bold: item.bold
+    }))
+  );
+}
+
+function drawTextBlock(
+  ctx: PdfContext,
+  lines: string[],
+  x: number,
+  yFromTop: number,
+  size: number
+): number {
+  let y = yFromTop;
+  lines.forEach((line) => {
+    drawTextLine(ctx, line, x, y, size);
+    y += LINE_HEIGHT;
+  });
+  return y;
+}
+
+function drawTextBlockWithStyle(
+  ctx: PdfContext,
+  lines: Array<{ text: string; bold: boolean }>,
+  x: number,
+  yFromTop: number,
+  size: number
+): number {
+  let y = yFromTop;
+  lines.forEach((line) => {
+    drawTextLine(ctx, line.text, x, y, size, line.bold ? ctx.boldFont : ctx.font);
+    y += LINE_HEIGHT;
+  });
+  return y;
+}
+
+function drawCellText(
+  ctx: PdfContext,
+  text: string,
+  x: number,
+  yFromTop: number,
+  width: number,
+  size: number,
+  align: 'left' | 'right' | 'center' = 'left'
+) {
+  const truncated = truncateText(text, width - 6, ctx.font, size);
+  let textX = x + 3;
+  if (align !== 'left') {
+    const textWidth = ctx.font.widthOfTextAtSize(truncated, size);
+    if (align === 'right') {
+      textX = x + width - textWidth - 3;
+    } else {
+      textX = x + (width - textWidth) / 2;
     }
   }
+  drawTextLine(ctx, truncated, textX, yFromTop, size);
+}
+
+function drawCellLines(
+  ctx: PdfContext,
+  lines: string[],
+  x: number,
+  yFromTop: number,
+  width: number,
+  size: number,
+  align: 'left' | 'right' | 'center' = 'left'
+) {
+  let lineY = yFromTop;
+  lines.forEach((line) => {
+    const textWidth = ctx.font.widthOfTextAtSize(line, size);
+    let textX = x + 3;
+    if (align === 'right') {
+      textX = x + width - textWidth - 3;
+    } else if (align === 'center') {
+      textX = x + (width - textWidth) / 2;
+    }
+    drawTextLine(ctx, line, textX, lineY, size);
+    lineY += LINE_HEIGHT;
+  });
+}
+
+function formatAmount(value: number | null | undefined): string {
+  const safeValue = Number(value ?? 0);
+  return safeValue.toFixed(2);
+}
+
+function numberToWordsIndian(num: number): string {
+  if (!Number.isFinite(num)) return '';
+  if (num === 0) return 'Zero';
+
+  const ones = [
+    '',
+    'One',
+    'Two',
+    'Three',
+    'Four',
+    'Five',
+    'Six',
+    'Seven',
+    'Eight',
+    'Nine',
+    'Ten',
+    'Eleven',
+    'Twelve',
+    'Thirteen',
+    'Fourteen',
+    'Fifteen',
+    'Sixteen',
+    'Seventeen',
+    'Eighteen',
+    'Nineteen'
+  ];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  const twoDigit = (n: number) => {
+    if (n < 20) return ones[n];
+    const ten = Math.floor(n / 10);
+    const one = n % 10;
+    return `${tens[ten]}${one ? ` ${ones[one]}` : ''}`.trim();
+  };
+
+  const threeDigit = (n: number) => {
+    const hundred = Math.floor(n / 100);
+    const rest = n % 100;
+    if (!hundred) return twoDigit(rest);
+    return `${ones[hundred]} Hundred${rest ? ` ${twoDigit(rest)}` : ''}`.trim();
+  };
+
+  let remaining = Math.floor(num);
+  const parts: string[] = [];
+  const crore = Math.floor(remaining / 10000000);
+  if (crore) {
+    parts.push(`${threeDigit(crore)} Crore`);
+    remaining %= 10000000;
+  }
+  const lakh = Math.floor(remaining / 100000);
+  if (lakh) {
+    parts.push(`${threeDigit(lakh)} Lakh`);
+    remaining %= 100000;
+  }
+  const thousand = Math.floor(remaining / 1000);
+  if (thousand) {
+    parts.push(`${threeDigit(thousand)} Thousand`);
+    remaining %= 1000;
+  }
+  if (remaining) {
+    parts.push(threeDigit(remaining));
+  }
+  return parts.join(' ').trim();
+}
+
+function amountInWords(amount: number): string {
+  const safeAmount = Number.isFinite(amount) ? amount : 0;
+  const rupees = Math.floor(safeAmount);
+  const paise = Math.round((safeAmount - rupees) * 100);
+  const rupeesWords = numberToWordsIndian(rupees);
+  if (paise > 0) {
+    return `Rupees ${rupeesWords} and Paise ${numberToWordsIndian(paise)} Only`;
+  }
+  return `Rupees ${rupeesWords} Only`;
+}
+
+function addPage(ctx: PdfContext) {
+  ctx.page = ctx.pdfDoc.addPage(PageSizes.A4);
+  const { width, height } = ctx.page.getSize();
+  ctx.pageWidth = width;
+  ctx.pageHeight = height;
+  drawPageBorder(ctx);
+}
+
+function ensureSpace(ctx: PdfContext, y: number, rowHeight: number): number {
+  if (y + rowHeight > ctx.pageHeight - ctx.margin) {
+    addPage(ctx);
+    return ctx.margin + 10;
+  }
+  return y;
+}
+
+export function printKeyValue(
+  ctx: PdfContext,
+  key: string,
+  value: string,
+  y: number
+): number {
+  const tableWidth = ctx.pageWidth - ctx.margin * 2;
+  const keyColumnWidth = Math.floor(tableWidth * 0.35);
+  const valueColumnWidth = tableWidth - keyColumnWidth;
+
+  const nextY = ensureSpace(ctx, y, ROW_HEIGHT);
+  const rowBottomY = ctx.pageHeight - nextY - ROW_HEIGHT;
+
+  ctx.page.drawRectangle({
+    x: ctx.margin,
+    y: rowBottomY,
+    width: keyColumnWidth,
+    height: ROW_HEIGHT,
+    borderWidth: 1,
+    borderColor: rgb(0, 0, 0)
+  });
+  ctx.page.drawRectangle({
+    x: ctx.margin + keyColumnWidth,
+    y: rowBottomY,
+    width: valueColumnWidth,
+    height: ROW_HEIGHT,
+    borderWidth: 1,
+    borderColor: rgb(0, 0, 0)
+  });
+
+  const keyText = truncateText(key, keyColumnWidth - 12, ctx.font, BODY_FONT_SIZE);
+  const valueText = truncateText(value, valueColumnWidth - 12, ctx.font, BODY_FONT_SIZE);
+
+  drawTextLine(ctx, keyText, ctx.margin + 6, nextY + 4, BODY_FONT_SIZE);
+  drawTextLine(ctx, valueText, ctx.margin + keyColumnWidth + 6, nextY + 4, BODY_FONT_SIZE);
+
+  return nextY + ROW_HEIGHT;
+}
+
+function printSection(
+  ctx: PdfContext,
+  title: string,
+  rows: Array<{ key: string; value: string }>,
+  startY: number
+): number {
+  let y = ensureSpace(ctx, startY, 24);
+
+  drawTextLine(ctx, title, ctx.margin, y, SECTION_TITLE_SIZE);
+  y += 18;
+
+  rows.forEach((row) => {
+    y = printKeyValue(ctx, row.key, row.value, y);
+  });
+
+  return y + 6;
+}
+
+async function createPdfBuffer(build: (ctx: PdfContext) => void | Promise<void>): Promise<Uint8Array> {
+  // PDFKit can fail in bundled environments when Helvetica.afm is missing at runtime.
+  // pdf-lib embeds StandardFonts directly, avoiding external font files.
+  const pdfDoc = await PDFDocument.create();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const page = pdfDoc.addPage(PageSizes.A4);
+  const { width, height } = page.getSize();
+
+  const ctx: PdfContext = {
+    pdfDoc,
+    page,
+    font,
+    boldFont,
+    margin: PAGE_MARGIN,
+    pageWidth: width,
+    pageHeight: height
+  };
+
+  drawPageBorder(ctx);
+  await build(ctx);
+
+  const pdfBytes = await pdfDoc.save();
+  return new Uint8Array(pdfBytes);
 }
 
 export async function generateCustomerPDF(
   customer: Customer,
   sections: string[]
 ): Promise<Uint8Array> {
-  const reportDate = new Date().toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+  return createPdfBuffer((ctx) => {
+    drawCenteredText(ctx, 'Customer Details Report', ctx.margin, HEADER_FONT_SIZE);
+    let y = ctx.margin + 20;
 
-  // Build HTML sections based on selected sections
-  let htmlSections = '';
+    const reportMeta = flattenObject({
+      reportDate: new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }),
+      customerId: customer.id
+    });
+    y = printSection(ctx, 'Report Info', reportMeta, y);
 
-  if (sections.includes('customerInfo')) {
-    if (customer.isBusinessAccount) {
-      // For business accounts, show contact person information
-      htmlSections += `
-        <div class="section-title">Contact Person Information</div>
-        <div class="info-box">
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="info-label">Contact Person Name:</span>
-              <span class="info-value">${escapeHtml(customer.name)}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Email:</span>
-              <span class="info-value">${escapeHtml(customer.email)}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Phone:</span>
-              <span class="info-value">${escapeHtml(customer.phone)}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Customer ID:</span>
-              <span class="info-value">${escapeHtml(customer.id)}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Account Type:</span>
-              <span class="info-value">Business</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Status:</span>
-              <span class="info-value">${
-                customer.terminated
-                  ? 'Terminated'
-                  : customer.suspended
-                  ? `Suspended (${customer.suspended_number} time(s))`
-                  : 'Active'
-              }</span>
-            </div>
-          </div>
-        </div>
-      `;
-    } else {
-      // For personal accounts, show regular customer information
-      htmlSections += `
-        <div class="section-title">Customer Information</div>
-        <div class="info-box">
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="info-label">Customer Name:</span>
-              <span class="info-value">${escapeHtml(customer.name)}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Email:</span>
-              <span class="info-value">${escapeHtml(customer.email)}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Phone:</span>
-              <span class="info-value">${escapeHtml(customer.phone)}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Customer ID:</span>
-              <span class="info-value">${escapeHtml(customer.id)}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Account Type:</span>
-              <span class="info-value">Personal</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Status:</span>
-              <span class="info-value">${
-                customer.terminated
-                  ? 'Terminated'
-                  : customer.suspended
-                  ? `Suspended (${customer.suspended_number} time(s))`
-                  : 'Active'
-              }</span>
-            </div>
-          </div>
-        </div>
-      `;
-  }
-  }
+    if (sections.includes('customerInfo')) {
+      y = printSection(
+        ctx,
+        'Customer Info',
+        flattenObject({
+          id: customer.id,
+          name: customer.name,
+          email: customer.email,
+          phone: customer.phone,
+          status: customer.terminated
+            ? 'Terminated'
+            : customer.suspended
+            ? `Suspended (${customer.suspended_number} time(s))`
+            : 'Active',
+          accountType: customer.isBusinessAccount ? 'Business' : 'Personal'
+        }),
+        y
+      );
+    }
 
-  if (sections.includes('businessInfo') && customer.isBusinessAccount) {
-    htmlSections += `
-      <div class="section-title">Business Information</div>
-      <div class="info-box">
-        <div class="info-grid">
-          <div class="info-item">
-            <span class="info-label">Business Name:</span>
-            <span class="info-value">${escapeHtml(customer.businessName || 'N/A')}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">GST Number:</span>
-            <span class="info-value">${escapeHtml(customer.gstNumber || 'N/A')}</span>
-          </div>
-          ${customer.hasAdditionalTradeName ? `
-            <div class="info-item">
-              <span class="info-label">Additional Trade Name:</span>
-              <span class="info-value">${escapeHtml(customer.additionalTradeName || 'N/A')}</span>
-            </div>
-          ` : ''}
-        </div>
-      </div>
-    `;
-  }
+    if (sections.includes('businessInfo') && customer.isBusinessAccount) {
+      y = printSection(
+        ctx,
+        'Business Info',
+        flattenObject({
+          businessName: customer.businessName,
+          gstNumber: customer.gstNumber,
+          hasAdditionalTradeName: customer.hasAdditionalTradeName,
+          additionalTradeName: customer.additionalTradeName
+        }),
+        y
+      );
+    }
 
-  if (sections.includes('billingAddress') && customer.billingAddress) {
-    htmlSections += `
-      <div class="section-title">Billing Address</div>
-      <div class="info-box">
-        <div class="address-content">
-          <p>${escapeHtml(customer.billingAddress.houseNo)}, ${escapeHtml(customer.billingAddress.line1)}</p>
-          ${customer.billingAddress.line2 ? `<p>${escapeHtml(customer.billingAddress.line2)}</p>` : ''}
-          <p>${escapeHtml(customer.billingAddress.city)}, ${escapeHtml(customer.billingAddress.district)}, ${escapeHtml(customer.billingAddress.state)}</p>
-          <p>${escapeHtml(customer.billingAddress.country)} - ${escapeHtml(customer.billingAddress.pincode)}</p>
-        </div>
-      </div>
-    `;
-  }
+    if (sections.includes('billingAddress')) {
+      y = printSection(
+        ctx,
+        'Billing Address',
+        customer.billingAddress
+          ? flattenObject(customer.billingAddress as unknown as Record<string, unknown>)
+          : [{ key: 'billingAddress', value: '' }],
+        y
+      );
+    }
 
-  if (sections.includes('suspensionHistory') && customer.suspensionReasons.length > 0) {
-    htmlSections += `
-      <div class="section-title">Suspension History (${customer.suspensionReasons.length})</div>
-      <div class="info-box">
-        ${customer.suspensionReasons.map((reason, index) => `
-          <div class="suspension-item">
-            <div class="suspension-header">
-              <span class="suspension-number">Suspension #${customer.suspensionReasons.length - index}</span>
-              <span class="suspension-date">${reason.suspendedAt.toLocaleString()}</span>
-            </div>
-            <div class="suspension-reason">${escapeHtml(reason.reason)}</div>
-          </div>
-        `).join('')}
-      </div>
-    `;
-  }
+    if (sections.includes('suspensionHistory')) {
+      const rows = customer.suspensionReasons.length
+        ? flattenObject({ suspensionReasons: customer.suspensionReasons as unknown as Record<string, unknown> })
+        : [{ key: 'suspensionReasons', value: '' }];
+      y = printSection(ctx, 'Suspension History', rows, y);
+    }
 
-  if (sections.includes('addresses') && customer.addresses.length > 0) {
-    htmlSections += `
-      <div class="section-title">Addresses (${customer.addresses.length})</div>
-      <div class="info-box">
-        ${customer.addresses.map((address) => `
-          <div class="address-card ${address.isDefault ? 'default-address' : ''}">
-            <div class="address-header">
-              <span class="address-type">${escapeHtml(address.type)}</span>
-              ${address.isDefault ? '<span class="default-badge">Default</span>' : ''}
-            </div>
-            <div class="address-content">
-              <p><strong>${escapeHtml(address.name)}</strong> - ${escapeHtml(address.phone)}</p>
-              <p>${escapeHtml(address.houseNo)}, ${escapeHtml(address.line1)}</p>
-              ${address.line2 ? `<p>${escapeHtml(address.line2)}</p>` : ''}
-              <p>${escapeHtml(address.city)}, ${escapeHtml(address.district)}, ${escapeHtml(address.state)}</p>
-              <p>${escapeHtml(address.country)} - ${escapeHtml(address.pincode)}</p>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    `;
-  }
+    if (sections.includes('addresses')) {
+      const rows = customer.addresses.length
+        ? flattenObject({ addresses: customer.addresses as unknown as Record<string, unknown> })
+        : [{ key: 'addresses', value: '' }];
+      y = printSection(ctx, 'Addresses', rows, y);
+    }
 
-  if (sections.includes('orders') && customer.order.length > 0) {
-    htmlSections += `
-      <div class="section-title">Orders (${customer.order.length})</div>
-      <div class="info-box">
-        <table class="orders-table">
-          <thead>
-            <tr>
-              <th>Order ID</th>
-              <th>Date</th>
-              <th>Status</th>
-              <th>Items</th>
-              <th>Total Amount</th>
-              <th>Payment</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${customer.order.map((order) => `
-              <tr>
-                <td>
-                  <div>${order.id.substring(0, 8)}...</div>
-                  ${order.InvoiceNumber ? `<div class="invoice-number">Invoice: ${escapeHtml(order.InvoiceNumber)}</div>` : ''}
-                </td>
-                <td>${order.orderDate.toLocaleDateString()}</td>
-                <td>
-                  <span class="status-badge status-${order.status.toLowerCase()}">${order.status}</span>
-                </td>
-                <td>${order.orderItems.length} item(s)</td>
-                <td>
-                  <div class="amount">₹${order.totalAmount.toFixed(2)}</div>
-                  ${order.discountAmount && order.discountAmount > 0 ? `<div class="discount">Discount: ₹${order.discountAmount.toFixed(2)}</div>` : ''}
-                </td>
-                <td>
-                  ${order.paymentMethod ? `
-                    <div>${escapeHtml(order.paymentMethod)}</div>
-                    ${order.paidAmount ? `<div class="paid-amount">₹${order.paidAmount.toFixed(2)}</div>` : ''}
-                  ` : '-'}
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-    `;
-  }
-
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          @page {
-            margin: 0;
-            size: A4;
-          }
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          body {
-            font-family: Arial, sans-serif;
-            padding: 15mm;
-            color: #0f172a;
-            background: #fff;
-            font-size: 10px;
-          }
-          .header {
-            background: white;
-            border: 1px solid #e2e8f0;
-            padding: 15px 20px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-          }
-          .header-logo {
-            width: 60px;
-            height: 60px;
-            object-fit: contain;
-            flex-shrink: 0;
-          }
-          .header-divider {
-            width: 3px;
-            height: 60px;
-            background: #22c55e;
-            flex-shrink: 0;
-          }
-          .header-text {
-            flex-shrink: 0;
-          }
-          .header-text h1 {
-            font-size: 20px;
-            font-weight: bold;
-            color: #0f172a;
-            margin: 0;
-          }
-          .report-title {
-            text-align: center;
-            font-size: 22px;
-            font-weight: bold;
-            color: #0f172a;
-            margin-bottom: 20px;
-          }
-          .section-title {
-            font-size: 16px;
-            font-weight: bold;
-            color: #0f172a;
-            margin: 20px 0 10px 0;
-            display: flex;
-            align-items: center;
-            padding-bottom: 5px;
-            border-bottom: 2px solid #22c55e;
-          }
-          .info-box {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 4px;
-            padding: 15px;
-            margin-bottom: 20px;
-          }
-          .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 10px;
-          }
-          .info-item {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 3px;
-            padding: 8px 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          }
-          .info-label {
-            color: #475569;
-            font-size: 10px;
-            font-weight: 600;
-          }
-          .info-value {
-            color: #0f172a;
-            font-weight: bold;
-            font-size: 10px;
-            text-align: right;
-          }
-          .address-content {
-            color: #0f172a;
-            line-height: 1.6;
-          }
-          .address-content p {
-            margin: 3px 0;
-            font-size: 10px;
-          }
-          .address-card {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 4px;
-            padding: 12px;
-            margin-bottom: 10px;
-          }
-          .address-card.default-address {
-            border: 2px solid #22c55e;
-            background: #f0fdf4;
-          }
-          .address-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-          }
-          .address-type {
-            font-weight: bold;
-            font-size: 11px;
-            color: #0f172a;
-          }
-          .default-badge {
-            background: #22c55e;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 8px;
-            font-weight: bold;
-          }
-          .suspension-item {
-            background: white;
-            border-left: 4px solid #f59e0b;
-            border-radius: 3px;
-            padding: 10px;
-            margin-bottom: 10px;
-          }
-          .suspension-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 5px;
-          }
-          .suspension-number {
-            font-weight: bold;
-            font-size: 10px;
-            color: #0f172a;
-          }
-          .suspension-date {
-            font-size: 9px;
-            color: #64748b;
-          }
-          .suspension-reason {
-            font-size: 10px;
-            color: #334155;
-            line-height: 1.4;
-          }
-          .orders-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 9px;
-          }
-          .orders-table th {
-            background: #f1f5f9;
-            border: 1px solid #e2e8f0;
-            padding: 8px;
-            text-align: left;
-            font-weight: bold;
-            color: #0f172a;
-          }
-          .orders-table td {
-            border: 1px solid #e2e8f0;
-            padding: 8px;
-            color: #334155;
-          }
-          .orders-table tr:nth-child(even) {
-            background: #f8fafc;
-          }
-          .status-badge {
-            display: inline-block;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 8px;
-            font-weight: bold;
-            text-transform: uppercase;
-          }
-          .status-delivered {
-            background: #dcfce7;
-            color: #166534;
-          }
-          .status-cancelled, .status-refunded {
-            background: #fee2e2;
-            color: #991b1b;
-          }
-          .status-shipped {
-            background: #dcfce7;
-            color: #166534;
-          }
-          .status-pending, .status-payment_pending, .status-order_ready, .status-processing, .status-paid {
-            background: #fef3c7;
-            color: #92400e;
-          }
-          .invoice-number {
-            font-size: 8px;
-            color: #64748b;
-            margin-top: 2px;
-          }
-          .amount {
-            font-weight: bold;
-            color: #0f172a;
-          }
-          .discount {
-            font-size: 8px;
-            color: #64748b;
-            margin-top: 2px;
-          }
-          .paid-amount {
-            font-size: 8px;
-            color: #64748b;
-            margin-top: 2px;
-          }
-          .footer {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 4px;
-            padding: 15px;
-            text-align: center;
-            margin-top: 30px;
-          }
-          .footer p {
-            font-size: 10px;
-            color: #64748b;
-            margin: 5px 0;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <img src="logo/logo.png" alt="Logo" class="header-logo" onerror="this.style.display='none'" />
-          <div class="header-divider"></div>
-          <div class="header-text">
-            <h1>AOAC Customer Management System</h1>
-          </div>
-        </div>
-
-        <div class="report-title">Customer Details Report</div>
-
-        ${htmlSections}
-
-        <div class="footer">
-          <p>Customer ID: ${escapeHtml(customer.id)}</p>
-        </div>
-      </body>
-    </html>
-  `;
-
-  // Generate PDF using Puppeteer
-  const browser = await launchPdfBrowser();
-
-  const page = await browser.newPage();
-  
-  // Get base URL for images (use environment variable or default to localhost)
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-                  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-  
-  // Replace logo path with absolute URL
-  const htmlWithAbsolutePaths = htmlContent.replace(
-    /src="logo\/logo\.png"/g,
-    `src="${baseUrl}/logo/logo.png"`
-  );
-  
-  await page.setContent(htmlWithAbsolutePaths, {
-    waitUntil: 'networkidle0'
-  });
-
-  const pdf = await page.pdf({
-    format: 'A4',
-    printBackground: true,
-    margin: {
-      top: '15mm',
-      right: '15mm',
-      bottom: '15mm',
-      left: '15mm'
+    if (sections.includes('orders')) {
+      const rows = customer.order.length
+        ? flattenObject({ orders: customer.order as unknown as Record<string, unknown> })
+        : [{ key: 'orders', value: '' }];
+      printSection(ctx, 'Orders', rows, y);
     }
   });
-
-  await browser.close();
-
-  return pdf;
 }
 
 interface InvoiceOrder {
@@ -740,6 +692,7 @@ interface InvoiceOrder {
     id: string;
     name: string;
     type: string;
+    gstNumber?: string | null;
     houseNo: string;
     line1: string;
     line2: string | null;
@@ -761,617 +714,549 @@ interface InvoiceOrder {
     hsnsac?: string;
     weight?: number | null;
   }>;
+  invoiceOffice?: InvoiceOffice | null;
 }
 
-export async function generateInvoicePDF(order: InvoiceOrder): Promise<Uint8Array> {
-  // Company details
-  const companyName = "Allahabad Organic Agricultural Company Private Limited";
-  const companyAddress = "620 G Flr, Ganga Bihar, Anisabad, Phulwari, Patna - 800002, Bihar, India";
-  const companyCIN = "U63120BR2025PTC080942";
-  const companyPAN = "ABECA4299B";
-  const companyGSTIN = "10ABECA4299B1Z4";
-  // const companyFSSAI = "100053535653365";
-  const companyPhone = "(+91) 8986937875";
-  const companyEmail = "hello@aoac.in";
+type InvoiceCopyType = 'original' | 'duplicate' | 'triplicate';
 
-  // Use supplier address if different supplier is selected, otherwise use company address
-  const dispatchAddress = order.isDifferentSupplier && order.supplier
-    ? `${order.supplier.houseNo}, ${order.supplier.line1}${order.supplier.line2 ? `, ${order.supplier.line2}` : ""}, ${order.supplier.city}, ${order.supplier.district}, ${order.supplier.state} - ${order.supplier.pincode}`
-    : companyAddress;
+const INVOICE_COPY_LABELS: Record<InvoiceCopyType, string> = {
+  original: 'Original for Recipient',
+  duplicate: 'Duplicate for Transport/Courier',
+  triplicate: 'Triplicate for Supplier'
+};
 
-  // Calculate totals for items only (excluding delivery charge)
-  let itemsTaxableAmount = 0;
-  let itemsTax = 0;
-  let subtotal = 0;
-  let totalDiscount = 0;
+function resolvePlaceOfSupply(order: InvoiceOrder) {
+  const state = order.shippingAddress?.state || order.user.billingAddress?.state || '';
+  const stateCode = order.shippingAddress?.stateCode || order.user.billingAddress?.stateCode || '';
+  return { state, stateCode };
+}
 
-  order.orderItems.forEach((item) => {
-    const itemPrice = item.price * item.quantity;
-    const itemDiscount = item.discount * item.quantity;
-    const taxableAmount = (item.price / (1 + item.tax / 100)) * item.quantity;
-    const taxAmount = itemPrice - taxableAmount;
-    
-    itemsTaxableAmount += taxableAmount;
-    itemsTax += taxAmount;
-    subtotal += itemPrice;
-    totalDiscount += itemDiscount;
-  });
+function formatOfficeAddress(office: InvoiceOffice): string {
+  return office.address?.trim() || '';
+}
 
-  const deliveryCharge = order.shippingAmount || 0;
-  // Delivery charge tax (18% GST standard for delivery charges in India)
-  const deliveryChargeTax = 18;
-  // Calculate delivery charge taxable amount and tax
-  const deliveryChargeTaxableAmount = deliveryCharge > 0 ? deliveryCharge / (1 + deliveryChargeTax / 100) : 0;
-  const deliveryChargeTaxAmount = deliveryCharge - deliveryChargeTaxableAmount;
-  
-  // Total taxable amount and tax (items + delivery)
-  const totalTaxableAmount = itemsTaxableAmount + deliveryChargeTaxableAmount;
-  const totalTax = itemsTax + deliveryChargeTaxAmount;
-  
-  const grandTotal = subtotal - totalDiscount + deliveryCharge;
-  const roundedTotal = order.invoiceAmount || Math.round(grandTotal);
-  const roundingOff = order.roundedOffAmount || (roundedTotal - grandTotal);
+export async function generateInvoicePDF(
+  order: InvoiceOrder,
+  copies: InvoiceCopyType[] = ['original']
+): Promise<Uint8Array> {
+  return createPdfBuffer(async (ctx) => {
+    const logoPath = path.join(process.cwd(), 'public/logo/logo.png');
+    const signPath = path.join(process.cwd(), 'public/img/imp/auth_sign.png');
+    const logoImage = fs.existsSync(logoPath)
+      ? await ctx.pdfDoc.embedPng(fs.readFileSync(logoPath))
+      : null;
+    const signImage = fs.existsSync(signPath)
+      ? await ctx.pdfDoc.embedPng(fs.readFileSync(signPath))
+      : null;
 
-  // Determine if buyer is business customer
-  const isBusinessCustomer = order.user.isBusinessAccount === true;
+    const renderInvoicePage = (copyType: InvoiceCopyType) => {
+      const headerTop = ctx.margin;
+      let headerLeftWidth = 0;
+      let logoHeight = 0;
+      if (logoImage) {
+        logoHeight = 46;
+        const logoWidth = (logoImage.width / logoImage.height) * logoHeight;
+        drawImageAtTopLeft(ctx, logoImage, ctx.margin, headerTop, logoWidth, logoHeight);
+        headerLeftWidth = logoWidth + 10;
+      }
 
-  // Place of supply:
-  // - For business customers: from billing address state
-  // - For non-business customers: from shipping/delivery address state
-  let placeOfSupply = "N/A";
-  if (isBusinessCustomer) {
-    placeOfSupply = order.user.billingAddress 
-      ? `${order.user.billingAddress.state}${order.user.billingAddress.stateCode ? ` (${order.user.billingAddress.stateCode})` : ""}`
-      : "N/A";
-  } else {
-    // For non-business, use shipping address state
-    placeOfSupply = order.shippingAddress
-      ? `${order.shippingAddress.state}${order.shippingAddress.stateCode ? ` (${order.shippingAddress.stateCode})` : ""}`
-      : "N/A";
-  }
+      const invoiceTitle = order.invoiceType === 'TAX_INVOICE' ? 'TAX INVOICE' : 'PROFORMA INVOICE';
+      const copyLabel = INVOICE_COPY_LABELS[copyType];
+      const copyLabelSize = BODY_FONT_SIZE + 2;
+      const headerTitleGap = 6;
+      const titleWidth = ctx.font.widthOfTextAtSize(invoiceTitle, HEADER_FONT_SIZE);
+      const copyLabelWidth = ctx.font.widthOfTextAtSize(copyLabel, copyLabelSize);
+      const headerRightLimit = Math.min(
+        ctx.pageWidth - ctx.margin - titleWidth,
+        ctx.pageWidth - ctx.margin - copyLabelWidth
+      ) - 10;
 
-  // Buyer details
-  const buyerName = order.user.businessName || order.user.name;
-  // Include additional trade name if it exists
-  const buyerDisplayName = order.user.hasAdditionalTradeName && order.user.additionalTradeName
-    ? `${buyerName} (${order.user.additionalTradeName})`
-    : buyerName;
-  const buyerGST = order.user.gstNumber || "N/A";
-  
-  // For non-business customers, use shipping address instead of billing address
-  let buyerBillingAddress = "N/A";
-  if (isBusinessCustomer) {
-    // Business customers: use billing address
-    buyerBillingAddress = order.user.billingAddress
-      ? `${order.user.billingAddress.houseNo}, ${order.user.billingAddress.line1}${order.user.billingAddress.line2 ? `, ${order.user.billingAddress.line2}` : ""}, ${order.user.billingAddress.city}, ${order.user.billingAddress.district}, ${order.user.billingAddress.state} - ${order.user.billingAddress.pincode}`
-      : "N/A";
-  } else {
-    // Non-business customers: use shipping address
-    buyerBillingAddress = order.shippingAddress
-      ? `${order.shippingAddress.houseNo}, ${order.shippingAddress.line1}${order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ""}, ${order.shippingAddress.city}, ${order.shippingAddress.district}, ${order.shippingAddress.state} - ${order.shippingAddress.pincode}`
-      : "N/A";
-  }
-  
-  const buyerShippingAddress = order.shippingAddress
-    ? `${order.shippingAddress.houseNo}, ${order.shippingAddress.line1}${order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ""}, ${order.shippingAddress.city}, ${order.shippingAddress.district}, ${order.shippingAddress.state} - ${order.shippingAddress.pincode}`
-    : "N/A";
+      const companyX = ctx.margin + headerLeftWidth;
+      const maxCompanyWidth = Math.max(
+        40,
+        (headerRightLimit > companyX
+          ? headerRightLimit - companyX
+          : ctx.pageWidth - ctx.margin - companyX)
+      );
+      const companyName = 'Allahabad Organic Agricultural Company Private Limited';
+      const officeAddress = order.invoiceOffice
+        ? formatOfficeAddress(order.invoiceOffice)
+        : '';
+      const companyAddressLine =
+        officeAddress ||
+        '620 G Flr, Ganga Bihar, Anisabad, Phulwari, Patna - 800002, Bihar, India';
+      const companyGstin = order.invoiceOffice?.gstin || '10ABECA4299B1Z4';
+      const companyLines = [
+        { text: companyName, size: 9 },
+        {
+          text: companyAddressLine,
+          size: COMPANY_ADDRESS_SIZE
+        },
+        {
+          text: `CIN : U63120BR2025PTC080942 | PAN : ABECA4299B | GSTIN : ${companyGstin}`,
+          size: COMPANY_ADDRESS_SIZE
+        },
+        { text: 'Phone : (+91) 8986937875 | Email : hello@aoac.in', size: COMPANY_ADDRESS_SIZE }
+      ];
+      const companyBlockHeight = companyLines.reduce((total, line, index) => {
+        const wrappedCount = wrapText(line.text, maxCompanyWidth, ctx.font, line.size).length || 1;
+        return total + wrappedCount * LINE_HEIGHT + (index === 0 ? 2 : 0);
+      }, 0);
+      const companyStartY =
+        logoHeight > 0 && logoHeight > companyBlockHeight
+          ? headerTop + (logoHeight - companyBlockHeight) / 2
+          : headerTop;
+      let companyBlockBottom = companyStartY;
+      companyLines.forEach((line, index) => {
+        const wrappedLines = wrapText(line.text, maxCompanyWidth, ctx.font, line.size);
+        wrappedLines.forEach((wrappedLine) => {
+          drawTextLine(ctx, wrappedLine, companyX, companyBlockBottom, line.size);
+          companyBlockBottom += LINE_HEIGHT;
+        });
+        if (index === 0) {
+          companyBlockBottom += 2;
+        }
+      });
+      const headerBlockHeight = Math.max(companyBlockBottom, headerTop + logoHeight) - headerTop;
+      const titleBlockHeight = HEADER_FONT_SIZE + headerTitleGap + copyLabelSize;
+      const titleStartY =
+        headerTop + Math.max(0, (headerBlockHeight - titleBlockHeight) / 2);
 
-  // Determine invoice title based on invoice type
-  const invoiceTitle = order.invoiceType === "PI" ? "Proforma Invoice" : "TAX INVOICE";
-  
-  // Invoice/PI number and date
-  const invoiceNumber = order.InvoiceNumber || order.id;
-  const invoiceDate = new Date(order.orderDate).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  });
-  const invoiceTypeLabel = order.invoiceType === "PI" ? "PI" : "Invoice";
-  
-  // Convert rounded total to words
-  const amountInWords = numberToWords(Math.round(roundedTotal));
+      const titleX = ctx.pageWidth - ctx.margin - titleWidth;
+      drawTextLine(ctx, invoiceTitle, titleX, titleStartY, HEADER_FONT_SIZE);
+      drawTextLine(
+        ctx,
+        copyLabel,
+        ctx.pageWidth - ctx.margin - copyLabelWidth,
+        titleStartY + HEADER_FONT_SIZE + headerTitleGap,
+        copyLabelSize
+      );
 
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          @page {
-            margin: 0;
-            size: A4;
-          }
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          body {
-            font-family: Arial, sans-serif;
-            padding: 10mm;
-            color: #000;
-            background: #fff;
-            font-size: 9px;
-          }
-          .header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #000;
-            padding-bottom: 10px;
-            gap: 10px;
-          }
-          .logo {
-            width: 50px;
-            height: 50px;
-            object-fit: contain;
-            flex-shrink: 0;
-          }
-          .vertical-line {
-            width: 1px;
-            height: 50px;
-            background: #000;
-            flex-shrink: 0;
-          }
-          .header-content {
-            flex: 1;
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-          }
-          .company-details-small {
-            line-height: 1.3;
-            font-size: 8px;
-            flex: 1;
-          }
-          .company-details-small p {
-            margin: 1px 0;
-            font-size: 8px;
-          }
-          .invoice-title {
-            text-align: right;
-            flex-shrink: 0;
-          }
-          .invoice-title h1 {
-            font-size: 14px;
-            font-weight: bold;
-            margin-bottom: 2px;
-          }
-          .invoice-title p {
-            font-size: 8px;
-            color: #666;
-          }
-          .dispatch-section {
-            line-height: 1.4;
-            margin: 15px 0;
-            font-size: 9px;
-          }
-          .dispatch-section h3 {
-            font-size: 10px;
-            font-weight: bold;
-            margin-bottom: 5px;
-          }
-          .dispatch-section p {
-            margin: 2px 0;
-            font-size: 9px;
-          }
-          .dispatch-section {
-            line-height: 1.4;
-          }
-          .dispatch-section h3 {
-            font-size: 10px;
-            font-weight: bold;
-            margin-bottom: 5px;
-          }
-          .dispatch-section p {
-            margin: 2px 0;
-            font-size: 9px;
-          }
-          .buyer-section {
-            margin: 15px 0;
-             border-top: 1px solid #ccc;
-            padding-top: 10px;
-            font-size: 9px;
-          }
-          .buyer-section h3 {
-            font-size: 10px;
-            font-weight: bold;
-            margin-bottom: 8px;
-          }
-          .buyer-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-          }
-          .buyer-details {
-            line-height: 1.4;
-          }
-          .buyer-details p {
-            margin: 2px 0;
-            font-size: 9px;
-          }
-          .items-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 15px 0;
-            font-size: 8px;
-          }
-          .items-table th,
-          .items-table td {
-            border: 1px solid #000;
-            padding: 4px;
-            text-align: left;
-          }
-          .items-table th {
-            background: #f0f0f0;
-            font-weight: bold;
-            font-size: 8px;
-          }
-          .items-table td {
-            font-size: 8px;
-          }
-          .summary {
-            margin-top: 15px;
-            font-size: 9px;
-            text-align: right;
-          }
-          .summary-row {
-            margin: 3px 0;
-            font-size: 9px;
-          }
-          .summary-row span {
-            display: inline;
-          }
-          .invoice-info {
-            margin: 15px 0;
-            border-top: 1px solid #ccc;
-            padding-top: 10px;
-            font-size: 9px;
-            line-height: 1.6;
-          }
-          .invoice-info p {
-            margin: 2px 0;
-            font-size: 9px;
-          }
-          .amount-in-words {
-            margin-top: 10px;
-            font-size: 9px;
-            font-style: italic;
-          }
-          .summary-total {
-            font-weight: bold;
-            border-top: 1px solid #000;
-            padding-top: 5px;
-            margin-top: 5px;
-            font-size: 10px;
-          }
-          .terms-signature-section {
-            margin-top: 20px;
-            display: flex;
-            gap: 20px;
-            border-top: 1px solid #ccc;
-            padding-top: 15px;
-          }
-          .terms-section {
-            flex: 1;
-            font-size: 7px;
-            color: #888888;
-            line-height: 1.4;
-          }
-          .terms-section h4 {
-            font-size: 8px;
-            color: #666666;
-            margin-bottom: 5px;
-            font-weight: bold;
-          }
-          .terms-section p {
-            margin: 2px 0;
-            color: #888888;
-          }
-          .signature-section {
-            flex: 1;
-            text-align: center;
-          }
-          .signature-section h4 {
-            font-size: 9px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #000;
-          }
-          .signature-image {
-            width: 6.5cm;
-            height: 3cm;
-            object-fit: contain;
-            margin-bottom: 5px;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <img src="logo/logo.png" alt="Logo" class="logo" onerror="this.style.display='none'" />
-          <div class="vertical-line"></div>
-          <div class="header-content">
-            <div class="company-details-small">
-              <p><strong>${escapeHtml(companyName)}</strong></p>
-              <p>${escapeHtml(companyAddress)}</p>
-              <p>CIN : ${escapeHtml(companyCIN)} | PAN : ${escapeHtml(companyPAN)} | GSTIN : ${escapeHtml(companyGSTIN)}</p>
-              <p>Phone : ${escapeHtml(companyPhone)} | Email : ${escapeHtml(companyEmail)}</p>
-            </div>
-            <div class="invoice-title">
-              <h1>${escapeHtml(invoiceTitle)}</h1>
-              <p>Original for Recipient</p>
-            </div>
-          </div>
-        </div>
+      const titleBlockBottom = titleStartY + titleBlockHeight;
+      const headerBottom = Math.max(companyBlockBottom, headerTop + logoHeight, titleBlockBottom);
+      drawHorizontalLine(ctx, headerBottom + 8);
+      let y = headerBottom + 18;
 
-        ${order.isDifferentSupplier && order.supplier ? `
-        <div class="dispatch-section">
-          <h3>Dispatched From</h3>
-          <p><strong>${escapeHtml(order.supplier.name)}</strong></p>
-          <p>${escapeHtml(dispatchAddress)}</p>
-        </div>
-        ` : ''}
+      const { state, stateCode } = resolvePlaceOfSupply(order);
+      const placeOfSupply = state ? `${state}${stateCode ? ` (${stateCode})` : ''}` : '-';
 
-        <div class="invoice-info">
-          <p><strong>${invoiceTypeLabel} No.:</strong> ${escapeHtml(invoiceNumber)} | <strong>Order ID:</strong> ${escapeHtml(order.id)} | <strong>${invoiceTypeLabel} Date:</strong> ${escapeHtml(invoiceDate)} | <strong>${invoiceTypeLabel} Amount:</strong> ₹${roundedTotal.toFixed(2)}</p>
-        </div>
+      const infoBoxPadding = 6;
+      const infoBoxHeight = LINE_HEIGHT * 2 + infoBoxPadding * 2;
+      const infoBoxY = ensureSpace(ctx, y, infoBoxHeight);
+      ctx.page.drawRectangle({
+        x: ctx.margin,
+        y: ctx.pageHeight - infoBoxY - infoBoxHeight,
+        width: ctx.pageWidth - ctx.margin * 2,
+        height: infoBoxHeight,
+        borderWidth: 1,
+        borderColor: rgb(0, 0, 0)
+      });
+      const infoLeftX = ctx.margin + infoBoxPadding;
+      const infoRightX = ctx.pageWidth - ctx.margin - infoBoxPadding;
+      const infoLineY = infoBoxY + infoBoxPadding;
+      const invoiceNoValue = order.InvoiceNumber || order.id;
+      const invoiceNoLabel = 'Invoice No:';
+      drawTextLine(ctx, invoiceNoLabel, infoLeftX, infoLineY, BODY_FONT_SIZE, ctx.boldFont);
+      const invoiceNoLabelWidth = ctx.boldFont.widthOfTextAtSize(invoiceNoLabel, BODY_FONT_SIZE);
+      drawTextLine(
+        ctx,
+        ` ${invoiceNoValue}`,
+        infoLeftX + invoiceNoLabelWidth,
+        infoLineY,
+        BODY_FONT_SIZE
+      );
 
-        <div class="buyer-section">
-          <h3>Billed and Shipped To</h3>
-          <div class="buyer-grid">
-            <div class="buyer-details">
-              <p><strong>Name:</strong> ${escapeHtml(buyerDisplayName)}</p>
-              <p><strong>Phone:</strong> ${escapeHtml(order.user.phone)}</p>
-              <p><strong>Email:</strong> ${escapeHtml(order.user.email)}</p>
-              ${isBusinessCustomer ? `<p><strong>GSTIN:</strong> ${escapeHtml(buyerGST)}</p>` : ''}
-              ${isBusinessCustomer ? `
-                <p><strong>Billing Address:</strong></p>
-                <p>${escapeHtml(buyerBillingAddress)}</p>
-              ` : `
-                <p>${escapeHtml(buyerBillingAddress)}</p>
-              `}
-            </div>
-            <div class="buyer-details">
-              ${isBusinessCustomer ? `
-                <p><strong>Delivery Address:</strong></p>
-                <p>${escapeHtml(buyerShippingAddress)}</p>
-                <p style="margin-top: 8px;"><strong>Place of Supply:</strong> ${escapeHtml(placeOfSupply)}</p>
-              ` : `
-                <p><strong>Place of Supply:</strong> ${escapeHtml(placeOfSupply)}</p>
-              `}
-            </div>
-          </div>
-        </div>
+      const invoiceDateValue = order.orderDate.toLocaleDateString('en-IN');
+      const invoiceDateLabel = 'Invoice Date:';
+      const invoiceDateLabelWidth = ctx.boldFont.widthOfTextAtSize(invoiceDateLabel, BODY_FONT_SIZE);
+      const invoiceDateValueWidth = ctx.font.widthOfTextAtSize(invoiceDateValue, BODY_FONT_SIZE);
+      const invoiceDateX = infoRightX - invoiceDateLabelWidth - invoiceDateValueWidth;
+      drawTextLine(ctx, invoiceDateLabel, invoiceDateX, infoLineY, BODY_FONT_SIZE, ctx.boldFont);
+      drawTextLine(
+        ctx,
+        ` ${invoiceDateValue}`,
+        invoiceDateX + invoiceDateLabelWidth,
+        infoLineY,
+        BODY_FONT_SIZE
+      );
 
-        <div style="margin-top: 15px; margin-bottom: 10px;">
-          <h3 style="font-size: 10px; font-weight: bold;">Items List</h3>
-        </div>
+      const orderIdLabel = 'Order ID:';
+      drawTextLine(ctx, orderIdLabel, infoLeftX, infoLineY + LINE_HEIGHT, BODY_FONT_SIZE, ctx.boldFont);
+      const orderIdLabelWidth = ctx.boldFont.widthOfTextAtSize(orderIdLabel, BODY_FONT_SIZE);
+      drawTextLine(
+        ctx,
+        ` ${order.id}`,
+        infoLeftX + orderIdLabelWidth,
+        infoLineY + LINE_HEIGHT,
+        BODY_FONT_SIZE
+      );
 
-        <table class="items-table">
-          <thead>
-            <tr>
-              <th>Sr. No.</th>
-              <th>Item Description</th>
-              <th>HSN/SAC</th>
-              <th>Qty</th>
-              <th>Rate</th>
-              <th>Taxable Amount</th>
-              ${(() => {
-                // Determine if supplier state code is 10 (Bihar)
-                // If no supplier, company is supplier (state code 10)
-                const supplierStateCode = order.supplier?.stateCode || "10";
-                const isSameState = supplierStateCode === "10";
-                
-                if (isSameState) {
-                  return '<th>SGST %</th><th>CGST %</th>';
-                } else {
-                  return '<th>IGST %</th>';
-                }
-              })()}
-              <th>Tax Amount</th>
-              <th>Discount</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${order.orderItems.map((item, index) => {
-              const taxableAmount = (item.price / (1 + item.tax / 100)) * item.quantity;
-              const taxAmount = (item.price * item.quantity) - taxableAmount;
-              const itemTotal = (item.price * item.quantity) - (item.discount * item.quantity);
-              
-              // Calculate rate as price / (1 + tax/100)
-              const rate = item.price / (1 + item.tax / 100);
-              
-              // Determine if supplier state code is 10
-              // If no supplier, company is supplier (state code 10)
-              const supplierStateCode = order.supplier?.stateCode || "10";
-              const isSameState = supplierStateCode === "10";
-              
-              // Generate tax columns based on state code
-              let taxColumns = '';
-              if (isSameState) {
-                // Split tax percentage in half for SGST and CGST
-                const sgstPercent = (item.tax / 2).toFixed(2);
-                const cgstPercent = (item.tax / 2).toFixed(2);
-                taxColumns = `<td>${sgstPercent}%</td><td>${cgstPercent}%</td>`;
-              } else {
-                // Show full tax percentage for IGST
-                taxColumns = `<td>${item.tax}%</td>`;
-              }
-              
-              // Convert weight from grams to kg and format product name
-              let productDisplayName = escapeHtml(item.productName || `Product ${item.productId}`);
-              if (item.weight && item.weight > 0) {
-                const weightInKg = (item.weight / 1000).toFixed(2);
-                productDisplayName = `${productDisplayName} (${weightInKg} kg)`;
-              }
-              
-              return `
-                <tr>
-                  <td>${index + 1}</td>
-                  <td>${productDisplayName}</td>
-                  <td>${escapeHtml(item.hsnsac || "-")}</td>
-                  <td>${item.quantity}</td>
-                  <td>₹${rate.toFixed(2)}</td>
-                  <td>₹${taxableAmount.toFixed(2)}</td>
-                  ${taxColumns}
-                  <td>₹${taxAmount.toFixed(2)}</td>
-                  <td>₹${(item.discount * item.quantity).toFixed(2)}</td>
-                  <td>₹${itemTotal.toFixed(2)}</td>
-                </tr>
-              `;
-            }).join('')}
-          </tbody>
-        </table>
+      const placeLabel = 'Place of Supply:';
+      const placeLabelWidth = ctx.boldFont.widthOfTextAtSize(placeLabel, BODY_FONT_SIZE);
+      const placeValueWidth = ctx.font.widthOfTextAtSize(placeOfSupply, BODY_FONT_SIZE);
+      const placeX = infoRightX - placeLabelWidth - placeValueWidth;
+      drawTextLine(ctx, placeLabel, placeX, infoLineY + LINE_HEIGHT, BODY_FONT_SIZE, ctx.boldFont);
+      drawTextLine(
+        ctx,
+        ` ${placeOfSupply}`,
+        placeX + placeLabelWidth,
+        infoLineY + LINE_HEIGHT,
+        BODY_FONT_SIZE
+      );
 
-        <div class="summary">
-          <div class="summary-row">
-            <span>Total Taxable Amount (Items): ₹${itemsTaxableAmount.toFixed(2)}</span>
-          </div>
-          <div class="summary-row">
-            <span>Total Tax (Items): ₹${itemsTax.toFixed(2)}</span>
-          </div>
-          <div class="summary-row">
-            <span>Total Discount: ₹${totalDiscount.toFixed(2)}</span>
-          </div>
-          ${deliveryCharge > 0 ? `
-          <div class="summary-row">
-            <span>Delivery Charge Taxable Amount: ₹${deliveryChargeTaxableAmount.toFixed(2)}</span>
-          </div>
-          <div class="summary-row">
-            <span>Delivery Charge Tax: ₹${deliveryChargeTaxAmount.toFixed(2)}</span>
-          </div>
-          <div class="summary-row">
-            <span>Delivery Charge: ₹${deliveryCharge.toFixed(2)}</span>
-          </div>
-          ` : ''}
-          ${roundingOff !== 0 ? `
-          <div class="summary-row">
-            <span>Rounding Off: ₹${roundingOff.toFixed(2)}</span>
-          </div>
-          ` : ''}
-          <div class="summary-row summary-total">
-            <span>Rounded Total: ₹${roundedTotal.toFixed(2)}</span>
-          </div>
-          <div class="amount-in-words">
-            <p><strong>Total Invoice Amount in Words:</strong> ${escapeHtml(amountInWords)} Rupees Only</p>
-          </div>
-        </div>
+      y = infoBoxY + infoBoxHeight + 10;
 
-        <div style="margin-top: 15px;"></div>
+    const tableWidth = ctx.pageWidth - ctx.margin * 2;
+    const columnGap = 12;
+    const columnWidth = (tableWidth - columnGap) / 2;
+    const isBusinessAccount = Boolean(order.user.isBusinessAccount);
+    const businessSuffix =
+      isBusinessAccount && order.user.hasAdditionalTradeName && order.user.additionalTradeName
+        ? ` (${order.user.additionalTradeName})`
+        : '';
+    const businessDisplayName = isBusinessAccount && order.user.businessName
+      ? `${order.user.businessName}${businessSuffix}`
+      : order.user.name;
+    const contactPersonLine = isBusinessAccount ? `Contact Person: ${order.user.name}` : '';
 
-        <div class="terms-signature-section">
-          <div class="terms-section">
-            <h4>Terms and Conditions:</h4>
-            <p>1. Goods once sold will not be taken back or exchanged.</p>
-            <p>2. Interest @ 18% p.a. will be charged if the payment is not made within the agreed time.</p>
-            <p>3. Subject to Patna Jurisdiction only.</p>
-            <p>4. All disputes are subject to Patna Jurisdiction only.</p>
-            <p>5. E. & O.E. (Errors and Omissions Excepted)</p>
-            <p>6. Payment should be made as per the terms mentioned in the invoice.</p>
-            <p>7. Goods are sold on "as is where is" basis.</p>
-            <p>8. The buyer is responsible for verifying the quality and quantity of goods before acceptance.</p>
-            <p>9. Any claim for shortage or damage must be reported within 48 hours of delivery.</p>
-            <p>10. The seller reserves the right to cancel the order in case of non-payment or breach of terms.</p>
-          </div>
-          <div class="signature-section">
-            <h4>Authorized Signature</h4>
-            <img src="img/imp/auth_sign.png" alt="Authorized Signature" class="signature-image" onerror="this.style.display='none'" />
-          </div>
-        </div>
+    const shippingContactLine =
+      isBusinessAccount && order.shippingAddress?.name ? `Contact Person: ${order.shippingAddress.name}` : '';
+    const shippedLines = [
+      businessDisplayName,
+      shippingContactLine,
+      order.shippingAddress
+        ? [order.shippingAddress.houseNo, order.shippingAddress.line1, order.shippingAddress.line2]
+            .filter(Boolean)
+            .join(', ')
+        : '',
+      order.shippingAddress
+        ? [order.shippingAddress.city, order.shippingAddress.district].filter(Boolean).join(', ')
+        : '',
+      order.shippingAddress
+        ? [order.shippingAddress.state, order.shippingAddress.country, order.shippingAddress.pincode]
+            .filter(Boolean)
+            .join(', ')
+        : '',
+      order.shippingAddress ? `Phone: ${order.shippingAddress.phone}` : ''
+    ]
+      .filter(Boolean)
+      .map((line) => ({
+        text: line,
+        bold: line === businessDisplayName || line.startsWith('Phone:')
+      }));
 
-      </body>
-    </html>
-  `;
+    const billedLines = isBusinessAccount
+      ? [
+          businessDisplayName,
+          contactPersonLine,
+          order.user.billingAddress
+            ? [order.user.billingAddress.houseNo, order.user.billingAddress.line1, order.user.billingAddress.line2]
+                .filter(Boolean)
+                .join(', ')
+            : '',
+          order.user.billingAddress
+            ? [order.user.billingAddress.city, order.user.billingAddress.district].filter(Boolean).join(', ')
+            : '',
+          order.user.billingAddress
+            ? [order.user.billingAddress.state, order.user.billingAddress.country, order.user.billingAddress.pincode]
+                .filter(Boolean)
+                .join(', ')
+            : '',
+          `Phone: ${order.user.phone}`,
+          `GST: ${order.user.gstNumber || '-'}`
+        ]
+          .filter(Boolean)
+          .map((line) => ({
+            text: line,
+            bold: line === businessDisplayName || line.startsWith('Phone:')
+          }))
+      : shippedLines;
 
-  // Generate PDF using Puppeteer (same method as customer PDF)
-  const browser = await launchPdfBrowser();
-
-  const page = await browser.newPage();
-  
-  // Get base URL for images
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-                  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-  
-  // Replace logo and signature image paths with absolute URLs
-  const htmlWithAbsolutePaths = htmlContent
-    .replace(
-      /src="logo\/logo\.png"/g,
-      `src="${baseUrl}/logo/logo.png"`
-    )
-    .replace(
-      /src="img\/imp\/auth_sign\.png"/g,
-      `src="${baseUrl}/img/imp/auth_sign.png"`
+    const addressPadding = 6;
+    const addressInnerWidth = columnWidth - addressPadding * 2;
+    const billedWrapped = wrapTextLinesWithStyle(
+      billedLines,
+      addressInnerWidth,
+      ctx.font,
+      BODY_FONT_SIZE
     );
-  
-  await page.setContent(htmlWithAbsolutePaths, {
-    waitUntil: 'networkidle0'
+    const shippedWrapped = wrapTextLinesWithStyle(
+      shippedLines,
+      addressInnerWidth,
+      ctx.font,
+      BODY_FONT_SIZE
+    );
+    const titleLineHeight = LINE_HEIGHT;
+    const titleGap = 4;
+    const maxAddressLines = Math.max(billedWrapped.length, shippedWrapped.length, 1);
+    const blockHeight =
+      addressPadding * 2 + titleLineHeight + titleGap + maxAddressLines * LINE_HEIGHT;
+
+    ctx.page.drawRectangle({
+      x: ctx.margin,
+      y: ctx.pageHeight - y - blockHeight,
+      width: columnWidth,
+      height: blockHeight,
+      borderWidth: 1,
+      borderColor: rgb(0, 0, 0)
+    });
+    ctx.page.drawRectangle({
+      x: ctx.margin + columnWidth + columnGap,
+      y: ctx.pageHeight - y - blockHeight,
+      width: columnWidth,
+      height: blockHeight,
+      borderWidth: 1,
+      borderColor: rgb(0, 0, 0)
+    });
+
+    const addressTitleSize = SECTION_TITLE_SIZE + 2;
+    drawTextLine(ctx, 'Billed To', ctx.margin + addressPadding, y + addressPadding, addressTitleSize);
+    drawTextLine(
+      ctx,
+      'Shipped To',
+      ctx.margin + columnWidth + columnGap + addressPadding,
+      y + addressPadding,
+      addressTitleSize
+    );
+    const billedStart = y + addressPadding + titleLineHeight + titleGap;
+    const shippedStart = y + addressPadding + titleLineHeight + titleGap;
+    drawTextBlockWithStyle(ctx, billedWrapped, ctx.margin + addressPadding, billedStart, BODY_FONT_SIZE);
+    drawTextBlockWithStyle(
+      ctx,
+      shippedWrapped,
+      ctx.margin + columnWidth + columnGap + addressPadding,
+      shippedStart,
+      BODY_FONT_SIZE
+    );
+
+      y += blockHeight + 6;
+
+    const columns = [
+      { label: 'Sr No', percent: 6, align: 'center' as const },
+      { label: 'Item Name', percent: 24, align: 'left' as const },
+      { label: 'HSN', percent: 8, align: 'center' as const },
+      { label: 'Qty', percent: 6, align: 'center' as const },
+      { label: 'Rate', percent: 8, align: 'right' as const },
+      { label: 'Taxable Amount', percent: 12, align: 'right' as const },
+      { label: 'Tax %', percent: 6, align: 'center' as const },
+      { label: 'Tax Amount', percent: 12, align: 'right' as const },
+      { label: 'Discount', percent: 8, align: 'right' as const },
+      { label: 'Line Total', percent: 10, align: 'right' as const }
+    ];
+    const widths: number[] = [];
+    let used = 0;
+    columns.forEach((col, index) => {
+      if (index === columns.length - 1) {
+        widths.push(tableWidth - used);
+      } else {
+        const width = Math.floor((tableWidth * col.percent) / 100);
+        widths.push(width);
+        used += width;
+      }
+    });
+
+    const drawTableHeader = () => {
+      const headerHeight = 20;
+      const headerY = ensureSpace(ctx, y, headerHeight);
+      let x = ctx.margin;
+      columns.forEach((col, index) => {
+        ctx.page.drawRectangle({
+          x,
+          y: ctx.pageHeight - headerY - headerHeight,
+          width: widths[index],
+          height: headerHeight,
+          borderWidth: 1,
+          borderColor: rgb(0, 0, 0)
+        });
+        drawCellText(ctx, col.label, x, headerY + 4, widths[index], BODY_FONT_SIZE, 'center');
+        x += widths[index];
+      });
+      y = headerY + headerHeight;
+    };
+
+    drawTableHeader();
+
+    let subtotal = 0;
+    let totalDiscount = 0;
+    let totalTax = 0;
+    order.orderItems.forEach((item, index) => {
+      const rate = Number(item.price ?? 0);
+      const qty = Number(item.quantity ?? 0);
+      const discount = Number(item.discount ?? 0);
+      const taxPercent = Number(item.tax ?? 0);
+      const grossAmount = Math.max(0, rate * qty - discount);
+      const taxDivisor = taxPercent > 0 ? 1 + taxPercent / 100 : 1;
+      const taxableAmount = grossAmount / taxDivisor;
+      const taxAmount = grossAmount - taxableAmount;
+      const total = taxableAmount + taxAmount;
+
+      subtotal += taxableAmount;
+      totalDiscount += discount;
+      totalTax += taxAmount;
+
+      const itemName = item.productName || `Product ${item.productId}`;
+      const cellLines = [
+        wrapText(String(index + 1), widths[0] - 6, ctx.font, BODY_FONT_SIZE),
+        wrapText(itemName, widths[1] - 6, ctx.font, BODY_FONT_SIZE),
+        wrapText(item.hsnsac || '-', widths[2] - 6, ctx.font, BODY_FONT_SIZE),
+        wrapText(String(qty), widths[3] - 6, ctx.font, BODY_FONT_SIZE),
+        wrapText(formatAmount(rate), widths[4] - 6, ctx.font, BODY_FONT_SIZE),
+        wrapText(formatAmount(taxableAmount), widths[5] - 6, ctx.font, BODY_FONT_SIZE),
+        wrapText(`${taxPercent}`, widths[6] - 6, ctx.font, BODY_FONT_SIZE),
+        wrapText(formatAmount(taxAmount), widths[7] - 6, ctx.font, BODY_FONT_SIZE),
+        wrapText(formatAmount(discount), widths[8] - 6, ctx.font, BODY_FONT_SIZE),
+        wrapText(formatAmount(total), widths[9] - 6, ctx.font, BODY_FONT_SIZE)
+      ];
+      const maxLines = Math.max(...cellLines.map((lines) => lines.length), 1);
+      const rowHeight = Math.max(ROW_HEIGHT, maxLines * LINE_HEIGHT + 6);
+      const nextY = ensureSpace(ctx, y, rowHeight);
+      if (nextY !== y) {
+        y = nextY;
+        drawTableHeader();
+      }
+
+      let x = ctx.margin;
+      const rowBottom = ctx.pageHeight - y - rowHeight;
+      widths.forEach((width) => {
+        ctx.page.drawRectangle({
+          x,
+          y: rowBottom,
+          width,
+          height: rowHeight,
+          borderWidth: 1,
+          borderColor: rgb(0, 0, 0)
+        });
+        x += width;
+      });
+
+      x = ctx.margin;
+      drawCellLines(ctx, cellLines[0], x, y + 4, widths[0], BODY_FONT_SIZE, 'center');
+      x += widths[0];
+      drawCellLines(ctx, cellLines[1], x, y + 4, widths[1], BODY_FONT_SIZE, 'left');
+      x += widths[1];
+      drawCellLines(ctx, cellLines[2], x, y + 4, widths[2], BODY_FONT_SIZE, 'center');
+      x += widths[2];
+      drawCellLines(ctx, cellLines[3], x, y + 4, widths[3], BODY_FONT_SIZE, 'center');
+      x += widths[3];
+      drawCellLines(ctx, cellLines[4], x, y + 4, widths[4], BODY_FONT_SIZE, 'right');
+      x += widths[4];
+      drawCellLines(ctx, cellLines[5], x, y + 4, widths[5], BODY_FONT_SIZE, 'right');
+      x += widths[5];
+      drawCellLines(ctx, cellLines[6], x, y + 4, widths[6], BODY_FONT_SIZE, 'center');
+      x += widths[6];
+      drawCellLines(ctx, cellLines[7], x, y + 4, widths[7], BODY_FONT_SIZE, 'right');
+      x += widths[7];
+      drawCellLines(ctx, cellLines[8], x, y + 4, widths[8], BODY_FONT_SIZE, 'right');
+      x += widths[8];
+      drawCellLines(ctx, cellLines[9], x, y + 4, widths[9], BODY_FONT_SIZE, 'right');
+
+      y = y + rowHeight;
+    });
+
+    const shipping = Number(order.shippingAmount ?? 0);
+    const roundedTotal = Number(order.invoiceAmount ?? subtotal + totalTax + shipping);
+    const summaryLines = [
+      { label: 'Subtotal', value: formatAmount(subtotal) },
+      { label: 'Tax', value: formatAmount(totalTax) },
+      { label: 'Discount', value: formatAmount(totalDiscount) },
+      { label: 'Shipping', value: formatAmount(shipping) },
+      { label: 'Invoice Amount', value: formatAmount(roundedTotal) }
+    ];
+
+    const summaryWidth = 220;
+    const summaryX = ctx.pageWidth - ctx.margin - summaryWidth;
+    const summaryPadding = 6;
+    const summaryInnerWidth = summaryWidth - summaryPadding * 2;
+    const labelColumnWidth = Math.floor(summaryInnerWidth * 0.6);
+    const valueColumnWidth = summaryInnerWidth - labelColumnWidth;
+    const wordsLabel = 'Amount in Words:';
+    const words = amountInWords(roundedTotal);
+    const wordsLines = wrapText(words, summaryInnerWidth, ctx.font, BODY_FONT_SIZE);
+    const wordsBlockHeight = LINE_HEIGHT + wordsLines.length * LINE_HEIGHT;
+    const summaryRowHeights = summaryLines.map((line) => {
+      const labelLines = wrapText(line.label, labelColumnWidth, ctx.font, BODY_FONT_SIZE);
+      const valueLines = wrapText(line.value, valueColumnWidth, ctx.font, BODY_FONT_SIZE);
+      return Math.max(labelLines.length, valueLines.length, 1) * LINE_HEIGHT;
+    });
+    const summaryHeight =
+      summaryPadding * 2 +
+      summaryRowHeights.reduce((sum, rowHeight) => sum + rowHeight, 0) +
+      wordsBlockHeight +
+      2;
+    y = ensureSpace(ctx, y + 10, summaryHeight);
+
+    ctx.page.drawRectangle({
+      x: summaryX,
+      y: ctx.pageHeight - y - summaryHeight,
+      width: summaryWidth,
+      height: summaryHeight,
+      borderWidth: 1,
+      borderColor: rgb(0, 0, 0)
+    });
+
+    let summaryY = y + summaryPadding;
+    summaryLines.forEach((line, index) => {
+      const rowHeight = summaryRowHeights[index];
+      const labelLines = wrapText(line.label, labelColumnWidth, ctx.font, BODY_FONT_SIZE);
+      const valueLines = wrapText(line.value, valueColumnWidth, ctx.font, BODY_FONT_SIZE);
+      drawCellLines(
+        ctx,
+        labelLines,
+        summaryX + summaryPadding,
+        summaryY,
+        labelColumnWidth,
+        BODY_FONT_SIZE,
+        'left'
+      );
+      drawCellLines(
+        ctx,
+        valueLines,
+        summaryX + summaryPadding + labelColumnWidth,
+        summaryY,
+        valueColumnWidth,
+        BODY_FONT_SIZE,
+        'right'
+      );
+      summaryY += rowHeight;
+    });
+
+    const wordsStartY = summaryY + 2;
+    drawTextLine(ctx, wordsLabel, summaryX + summaryPadding, wordsStartY, BODY_FONT_SIZE);
+    drawTextBlock(
+      ctx,
+      wordsLines,
+      summaryX + summaryPadding,
+      wordsStartY + LINE_HEIGHT,
+      BODY_FONT_SIZE
+    );
+    y += summaryHeight + 6;
+
+      if (signImage) {
+      const signHeight = 70;
+      const signWidth = (signImage.width / signImage.height) * signHeight;
+      const signY = ensureSpace(ctx, y, signHeight + 10);
+      drawImageAtTopLeft(
+        ctx,
+        signImage,
+        ctx.pageWidth - ctx.margin - signWidth,
+        signY,
+        signWidth,
+        signHeight
+      );
+      const signText = 'Authorized Signatory';
+      const signTextWidth = ctx.font.widthOfTextAtSize(signText, BODY_FONT_SIZE);
+      const signTextX = ctx.pageWidth - ctx.margin - signWidth + (signWidth - signTextWidth) / 2;
+      drawTextLine(ctx, signText, signTextX, signY + signHeight + 4, BODY_FONT_SIZE);
+      }
+    };
+
+    const normalizedCopies: InvoiceCopyType[] = copies.length ? copies : ['original'];
+    normalizedCopies.forEach((copyType, index) => {
+      if (index > 0) {
+        addPage(ctx);
+      }
+      renderInvoicePage(copyType);
+    });
   });
-
-  const pdf = await page.pdf({
-    format: 'A4',
-    printBackground: true,
-    margin: {
-      top: '10mm',
-      right: '10mm',
-      bottom: '10mm',
-      left: '10mm'
-    }
-  });
-
-  await browser.close();
-
-  return pdf;
-}
-
-function escapeHtml(text: string | null | undefined): string {
-  if (!text) return '';
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-function numberToWords(amount: number): string {
-  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
-    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
-  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-  
-  const crores = Math.floor(amount / 10000000);
-  const lakhs = Math.floor((amount % 10000000) / 100000);
-  const thousands = Math.floor((amount % 100000) / 1000);
-  const hundreds = Math.floor((amount % 1000) / 100);
-  const remainder = amount % 100;
-  
-  let words = '';
-  
-  if (crores > 0) {
-    words += convertHundreds(crores, ones, tens) + ' Crore ';
-  }
-  if (lakhs > 0) {
-    words += convertHundreds(lakhs, ones, tens) + ' Lakh ';
-  }
-  if (thousands > 0) {
-    words += convertHundreds(thousands, ones, tens) + ' Thousand ';
-  }
-  if (hundreds > 0) {
-    words += ones[hundreds] + ' Hundred ';
-  }
-  if (remainder > 0) {
-    words += convertHundreds(remainder, ones, tens);
-  }
-  
-  return words.trim() || 'Zero';
-}
-
-function convertHundreds(num: number, ones: string[], tens: string[]): string {
-  if (num === 0) return '';
-  if (num < 20) return ones[num];
-  const ten = Math.floor(num / 10);
-  const one = num % 10;
-  return tens[ten] + (one > 0 ? ' ' + ones[one] : '');
 }
 

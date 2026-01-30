@@ -48,6 +48,13 @@ const sections: Section[] = [
     ],
   },
   {
+    name: "Our Own Data",
+    icon: "🗂️",
+    subsections: [
+      { label: "Offices", href: "/dashboard/our-own-data/offices" },
+    ],
+  },
+  {
     name: "Users",
     icon: "👥",
     subsections: [

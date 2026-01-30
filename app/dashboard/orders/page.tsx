@@ -66,6 +66,11 @@ export default function OrdersPage() {
   const [showDownloadPopup, setShowDownloadPopup] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [invoiceCopies, setInvoiceCopies] = useState({
+    original: true,
+    duplicate: false,
+    triplicate: false,
+  });
 
   useEffect(() => {
     fetchOrders();
@@ -375,6 +380,52 @@ export default function OrdersPage() {
           <p className="text-zinc-600 dark:text-zinc-400 mb-6">
             Click the button below to download the invoice PDF for this order.
           </p>
+          <div className="space-y-2 mb-6">
+            <Label className="text-sm text-zinc-700 dark:text-zinc-300">
+              Select invoice copies to include
+            </Label>
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={invoiceCopies.original}
+                  onChange={(event) =>
+                    setInvoiceCopies((prev) => ({
+                      ...prev,
+                      original: event.target.checked,
+                    }))
+                  }
+                />
+                Original for Recipient
+              </label>
+              <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={invoiceCopies.duplicate}
+                  onChange={(event) =>
+                    setInvoiceCopies((prev) => ({
+                      ...prev,
+                      duplicate: event.target.checked,
+                    }))
+                  }
+                />
+                Duplicate for Transport/Courier
+              </label>
+              <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={invoiceCopies.triplicate}
+                  onChange={(event) =>
+                    setInvoiceCopies((prev) => ({
+                      ...prev,
+                      triplicate: event.target.checked,
+                    }))
+                  }
+                />
+                Triplicate for Supplier
+              </label>
+            </div>
+          </div>
 
           <div className="flex gap-4">
             <Button
@@ -383,8 +434,15 @@ export default function OrdersPage() {
 
                 setDownloading(true);
                 try {
+                  const selectedCopies = Object.entries(invoiceCopies)
+                    .filter(([, checked]) => checked)
+                    .map(([key]) => key);
                   const response = await fetch(`/api/orders/${selectedOrderId}/download-invoice`, {
                     method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      copies: selectedCopies.length ? selectedCopies : ["original"],
+                    }),
                   });
 
                   if (!response.ok) {

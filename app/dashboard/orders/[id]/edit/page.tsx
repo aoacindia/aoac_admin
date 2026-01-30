@@ -56,10 +56,19 @@ interface Supplier {
   type: string;
 }
 
+interface Office {
+  id: string;
+  gstin: string;
+  address: string;
+  state: string;
+  stateCode: string;
+}
+
 interface OrderData {
   id: string;
   InvoiceNumber: string | null;
   invoiceType: string | null;
+  invoiceOfficeId?: string | null;
   orderDate: string;
   status: string;
   user: Customer;
@@ -96,15 +105,18 @@ export default function EditOrderPage() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [offices, setOffices] = useState<Office[]>([]);
   const [loadingAddresses, setLoadingAddresses] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [loadingSuppliers, setLoadingSuppliers] = useState(false);
+  const [loadingOffices, setLoadingOffices] = useState(false);
   const [isDifferentSupplier, setIsDifferentSupplier] = useState(false);
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>("");
 
   const [invoiceType, setInvoiceType] = useState<"PI" | "TAX_INVOICE">("PI");
   const [invoiceDate, setInvoiceDate] = useState<string>("");
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
+  const [selectedInvoiceOfficeId, setSelectedInvoiceOfficeId] = useState<string>("");
   const [items, setItems] = useState<OrderItem[]>([]);
   const [deliveryCharge, setDeliveryCharge] = useState<string>("");
   const [deliveryPartner, setDeliveryPartner] = useState<string>("");
@@ -117,6 +129,7 @@ export default function EditOrderPage() {
     if (orderId) {
       fetchOrder();
       fetchProducts();
+      fetchOffices();
     }
   }, [orderId]);
 
@@ -149,6 +162,7 @@ export default function EditOrderPage() {
         setOrder(orderData);
         setInvoiceType((orderData.invoiceType as "PI" | "TAX_INVOICE") || "PI");
         setSelectedAddressId(orderData.shippingAddressId || "");
+        setSelectedInvoiceOfficeId(orderData.invoiceOfficeId || "");
         setInvoiceDate(toDateInputValue(orderData.orderDate));
         setDeliveryCharge(orderData.shippingAmount?.toString() || "");
         setPaymentMethod(orderData.paymentMethod || "");
@@ -245,6 +259,21 @@ export default function EditOrderPage() {
       console.error("Error fetching suppliers:", error);
     } finally {
       setLoadingSuppliers(false);
+    }
+  };
+
+  const fetchOffices = async () => {
+    try {
+      setLoadingOffices(true);
+      const response = await fetch("/api/offices");
+      const data = await response.json();
+      if (data.success) {
+        setOffices(data.data);
+      }
+    } catch (error: any) {
+      console.error("Error fetching offices:", error);
+    } finally {
+      setLoadingOffices(false);
     }
   };
 
@@ -347,6 +376,12 @@ export default function EditOrderPage() {
         return;
       }
 
+      if (!selectedInvoiceOfficeId) {
+        alert("Please select an invoice office");
+        setLoading(false);
+        return;
+      }
+
       if (items.some((item) => !item.productId || item.quantity <= 0)) {
         alert("Please fill in all item details correctly");
         setLoading(false);
@@ -374,6 +409,7 @@ export default function EditOrderPage() {
           tax: item.tax || 0, // Include tax field
           discount: item.discount,
         })),
+        invoiceOfficeId: selectedInvoiceOfficeId,
         orderDate: invoiceDate || null,
         deliveryCharge: deliveryCharge || null,
         deliveryPartner: deliveryPartner || null,
@@ -517,6 +553,30 @@ export default function EditOrderPage() {
               required
               className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
+          </div>
+          <div className="mt-6">
+            <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+              Invoice Office <span className="text-red-500">*</span>
+            </Label>
+            {loadingOffices ? (
+              <p className="text-sm text-zinc-500 mt-1">Loading offices...</p>
+            ) : offices.length === 0 ? (
+              <p className="text-sm text-zinc-500 mt-1">No offices found</p>
+            ) : (
+              <Select
+                value={selectedInvoiceOfficeId}
+                onChange={(e) => setSelectedInvoiceOfficeId(e.target.value)}
+                required
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Select an office</option>
+                {offices.map((office) => (
+                  <option key={office.id} value={office.id}>
+                    {office.gstin} - {office.state} ({office.stateCode})
+                  </option>
+                ))}
+              </Select>
+            )}
           </div>
         </div>
 

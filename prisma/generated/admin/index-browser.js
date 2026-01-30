@@ -144,6 +144,16 @@ exports.Prisma.OtpVerificationScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.OfficeScalarFieldEnum = {
+  id: 'id',
+  gstin: 'gstin',
+  address: 'address',
+  state: 'state',
+  stateCode: 'stateCode',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -167,6 +177,14 @@ exports.Prisma.OtpVerificationOrderByRelevanceFieldEnum = {
   token: 'token',
   otp: 'otp'
 };
+
+exports.Prisma.OfficeOrderByRelevanceFieldEnum = {
+  id: 'id',
+  gstin: 'gstin',
+  address: 'address',
+  state: 'state',
+  stateCode: 'stateCode'
+};
 exports.AdminRole = exports.$Enums.AdminRole = {
   ADMIN: 'ADMIN',
   MANAGER: 'MANAGER',
@@ -175,7 +193,8 @@ exports.AdminRole = exports.$Enums.AdminRole = {
 
 exports.Prisma.ModelName = {
   User: 'User',
-  OtpVerification: 'OtpVerification'
+  OtpVerification: 'OtpVerification',
+  Office: 'Office'
 };
 
 /**

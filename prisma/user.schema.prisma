@@ -134,6 +134,7 @@ model Order {
   InvoiceNumber       String?
   invoiceType         String?   // "PI" or "TAX_INVOICE"
   invoiceSequenceNumber Int?    // Sequence number for the invoice type
+  invoiceOfficeId     String?   // Office id from admin database
 
   // Delivery Details
   deliveryCharge      Float?

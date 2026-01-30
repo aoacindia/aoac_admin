@@ -222,6 +222,7 @@ export async function POST(request: NextRequest) {
       deliveryPartner,
       deliveryPartnerName,
       invoiceType, // Required - for creating invoice along with order
+      invoiceOfficeId,
       isDifferentSupplier,
       supplierId,
       paymentMethod,
@@ -252,6 +253,13 @@ export async function POST(request: NextRequest) {
     if (!invoiceType || (invoiceType !== "PI" && invoiceType !== "TAX_INVOICE")) {
       return NextResponse.json(
         { success: false, error: "Invoice type is required. Must be 'PI' or 'TAX_INVOICE'" },
+        { status: 400 }
+      );
+    }
+
+    if (!invoiceOfficeId) {
+      return NextResponse.json(
+        { success: false, error: "Invoice office is required" },
         { status: 400 }
       );
     }
@@ -359,6 +367,7 @@ export async function POST(request: NextRequest) {
           deliveryPartner === "OTHER"
             ? deliveryPartnerName
             : deliveryPartner || null,
+        invoiceOfficeId,
         isDifferentSupplier: isDifferentSupplier || false,
         supplierId: isDifferentSupplier && supplierId ? supplierId : null,
         paymentMethod: paymentMethod || null,

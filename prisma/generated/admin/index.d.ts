@@ -23,6 +23,11 @@ export type User = $Result.DefaultSelection<Prisma.$UserPayload>
  * 
  */
 export type OtpVerification = $Result.DefaultSelection<Prisma.$OtpVerificationPayload>
+/**
+ * Model Office
+ * 
+ */
+export type Office = $Result.DefaultSelection<Prisma.$OfficePayload>
 
 /**
  * Enums
@@ -179,6 +184,16 @@ export class PrismaClient<
     * ```
     */
   get otpVerification(): Prisma.OtpVerificationDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.office`: Exposes CRUD operations for the **Office** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Offices
+    * const offices = await prisma.office.findMany()
+    * ```
+    */
+  get office(): Prisma.OfficeDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -621,7 +636,8 @@ export namespace Prisma {
 
   export const ModelName: {
     User: 'User',
-    OtpVerification: 'OtpVerification'
+    OtpVerification: 'OtpVerification',
+    Office: 'Office'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -640,7 +656,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "otpVerification"
+      modelProps: "user" | "otpVerification" | "office"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -776,6 +792,72 @@ export namespace Prisma {
           }
         }
       }
+      Office: {
+        payload: Prisma.$OfficePayload<ExtArgs>
+        fields: Prisma.OfficeFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.OfficeFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$OfficePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.OfficeFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$OfficePayload>
+          }
+          findFirst: {
+            args: Prisma.OfficeFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$OfficePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.OfficeFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$OfficePayload>
+          }
+          findMany: {
+            args: Prisma.OfficeFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$OfficePayload>[]
+          }
+          create: {
+            args: Prisma.OfficeCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$OfficePayload>
+          }
+          createMany: {
+            args: Prisma.OfficeCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          delete: {
+            args: Prisma.OfficeDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$OfficePayload>
+          }
+          update: {
+            args: Prisma.OfficeUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$OfficePayload>
+          }
+          deleteMany: {
+            args: Prisma.OfficeDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.OfficeUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.OfficeUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$OfficePayload>
+          }
+          aggregate: {
+            args: Prisma.OfficeAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateOffice>
+          }
+          groupBy: {
+            args: Prisma.OfficeGroupByArgs<ExtArgs>
+            result: $Utils.Optional<OfficeGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.OfficeCountArgs<ExtArgs>
+            result: $Utils.Optional<OfficeCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -874,6 +956,7 @@ export namespace Prisma {
   export type GlobalOmitConfig = {
     user?: UserOmit
     otpVerification?: OtpVerificationOmit
+    office?: OfficeOmit
   }
 
   /* Types for Logging */
@@ -2830,6 +2913,910 @@ export namespace Prisma {
 
 
   /**
+   * Model Office
+   */
+
+  export type AggregateOffice = {
+    _count: OfficeCountAggregateOutputType | null
+    _min: OfficeMinAggregateOutputType | null
+    _max: OfficeMaxAggregateOutputType | null
+  }
+
+  export type OfficeMinAggregateOutputType = {
+    id: string | null
+    gstin: string | null
+    address: string | null
+    state: string | null
+    stateCode: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type OfficeMaxAggregateOutputType = {
+    id: string | null
+    gstin: string | null
+    address: string | null
+    state: string | null
+    stateCode: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type OfficeCountAggregateOutputType = {
+    id: number
+    gstin: number
+    address: number
+    state: number
+    stateCode: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type OfficeMinAggregateInputType = {
+    id?: true
+    gstin?: true
+    address?: true
+    state?: true
+    stateCode?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type OfficeMaxAggregateInputType = {
+    id?: true
+    gstin?: true
+    address?: true
+    state?: true
+    stateCode?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type OfficeCountAggregateInputType = {
+    id?: true
+    gstin?: true
+    address?: true
+    state?: true
+    stateCode?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type OfficeAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Office to aggregate.
+     */
+    where?: OfficeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Offices to fetch.
+     */
+    orderBy?: OfficeOrderByWithRelationInput | OfficeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: OfficeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Offices from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Offices.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned Offices
+    **/
+    _count?: true | OfficeCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: OfficeMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: OfficeMaxAggregateInputType
+  }
+
+  export type GetOfficeAggregateType<T extends OfficeAggregateArgs> = {
+        [P in keyof T & keyof AggregateOffice]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateOffice[P]>
+      : GetScalarType<T[P], AggregateOffice[P]>
+  }
+
+
+
+
+  export type OfficeGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: OfficeWhereInput
+    orderBy?: OfficeOrderByWithAggregationInput | OfficeOrderByWithAggregationInput[]
+    by: OfficeScalarFieldEnum[] | OfficeScalarFieldEnum
+    having?: OfficeScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: OfficeCountAggregateInputType | true
+    _min?: OfficeMinAggregateInputType
+    _max?: OfficeMaxAggregateInputType
+  }
+
+  export type OfficeGroupByOutputType = {
+    id: string
+    gstin: string
+    address: string
+    state: string
+    stateCode: string
+    createdAt: Date
+    updatedAt: Date
+    _count: OfficeCountAggregateOutputType | null
+    _min: OfficeMinAggregateOutputType | null
+    _max: OfficeMaxAggregateOutputType | null
+  }
+
+  type GetOfficeGroupByPayload<T extends OfficeGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<OfficeGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof OfficeGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], OfficeGroupByOutputType[P]>
+            : GetScalarType<T[P], OfficeGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type OfficeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    gstin?: boolean
+    address?: boolean
+    state?: boolean
+    stateCode?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["office"]>
+
+
+
+  export type OfficeSelectScalar = {
+    id?: boolean
+    gstin?: boolean
+    address?: boolean
+    state?: boolean
+    stateCode?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type OfficeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "gstin" | "address" | "state" | "stateCode" | "createdAt" | "updatedAt", ExtArgs["result"]["office"]>
+
+  export type $OfficePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "Office"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      gstin: string
+      address: string
+      state: string
+      stateCode: string
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["office"]>
+    composites: {}
+  }
+
+  type OfficeGetPayload<S extends boolean | null | undefined | OfficeDefaultArgs> = $Result.GetResult<Prisma.$OfficePayload, S>
+
+  type OfficeCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<OfficeFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: OfficeCountAggregateInputType | true
+    }
+
+  export interface OfficeDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['Office'], meta: { name: 'Office' } }
+    /**
+     * Find zero or one Office that matches the filter.
+     * @param {OfficeFindUniqueArgs} args - Arguments to find a Office
+     * @example
+     * // Get one Office
+     * const office = await prisma.office.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends OfficeFindUniqueArgs>(args: SelectSubset<T, OfficeFindUniqueArgs<ExtArgs>>): Prisma__OfficeClient<$Result.GetResult<Prisma.$OfficePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one Office that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {OfficeFindUniqueOrThrowArgs} args - Arguments to find a Office
+     * @example
+     * // Get one Office
+     * const office = await prisma.office.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends OfficeFindUniqueOrThrowArgs>(args: SelectSubset<T, OfficeFindUniqueOrThrowArgs<ExtArgs>>): Prisma__OfficeClient<$Result.GetResult<Prisma.$OfficePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Office that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {OfficeFindFirstArgs} args - Arguments to find a Office
+     * @example
+     * // Get one Office
+     * const office = await prisma.office.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends OfficeFindFirstArgs>(args?: SelectSubset<T, OfficeFindFirstArgs<ExtArgs>>): Prisma__OfficeClient<$Result.GetResult<Prisma.$OfficePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Office that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {OfficeFindFirstOrThrowArgs} args - Arguments to find a Office
+     * @example
+     * // Get one Office
+     * const office = await prisma.office.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends OfficeFindFirstOrThrowArgs>(args?: SelectSubset<T, OfficeFindFirstOrThrowArgs<ExtArgs>>): Prisma__OfficeClient<$Result.GetResult<Prisma.$OfficePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more Offices that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {OfficeFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all Offices
+     * const offices = await prisma.office.findMany()
+     * 
+     * // Get first 10 Offices
+     * const offices = await prisma.office.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const officeWithIdOnly = await prisma.office.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends OfficeFindManyArgs>(args?: SelectSubset<T, OfficeFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$OfficePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a Office.
+     * @param {OfficeCreateArgs} args - Arguments to create a Office.
+     * @example
+     * // Create one Office
+     * const Office = await prisma.office.create({
+     *   data: {
+     *     // ... data to create a Office
+     *   }
+     * })
+     * 
+     */
+    create<T extends OfficeCreateArgs>(args: SelectSubset<T, OfficeCreateArgs<ExtArgs>>): Prisma__OfficeClient<$Result.GetResult<Prisma.$OfficePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many Offices.
+     * @param {OfficeCreateManyArgs} args - Arguments to create many Offices.
+     * @example
+     * // Create many Offices
+     * const office = await prisma.office.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends OfficeCreateManyArgs>(args?: SelectSubset<T, OfficeCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Delete a Office.
+     * @param {OfficeDeleteArgs} args - Arguments to delete one Office.
+     * @example
+     * // Delete one Office
+     * const Office = await prisma.office.delete({
+     *   where: {
+     *     // ... filter to delete one Office
+     *   }
+     * })
+     * 
+     */
+    delete<T extends OfficeDeleteArgs>(args: SelectSubset<T, OfficeDeleteArgs<ExtArgs>>): Prisma__OfficeClient<$Result.GetResult<Prisma.$OfficePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one Office.
+     * @param {OfficeUpdateArgs} args - Arguments to update one Office.
+     * @example
+     * // Update one Office
+     * const office = await prisma.office.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends OfficeUpdateArgs>(args: SelectSubset<T, OfficeUpdateArgs<ExtArgs>>): Prisma__OfficeClient<$Result.GetResult<Prisma.$OfficePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more Offices.
+     * @param {OfficeDeleteManyArgs} args - Arguments to filter Offices to delete.
+     * @example
+     * // Delete a few Offices
+     * const { count } = await prisma.office.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends OfficeDeleteManyArgs>(args?: SelectSubset<T, OfficeDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Offices.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {OfficeUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many Offices
+     * const office = await prisma.office.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends OfficeUpdateManyArgs>(args: SelectSubset<T, OfficeUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one Office.
+     * @param {OfficeUpsertArgs} args - Arguments to update or create a Office.
+     * @example
+     * // Update or create a Office
+     * const office = await prisma.office.upsert({
+     *   create: {
+     *     // ... data to create a Office
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the Office we want to update
+     *   }
+     * })
+     */
+    upsert<T extends OfficeUpsertArgs>(args: SelectSubset<T, OfficeUpsertArgs<ExtArgs>>): Prisma__OfficeClient<$Result.GetResult<Prisma.$OfficePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of Offices.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {OfficeCountArgs} args - Arguments to filter Offices to count.
+     * @example
+     * // Count the number of Offices
+     * const count = await prisma.office.count({
+     *   where: {
+     *     // ... the filter for the Offices we want to count
+     *   }
+     * })
+    **/
+    count<T extends OfficeCountArgs>(
+      args?: Subset<T, OfficeCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], OfficeCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a Office.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {OfficeAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends OfficeAggregateArgs>(args: Subset<T, OfficeAggregateArgs>): Prisma.PrismaPromise<GetOfficeAggregateType<T>>
+
+    /**
+     * Group by Office.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {OfficeGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends OfficeGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: OfficeGroupByArgs['orderBy'] }
+        : { orderBy?: OfficeGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, OfficeGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetOfficeGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the Office model
+   */
+  readonly fields: OfficeFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for Office.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__OfficeClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the Office model
+   */
+  interface OfficeFieldRefs {
+    readonly id: FieldRef<"Office", 'String'>
+    readonly gstin: FieldRef<"Office", 'String'>
+    readonly address: FieldRef<"Office", 'String'>
+    readonly state: FieldRef<"Office", 'String'>
+    readonly stateCode: FieldRef<"Office", 'String'>
+    readonly createdAt: FieldRef<"Office", 'DateTime'>
+    readonly updatedAt: FieldRef<"Office", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * Office findUnique
+   */
+  export type OfficeFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Office
+     */
+    select?: OfficeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Office
+     */
+    omit?: OfficeOmit<ExtArgs> | null
+    /**
+     * Filter, which Office to fetch.
+     */
+    where: OfficeWhereUniqueInput
+  }
+
+  /**
+   * Office findUniqueOrThrow
+   */
+  export type OfficeFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Office
+     */
+    select?: OfficeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Office
+     */
+    omit?: OfficeOmit<ExtArgs> | null
+    /**
+     * Filter, which Office to fetch.
+     */
+    where: OfficeWhereUniqueInput
+  }
+
+  /**
+   * Office findFirst
+   */
+  export type OfficeFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Office
+     */
+    select?: OfficeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Office
+     */
+    omit?: OfficeOmit<ExtArgs> | null
+    /**
+     * Filter, which Office to fetch.
+     */
+    where?: OfficeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Offices to fetch.
+     */
+    orderBy?: OfficeOrderByWithRelationInput | OfficeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Offices.
+     */
+    cursor?: OfficeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Offices from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Offices.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Offices.
+     */
+    distinct?: OfficeScalarFieldEnum | OfficeScalarFieldEnum[]
+  }
+
+  /**
+   * Office findFirstOrThrow
+   */
+  export type OfficeFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Office
+     */
+    select?: OfficeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Office
+     */
+    omit?: OfficeOmit<ExtArgs> | null
+    /**
+     * Filter, which Office to fetch.
+     */
+    where?: OfficeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Offices to fetch.
+     */
+    orderBy?: OfficeOrderByWithRelationInput | OfficeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Offices.
+     */
+    cursor?: OfficeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Offices from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Offices.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Offices.
+     */
+    distinct?: OfficeScalarFieldEnum | OfficeScalarFieldEnum[]
+  }
+
+  /**
+   * Office findMany
+   */
+  export type OfficeFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Office
+     */
+    select?: OfficeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Office
+     */
+    omit?: OfficeOmit<ExtArgs> | null
+    /**
+     * Filter, which Offices to fetch.
+     */
+    where?: OfficeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Offices to fetch.
+     */
+    orderBy?: OfficeOrderByWithRelationInput | OfficeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing Offices.
+     */
+    cursor?: OfficeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Offices from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Offices.
+     */
+    skip?: number
+    distinct?: OfficeScalarFieldEnum | OfficeScalarFieldEnum[]
+  }
+
+  /**
+   * Office create
+   */
+  export type OfficeCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Office
+     */
+    select?: OfficeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Office
+     */
+    omit?: OfficeOmit<ExtArgs> | null
+    /**
+     * The data needed to create a Office.
+     */
+    data: XOR<OfficeCreateInput, OfficeUncheckedCreateInput>
+  }
+
+  /**
+   * Office createMany
+   */
+  export type OfficeCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many Offices.
+     */
+    data: OfficeCreateManyInput | OfficeCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * Office update
+   */
+  export type OfficeUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Office
+     */
+    select?: OfficeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Office
+     */
+    omit?: OfficeOmit<ExtArgs> | null
+    /**
+     * The data needed to update a Office.
+     */
+    data: XOR<OfficeUpdateInput, OfficeUncheckedUpdateInput>
+    /**
+     * Choose, which Office to update.
+     */
+    where: OfficeWhereUniqueInput
+  }
+
+  /**
+   * Office updateMany
+   */
+  export type OfficeUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update Offices.
+     */
+    data: XOR<OfficeUpdateManyMutationInput, OfficeUncheckedUpdateManyInput>
+    /**
+     * Filter which Offices to update
+     */
+    where?: OfficeWhereInput
+    /**
+     * Limit how many Offices to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * Office upsert
+   */
+  export type OfficeUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Office
+     */
+    select?: OfficeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Office
+     */
+    omit?: OfficeOmit<ExtArgs> | null
+    /**
+     * The filter to search for the Office to update in case it exists.
+     */
+    where: OfficeWhereUniqueInput
+    /**
+     * In case the Office found by the `where` argument doesn't exist, create a new Office with this data.
+     */
+    create: XOR<OfficeCreateInput, OfficeUncheckedCreateInput>
+    /**
+     * In case the Office was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<OfficeUpdateInput, OfficeUncheckedUpdateInput>
+  }
+
+  /**
+   * Office delete
+   */
+  export type OfficeDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Office
+     */
+    select?: OfficeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Office
+     */
+    omit?: OfficeOmit<ExtArgs> | null
+    /**
+     * Filter which Office to delete.
+     */
+    where: OfficeWhereUniqueInput
+  }
+
+  /**
+   * Office deleteMany
+   */
+  export type OfficeDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Offices to delete
+     */
+    where?: OfficeWhereInput
+    /**
+     * Limit how many Offices to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * Office without action
+   */
+  export type OfficeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Office
+     */
+    select?: OfficeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Office
+     */
+    omit?: OfficeOmit<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -2872,6 +3859,19 @@ export namespace Prisma {
   export type OtpVerificationScalarFieldEnum = (typeof OtpVerificationScalarFieldEnum)[keyof typeof OtpVerificationScalarFieldEnum]
 
 
+  export const OfficeScalarFieldEnum: {
+    id: 'id',
+    gstin: 'gstin',
+    address: 'address',
+    state: 'state',
+    stateCode: 'stateCode',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type OfficeScalarFieldEnum = (typeof OfficeScalarFieldEnum)[keyof typeof OfficeScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -2906,6 +3906,17 @@ export namespace Prisma {
   };
 
   export type OtpVerificationOrderByRelevanceFieldEnum = (typeof OtpVerificationOrderByRelevanceFieldEnum)[keyof typeof OtpVerificationOrderByRelevanceFieldEnum]
+
+
+  export const OfficeOrderByRelevanceFieldEnum: {
+    id: 'id',
+    gstin: 'gstin',
+    address: 'address',
+    state: 'state',
+    stateCode: 'stateCode'
+  };
+
+  export type OfficeOrderByRelevanceFieldEnum = (typeof OfficeOrderByRelevanceFieldEnum)[keyof typeof OfficeOrderByRelevanceFieldEnum]
 
 
   /**
@@ -3101,6 +4112,69 @@ export namespace Prisma {
     updatedAt?: DateTimeWithAggregatesFilter<"OtpVerification"> | Date | string
   }
 
+  export type OfficeWhereInput = {
+    AND?: OfficeWhereInput | OfficeWhereInput[]
+    OR?: OfficeWhereInput[]
+    NOT?: OfficeWhereInput | OfficeWhereInput[]
+    id?: StringFilter<"Office"> | string
+    gstin?: StringFilter<"Office"> | string
+    address?: StringFilter<"Office"> | string
+    state?: StringFilter<"Office"> | string
+    stateCode?: StringFilter<"Office"> | string
+    createdAt?: DateTimeFilter<"Office"> | Date | string
+    updatedAt?: DateTimeFilter<"Office"> | Date | string
+  }
+
+  export type OfficeOrderByWithRelationInput = {
+    id?: SortOrder
+    gstin?: SortOrder
+    address?: SortOrder
+    state?: SortOrder
+    stateCode?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _relevance?: OfficeOrderByRelevanceInput
+  }
+
+  export type OfficeWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    gstin?: string
+    AND?: OfficeWhereInput | OfficeWhereInput[]
+    OR?: OfficeWhereInput[]
+    NOT?: OfficeWhereInput | OfficeWhereInput[]
+    address?: StringFilter<"Office"> | string
+    state?: StringFilter<"Office"> | string
+    stateCode?: StringFilter<"Office"> | string
+    createdAt?: DateTimeFilter<"Office"> | Date | string
+    updatedAt?: DateTimeFilter<"Office"> | Date | string
+  }, "id" | "gstin">
+
+  export type OfficeOrderByWithAggregationInput = {
+    id?: SortOrder
+    gstin?: SortOrder
+    address?: SortOrder
+    state?: SortOrder
+    stateCode?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: OfficeCountOrderByAggregateInput
+    _max?: OfficeMaxOrderByAggregateInput
+    _min?: OfficeMinOrderByAggregateInput
+  }
+
+  export type OfficeScalarWhereWithAggregatesInput = {
+    AND?: OfficeScalarWhereWithAggregatesInput | OfficeScalarWhereWithAggregatesInput[]
+    OR?: OfficeScalarWhereWithAggregatesInput[]
+    NOT?: OfficeScalarWhereWithAggregatesInput | OfficeScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"Office"> | string
+    gstin?: StringWithAggregatesFilter<"Office"> | string
+    address?: StringWithAggregatesFilter<"Office"> | string
+    state?: StringWithAggregatesFilter<"Office"> | string
+    stateCode?: StringWithAggregatesFilter<"Office"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"Office"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"Office"> | Date | string
+  }
+
   export type UserCreateInput = {
     id?: string
     name: string
@@ -3258,6 +4332,76 @@ export namespace Prisma {
     token?: StringFieldUpdateOperationsInput | string
     otp?: StringFieldUpdateOperationsInput | string
     expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type OfficeCreateInput = {
+    id?: string
+    gstin: string
+    address: string
+    state: string
+    stateCode: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type OfficeUncheckedCreateInput = {
+    id?: string
+    gstin: string
+    address: string
+    state: string
+    stateCode: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type OfficeUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    gstin?: StringFieldUpdateOperationsInput | string
+    address?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    stateCode?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type OfficeUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    gstin?: StringFieldUpdateOperationsInput | string
+    address?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    stateCode?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type OfficeCreateManyInput = {
+    id?: string
+    gstin: string
+    address: string
+    state: string
+    stateCode: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type OfficeUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    gstin?: StringFieldUpdateOperationsInput | string
+    address?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    stateCode?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type OfficeUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    gstin?: StringFieldUpdateOperationsInput | string
+    address?: StringFieldUpdateOperationsInput | string
+    state?: StringFieldUpdateOperationsInput | string
+    stateCode?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -3502,6 +4646,42 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedStringNullableFilter<$PrismaModel>
     _max?: NestedStringNullableFilter<$PrismaModel>
+  }
+
+  export type OfficeOrderByRelevanceInput = {
+    fields: OfficeOrderByRelevanceFieldEnum | OfficeOrderByRelevanceFieldEnum[]
+    sort: SortOrder
+    search: string
+  }
+
+  export type OfficeCountOrderByAggregateInput = {
+    id?: SortOrder
+    gstin?: SortOrder
+    address?: SortOrder
+    state?: SortOrder
+    stateCode?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type OfficeMaxOrderByAggregateInput = {
+    id?: SortOrder
+    gstin?: SortOrder
+    address?: SortOrder
+    state?: SortOrder
+    stateCode?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type OfficeMinOrderByAggregateInput = {
+    id?: SortOrder
+    gstin?: SortOrder
+    address?: SortOrder
+    state?: SortOrder
+    stateCode?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
   }
 
   export type StringFieldUpdateOperationsInput = {

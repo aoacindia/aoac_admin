@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { userPrisma } from "@/lib/user-prisma";
+import { adminPrisma } from "@/lib/admin-prisma";
 import { productPrisma } from "@/lib/product-prisma";
 import { generateInvoicePDF } from "@/lib/pdf-generator";
 
@@ -9,6 +10,15 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+    let copies: string[] = [];
+    try {
+      const body = await request.json();
+      if (Array.isArray(body?.copies)) {
+        copies = body.copies;
+      }
+    } catch {
+      copies = [];
+    }
     
     const order = await userPrisma.order.findUnique({
       where: { id },
@@ -39,6 +49,19 @@ export async function POST(
         { status: 404 }
       );
     }
+
+    const invoiceOffice = order.invoiceOfficeId
+      ? await adminPrisma.office.findUnique({
+          where: { id: order.invoiceOfficeId },
+          select: {
+            id: true,
+            gstin: true,
+            address: true,
+            state: true,
+            stateCode: true,
+          },
+        })
+      : null;
 
     // Fetch product details for each order item
     const orderItemsWithProducts = await Promise.all(
@@ -73,10 +96,16 @@ export async function POST(
     const orderWithProducts = {
       ...order,
       orderItems: orderItemsWithProducts,
+      invoiceOffice,
     };
 
     // Generate PDF
-    const pdfBuffer = await generateInvoicePDF(orderWithProducts);
+    const allowedCopies = new Set(["original", "duplicate", "triplicate"]);
+    const normalizedCopies = copies.filter((copy) => allowedCopies.has(copy));
+    const pdfBuffer = await generateInvoicePDF(
+      orderWithProducts,
+      normalizedCopies.length ? (normalizedCopies as any) : undefined
+    );
 
     // Convert Uint8Array to Buffer for NextResponse
     const buffer = Buffer.from(pdfBuffer);

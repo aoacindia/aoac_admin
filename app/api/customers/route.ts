@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
         { email: { contains: search } },
         { phone: { contains: search } },
         { businessName: { contains: search } },
+        { gstNumber: { contains: search } },
       ];
     }
 

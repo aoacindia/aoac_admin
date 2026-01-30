@@ -9,11 +9,11 @@ const authRoutes = ["/login"];
 const roleBasedRoutes: Record<string, string[]> = {
   "/dashboard/users": ["ADMIN"],
   "/dashboard/users/create": ["ADMIN"],
-  "/dashboard/products/categories": ["ADMIN", "MANAGER"],
-  "/dashboard/products/create": ["ADMIN", "MANAGER"],
-  "/dashboard/products/[id]/edit": ["ADMIN", "MANAGER"],
-  "/dashboard/products/discounts": ["ADMIN", "MANAGER"],
-  "/dashboard/customers": ["ADMIN", "MANAGER"],
+  // "/dashboard/products/categories": ["ADMIN", "MANAGER"],
+  // "/dashboard/products/create": ["ADMIN", "MANAGER"],
+  // "/dashboard/products/[id]/edit": ["ADMIN", "MANAGER"],
+  // "/dashboard/products/discounts": ["ADMIN", "MANAGER"],
+  // "/dashboard/customers": ["ADMIN", "MANAGER"],
 };
 
 function hasRoleAccess(pathname: string, userRole?: string | null) {
