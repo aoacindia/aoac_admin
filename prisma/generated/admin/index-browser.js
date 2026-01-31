@@ -148,8 +148,24 @@ exports.Prisma.OfficeScalarFieldEnum = {
   id: 'id',
   gstin: 'gstin',
   address: 'address',
+  city: 'city',
   state: 'state',
   stateCode: 'stateCode',
+  pincode: 'pincode',
+  country: 'country',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.AccountScalarFieldEnum = {
+  id: 'id',
+  accountHolderName: 'accountHolderName',
+  accountNumber: 'accountNumber',
+  ifsc: 'ifsc',
+  branch: 'branch',
+  swiftCode: 'swiftCode',
+  bankName: 'bankName',
+  isDefault: 'isDefault',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -182,8 +198,21 @@ exports.Prisma.OfficeOrderByRelevanceFieldEnum = {
   id: 'id',
   gstin: 'gstin',
   address: 'address',
+  city: 'city',
   state: 'state',
-  stateCode: 'stateCode'
+  stateCode: 'stateCode',
+  pincode: 'pincode',
+  country: 'country'
+};
+
+exports.Prisma.AccountOrderByRelevanceFieldEnum = {
+  id: 'id',
+  accountHolderName: 'accountHolderName',
+  accountNumber: 'accountNumber',
+  ifsc: 'ifsc',
+  branch: 'branch',
+  swiftCode: 'swiftCode',
+  bankName: 'bankName'
 };
 exports.AdminRole = exports.$Enums.AdminRole = {
   ADMIN: 'ADMIN',
@@ -194,7 +223,8 @@ exports.AdminRole = exports.$Enums.AdminRole = {
 exports.Prisma.ModelName = {
   User: 'User',
   OtpVerification: 'OtpVerification',
-  Office: 'Office'
+  Office: 'Office',
+  Account: 'Account'
 };
 
 /**

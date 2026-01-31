@@ -2,9 +2,9 @@ import { redirect } from "next/navigation";
 import DashboardShell from "@/app/components/DashboardShell";
 import { auth } from "@/auth";
 
-const menuItems = [{ label: "Offices", href: "/dashboard/our-own-data/offices" }];
+const menuItems = [{ label: "Accounts", href: "/dashboard/accounts" }];
 
-export default async function OurOwnDataLayout({
+export default async function AccountsLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -15,10 +15,9 @@ export default async function OurOwnDataLayout({
   }
 
   return (
-    <DashboardShell sectionName="Our Own Data" menuItems={menuItems}>
+    <DashboardShell sectionName="Accounts" menuItems={menuItems}>
       {children}
     </DashboardShell>
   );
 }
-
 

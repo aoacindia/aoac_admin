@@ -57,10 +57,20 @@ export async function POST(
             id: true,
             gstin: true,
             address: true,
+          city: true,
             state: true,
             stateCode: true,
+            pincode: true,
+            country: true,
           },
         })
+      : null;
+    const normalizedInvoiceOffice = invoiceOffice
+      ? {
+          ...invoiceOffice,
+          pincode: invoiceOffice.pincode ?? "",
+          country: invoiceOffice.country ?? "",
+        }
       : null;
 
     // Fetch product details for each order item
@@ -96,7 +106,7 @@ export async function POST(
     const orderWithProducts = {
       ...order,
       orderItems: orderItemsWithProducts,
-      invoiceOffice,
+      invoiceOffice: normalizedInvoiceOffice,
     };
 
     // Generate PDF

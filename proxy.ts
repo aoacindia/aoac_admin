@@ -9,6 +9,8 @@ const authRoutes = ["/login"];
 const roleBasedRoutes: Record<string, string[]> = {
   "/dashboard/users": ["ADMIN"],
   "/dashboard/users/create": ["ADMIN"],
+  "/dashboard/our-own-data": ["ADMIN"],
+  "/dashboard/accounts": ["ADMIN"],
   // "/dashboard/products/categories": ["ADMIN", "MANAGER"],
   // "/dashboard/products/create": ["ADMIN", "MANAGER"],
   // "/dashboard/products/[id]/edit": ["ADMIN", "MANAGER"],

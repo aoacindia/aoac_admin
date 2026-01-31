@@ -2,84 +2,82 @@
 
 import { useEffect, useState } from "react";
 import Modal from "@/app/components/Modal";
-import { INDIAN_STATES } from "@/lib/indian-states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-interface Office {
+interface Account {
   id: string;
-  gstin: string;
-  address: string;
-  city: string;
-  state: string;
-  stateCode: string;
-  pincode?: string | null;
-  country?: string | null;
+  accountHolderName: string;
+  accountNumber: string;
+  ifsc: string;
+  branch: string;
+  swiftCode?: string | null;
+  bankName: string;
+  isDefault: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 const EMPTY_FORM = {
-  gstin: "",
-  address: "",
-  city: "",
-  state: "",
-  stateCode: "",
-  pincode: "",
-  country: "",
+  accountHolderName: "",
+  accountNumber: "",
+  ifsc: "",
+  branch: "",
+  swiftCode: "",
+  bankName: "",
+  isDefault: false,
 };
 
-export default function OfficesPage() {
-  const [offices, setOffices] = useState<Office[]>([]);
+export default function AccountsPage() {
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [editingOfficeId, setEditingOfficeId] = useState<string | null>(null);
+  const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
 
   useEffect(() => {
-    fetchOffices();
+    fetchAccounts();
   }, []);
 
-  const fetchOffices = async () => {
+  const fetchAccounts = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/offices");
+      const response = await fetch("/api/accounts");
       const data = await response.json();
       if (data.success) {
-        setOffices(data.data);
+        setAccounts(data.data);
         setError(null);
       } else {
-        setError(data.error || "Failed to load offices");
+        setError(data.error || "Failed to load accounts");
       }
     } catch (err: any) {
-      setError(err.message || "Failed to load offices");
+      setError(err.message || "Failed to load accounts");
     } finally {
       setLoading(false);
     }
   };
 
   const handleOpenPopup = () => {
-    setEditingOfficeId(null);
+    setEditingAccountId(null);
     setFormData(EMPTY_FORM);
     setShowPopup(true);
   };
 
-  const handleEditPopup = (office: Office) => {
-    setEditingOfficeId(office.id);
+  const handleEditPopup = (account: Account) => {
+    setEditingAccountId(account.id);
     setFormData({
-      gstin: office.gstin,
-      address: office.address,
-      city: office.city,
-      state: office.state,
-      stateCode: office.stateCode,
-      pincode: office.pincode || "",
-      country: office.country || "",
+      accountHolderName: account.accountHolderName,
+      accountNumber: account.accountNumber,
+      ifsc: account.ifsc,
+      branch: account.branch,
+      swiftCode: account.swiftCode || "",
+      bankName: account.bankName,
+      isDefault: account.isDefault,
     });
     setShowPopup(true);
   };
@@ -88,9 +86,7 @@ export default function OfficesPage() {
     setShowPopup(false);
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -98,12 +94,10 @@ export default function OfficesPage() {
     }));
   };
 
-  const handleStateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedState = INDIAN_STATES.find((s) => s.name === e.target.value);
+  const handleDefaultChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setFormData((prev) => ({
       ...prev,
-      state: e.target.value,
-      stateCode: selectedState?.code || "",
+      isDefault: e.target.value === "true",
     }));
   };
 
@@ -113,17 +107,17 @@ export default function OfficesPage() {
 
     try {
       const payload = {
-        gstin: formData.gstin.trim(),
-        address: formData.address.trim(),
-        city: formData.city.trim(),
-        state: formData.state,
-        stateCode: formData.stateCode,
-        pincode: formData.pincode.trim(),
-        country: formData.country.trim(),
+        accountHolderName: formData.accountHolderName.trim(),
+        accountNumber: formData.accountNumber.trim(),
+        ifsc: formData.ifsc.trim(),
+        branch: formData.branch.trim(),
+        swiftCode: formData.swiftCode.trim(),
+        bankName: formData.bankName.trim(),
+        isDefault: formData.isDefault,
       };
 
-      const url = editingOfficeId ? `/api/offices/${editingOfficeId}` : "/api/offices";
-      const method = editingOfficeId ? "PUT" : "POST";
+      const url = editingAccountId ? `/api/accounts/${editingAccountId}` : "/api/accounts";
+      const method = editingAccountId ? "PUT" : "POST";
 
       const response = await fetch(url, {
         method,
@@ -136,37 +130,37 @@ export default function OfficesPage() {
       const data = await response.json();
 
       if (data.success) {
-        alert(editingOfficeId ? "Office updated successfully" : "Office added successfully");
+        alert(editingAccountId ? "Account updated successfully" : "Account added successfully");
         handleClosePopup();
-        fetchOffices();
+        fetchAccounts();
       } else {
-        alert(data.error || "Failed to save office");
+        alert(data.error || "Failed to save account");
       }
     } catch (err: any) {
-      alert(err.message || "Failed to save office");
+      alert(err.message || "Failed to save account");
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this office?")) {
+    if (!confirm("Are you sure you want to delete this account?")) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/offices/${id}`, {
+      const response = await fetch(`/api/accounts/${id}`, {
         method: "DELETE",
       });
       const data = await response.json();
       if (data.success) {
-        alert("Office deleted successfully");
-        fetchOffices();
+        alert("Account deleted successfully");
+        fetchAccounts();
       } else {
-        alert(data.error || "Failed to delete office");
+        alert(data.error || "Failed to delete account");
       }
     } catch (err: any) {
-      alert(err.message || "Failed to delete office");
+      alert(err.message || "Failed to delete account");
     }
   };
 
@@ -174,7 +168,7 @@ export default function OfficesPage() {
     return (
       <div className="p-4 md:p-8">
         <div className="flex items-center justify-center min-h-[400px]">
-          <p className="text-zinc-600 dark:text-zinc-400">Loading offices...</p>
+          <p className="text-zinc-600 dark:text-zinc-400">Loading accounts...</p>
         </div>
       </div>
     );
@@ -185,15 +179,15 @@ export default function OfficesPage() {
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">
-            Offices
+            Accounts
           </h1>
-          <p className="text-zinc-600 dark:text-zinc-400">Manage your office records</p>
+          <p className="text-zinc-600 dark:text-zinc-400">Manage bank account details</p>
         </div>
         <Button
           onClick={handleOpenPopup}
           className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-center"
         >
-          Add Office
+          Add Account
         </Button>
       </div>
 
@@ -209,22 +203,25 @@ export default function OfficesPage() {
             <TableHeader className="bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
               <TableRow>
                 <TableHead className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                  GSTIN
+                  Account Holder
                 </TableHead>
                 <TableHead className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                  Address
+                  Account Number
                 </TableHead>
                 <TableHead className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                  City
+                  IFSC
                 </TableHead>
                 <TableHead className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                  State
+                  Branch
                 </TableHead>
                 <TableHead className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                  Pincode
+                  Swift Code
                 </TableHead>
                 <TableHead className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                  Country
+                  Bank Name
+                </TableHead>
+                <TableHead className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                  Default
                 </TableHead>
                 <TableHead className="px-4 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                   Actions
@@ -232,46 +229,55 @@ export default function OfficesPage() {
               </TableRow>
             </TableHeader>
             <TableBody className="bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-700">
-              {offices.length === 0 ? (
+              {accounts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="px-4 py-8 text-center text-zinc-500 dark:text-zinc-400">
-                    No offices found.
+                  <TableCell colSpan={8} className="px-4 py-8 text-center text-zinc-500 dark:text-zinc-400">
+                    No accounts found.
                   </TableCell>
                 </TableRow>
               ) : (
-                offices.map((office) => (
-                  <TableRow key={office.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
-                    <TableCell className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-sm text-zinc-600 dark:text-zinc-400">{office.gstin}</span>
-                    </TableCell>
-                    <TableCell className="px-4 py-3">
-                      <span className="text-sm text-zinc-600 dark:text-zinc-400">{office.address}</span>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-sm text-zinc-600 dark:text-zinc-400">{office.city}</span>
-                    </TableCell>
+                accounts.map((account) => (
+                  <TableRow key={account.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
                     <TableCell className="px-4 py-3 whitespace-nowrap">
                       <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                        {office.state} ({office.stateCode})
+                        {account.accountHolderName}
                       </span>
                     </TableCell>
                     <TableCell className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-sm text-zinc-600 dark:text-zinc-400">{office.pincode}</span>
+                      <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                        {account.accountNumber}
+                      </span>
                     </TableCell>
                     <TableCell className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-sm text-zinc-600 dark:text-zinc-400">{office.country}</span>
+                      <span className="text-sm text-zinc-600 dark:text-zinc-400">{account.ifsc}</span>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-zinc-600 dark:text-zinc-400">{account.branch}</span>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                        {account.swiftCode || "-"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-zinc-600 dark:text-zinc-400">{account.bankName}</span>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                        {account.isDefault ? "Yes" : "No"}
+                      </span>
                     </TableCell>
                     <TableCell className="px-4 py-3 whitespace-nowrap">
                       <div className="flex gap-2">
                         <Button
-                          onClick={() => handleEditPopup(office)}
+                          onClick={() => handleEditPopup(account)}
                           className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
                           title="Edit"
                         >
                           Edit
                         </Button>
                         <Button
-                          onClick={() => handleDelete(office.id)}
+                          onClick={() => handleDelete(account.id)}
                           className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
                           title="Delete"
                         >
@@ -289,21 +295,21 @@ export default function OfficesPage() {
 
       {showPopup && (
         <Modal
-          title={editingOfficeId ? "Edit Office" : "Add New Office"}
+          title={editingAccountId ? "Edit Account" : "Add New Account"}
           onClose={handleClosePopup}
-          maxWidthClassName="max-w-2xl"
+          maxWidthClassName="max-w-3xl"
           panelClassName="max-h-[90vh] overflow-y-auto"
         >
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                  GSTIN <span className="text-red-500">*</span>
+                  Account Holder Name <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   type="text"
-                  name="gstin"
-                  value={formData.gstin}
+                  name="accountHolderName"
+                  value={formData.accountHolderName}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -311,77 +317,89 @@ export default function OfficesPage() {
               </div>
               <div>
                 <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                  State (with code) <span className="text-red-500">*</span>
+                  Account Number <span className="text-red-500">*</span>
                 </Label>
-                <Select
-                  name="state"
-                  value={formData.state}
-                  onChange={handleStateChange}
+                <Input
+                  type="text"
+                  name="accountNumber"
+                  value={formData.accountNumber}
+                  onChange={handleChange}
                   required
                   className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Select State</option>
-                  {INDIAN_STATES.map((state) => (
-                    <option key={state.code} value={state.name}>
-                      {state.name} ({state.code})
-                    </option>
-                  ))}
-                </Select>
+                />
               </div>
-            </div>
-            <div>
-              <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                Address <span className="text-red-500">*</span>
-              </Label>
-              <Textarea
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                required
-                rows={4}
-                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                City <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                type="text"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                  Pincode
+                  IFSC <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   type="text"
-                  name="pincode"
-                  value={formData.pincode}
+                  name="ifsc"
+                  value={formData.ifsc}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                  Branch <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  type="text"
+                  name="branch"
+                  value={formData.branch}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                  Swift Code
+                </Label>
+                <Input
+                  type="text"
+                  name="swiftCode"
+                  value={formData.swiftCode}
                   onChange={handleChange}
                   className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               <div>
                 <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                  Country
+                  Bank Name <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   type="text"
-                  name="country"
-                  value={formData.country}
+                  name="bankName"
+                  value={formData.bankName}
                   onChange={handleChange}
+                  required
                   className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
+            </div>
+
+            <div>
+              <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                Default to Receive Payment
+              </Label>
+              <Select
+                name="isDefault"
+                value={formData.isDefault ? "true" : "false"}
+                onChange={handleDefaultChange}
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="false">No</option>
+                <option value="true">Yes</option>
+              </Select>
             </div>
 
             <div className="flex gap-4 pt-4">
@@ -390,7 +408,7 @@ export default function OfficesPage() {
                 disabled={submitting}
                 className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitting ? "Saving..." : editingOfficeId ? "Update Office" : "Add Office"}
+                {submitting ? "Saving..." : editingAccountId ? "Update Account" : "Add Account"}
               </Button>
               <Button
                 type="button"
@@ -406,5 +424,4 @@ export default function OfficesPage() {
     </div>
   );
 }
-
 

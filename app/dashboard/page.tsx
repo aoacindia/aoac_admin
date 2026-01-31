@@ -55,6 +55,13 @@ const sections: Section[] = [
     ],
   },
   {
+    name: "Accounts",
+    icon: "🏦",
+    subsections: [
+      { label: "Accounts", href: "/dashboard/accounts" },
+    ],
+  },
+  {
     name: "Users",
     icon: "👥",
     subsections: [
@@ -69,13 +76,14 @@ export default function DashboardPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
+  const adminOnlySections = new Set(["Users", "Our Own Data", "Accounts"]);
 
   const visibleSections = isAdmin
     ? sections
-    : sections.filter((section) => section.name !== "Users");
+    : sections.filter((section) => !adminOnlySections.has(section.name));
 
   const handleSectionClick = (section: Section) => {
-    if (section.name === "Users" && !isAdmin) {
+    if (adminOnlySections.has(section.name) && !isAdmin) {
       return;
     }
     setSelectedSection(section);

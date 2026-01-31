@@ -35,9 +35,9 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { gstin, address, state, stateCode } = body;
+    const { gstin, address, city, state, stateCode, pincode, country } = body;
 
-    if (!gstin || !address || !state || !stateCode) {
+    if (!gstin || !address || !city || !state || !stateCode) {
       return NextResponse.json(
         { success: false, error: "Missing required fields" },
         { status: 400 }
@@ -74,8 +74,11 @@ export async function PUT(
       data: {
         gstin,
         address,
+        city,
         state,
         stateCode,
+        pincode: pincode || null,
+        country: country || null,
       },
     });
 

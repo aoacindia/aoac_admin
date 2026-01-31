@@ -2,6 +2,7 @@ import 'server-only';
 import fs from 'fs';
 import path from 'path';
 import { PDFDocument, PageSizes, StandardFonts, rgb, PDFPage, PDFFont, PDFImage } from 'pdf-lib';
+import { adminPrisma } from './admin-prisma';
 
 interface SuspensionReason {
   id: string;
@@ -66,8 +67,11 @@ interface InvoiceOffice {
   id: string;
   gstin: string;
   address: string;
+  city?: string | null;
   state: string;
   stateCode: string;
+  pincode: string;
+  country: string;
 }
 
 interface Order {
@@ -226,14 +230,15 @@ function drawTextLine(
   x: number,
   yFromTop: number,
   size: number,
-  font: PDFFont = ctx.font
+  font: PDFFont = ctx.font,
+  color = rgb(0, 0, 0)
 ) {
   ctx.page.drawText(text, {
     x,
     y: toPdfY(ctx, yFromTop, size),
     size,
     font,
-    color: rgb(0, 0, 0)
+    color
   });
 }
 
@@ -313,6 +318,86 @@ function drawTextBlock(
     y += LINE_HEIGHT;
   });
   return y;
+}
+
+function getTermsBlockHeight(
+  ctx: PdfContext,
+  terms: string[],
+  width: number,
+  hasSignature: boolean
+): number {
+  const padding = 6;
+  const titleSize = SECTION_TITLE_SIZE + 2;
+  const titleGap = 4;
+  const signatureAreaWidth = hasSignature ? 140 : 0;
+  const innerWidth = width - padding * 2;
+  const textWidth = hasSignature ? Math.max(80, innerWidth - signatureAreaWidth - 6) : innerWidth;
+  const termsFontSize = Math.max(5, BODY_FONT_SIZE - 1);
+  const termsLineHeight = Math.max(7, LINE_HEIGHT - 1);
+  const wrappedTerms = terms.flatMap((term) =>
+    wrapText(`- ${term}`, textWidth, ctx.font, termsFontSize)
+  );
+  const textHeight = padding * 2 + titleSize + titleGap + wrappedTerms.length * termsLineHeight;
+  const signatureHeight = hasSignature ? padding * 2 + 70 + (BODY_FONT_SIZE + 1) + 2 : 0;
+  return Math.max(textHeight, signatureHeight);
+}
+
+function drawTermsBlock(
+  ctx: PdfContext,
+  terms: string[],
+  x: number,
+  yFromTop: number,
+  width: number,
+  signImage: PDFImage | null
+): number {
+  const padding = 6;
+  const title = 'Terms & Conditions';
+  const titleSize = SECTION_TITLE_SIZE + 2;
+  const titleGap = 4;
+  const signatureAreaWidth = signImage ? 140 : 0;
+  const innerWidth = width - padding * 2;
+  const textWidth = signImage ? Math.max(80, innerWidth - signatureAreaWidth - 6) : innerWidth;
+  const termsFontSize = Math.max(5, BODY_FONT_SIZE - 1);
+  const termsLineHeight = Math.max(7, LINE_HEIGHT - 1);
+  const termsColor = rgb(0.35, 0.35, 0.35);
+  const wrappedTerms = terms.flatMap((term) =>
+    wrapText(`- ${term}`, textWidth, ctx.font, termsFontSize)
+  );
+  const textHeight = padding * 2 + titleSize + titleGap + wrappedTerms.length * termsLineHeight;
+  const signatureHeight = signImage ? padding * 2 + 70 + (BODY_FONT_SIZE + 1) + 2 : 0;
+  const blockHeight = Math.max(textHeight, signatureHeight);
+
+  ctx.page.drawRectangle({
+    x,
+    y: ctx.pageHeight - yFromTop - blockHeight,
+    width,
+    height: blockHeight,
+    borderWidth: 1,
+    borderColor: rgb(0, 0, 0)
+  });
+
+  drawTextLine(ctx, title, x + padding, yFromTop + padding, titleSize, ctx.boldFont);
+  const textStartY = yFromTop + padding + titleSize + titleGap;
+  let termLineY = textStartY;
+  wrappedTerms.forEach((line) => {
+    drawTextLine(ctx, line, x + padding, termLineY, termsFontSize, ctx.font, termsColor);
+    termLineY += termsLineHeight;
+  });
+
+  if (signImage) {
+    const signHeight = 70;
+    const signWidth = (signImage.width / signImage.height) * signHeight;
+    const signatureX = x + width - padding - signatureAreaWidth;
+    const signTextSize = BODY_FONT_SIZE + 1;
+    const signatureTopY = yFromTop + blockHeight - padding - signHeight - signTextSize - 2;
+    drawImageAtTopLeft(ctx, signImage, signatureX + (signatureAreaWidth - signWidth) / 2, signatureTopY, signWidth, signHeight);
+    const signText = 'Authorized Signatory';
+    const signTextWidth = ctx.font.widthOfTextAtSize(signText, signTextSize);
+    const signTextX = signatureX + (signatureAreaWidth - signTextWidth) / 2;
+    drawTextLine(ctx, signText, signTextX, signatureTopY + signHeight + 2, signTextSize, ctx.font);
+  }
+
+  return yFromTop + blockHeight;
 }
 
 function drawTextBlockWithStyle(
@@ -732,7 +817,18 @@ function resolvePlaceOfSupply(order: InvoiceOrder) {
 }
 
 function formatOfficeAddress(office: InvoiceOffice): string {
-  return office.address?.trim() || '';
+  const stateWithCode = office.stateCode?.trim()
+    ? `${office.state?.trim() || ''} (${office.stateCode.trim()})`.trim()
+    : office.state?.trim();
+  const parts = [
+    office.address?.trim(),
+    office.city?.trim(),
+    stateWithCode,
+    office.pincode?.trim(),
+    office.country?.trim(),
+  ].filter(Boolean);
+
+  return parts.join(', ');
 }
 
 export async function generateInvoicePDF(
@@ -740,6 +836,7 @@ export async function generateInvoicePDF(
   copies: InvoiceCopyType[] = ['original']
 ): Promise<Uint8Array> {
   return createPdfBuffer(async (ctx) => {
+    const bank = await adminPrisma.account.findFirst({ where: { isDefault: true } });
     const logoPath = path.join(process.cwd(), 'public/logo/logo.png');
     const signPath = path.join(process.cwd(), 'public/img/imp/auth_sign.png');
     const logoImage = fs.existsSync(logoPath)
@@ -772,12 +869,11 @@ export async function generateInvoicePDF(
       ) - 10;
 
       const companyX = ctx.margin + headerLeftWidth;
-      const maxCompanyWidth = Math.max(
-        40,
-        (headerRightLimit > companyX
+      const computedCompanyWidth =
+        headerRightLimit > companyX
           ? headerRightLimit - companyX
-          : ctx.pageWidth - ctx.margin - companyX)
-      );
+          : ctx.pageWidth - ctx.margin - companyX;
+      const maxCompanyWidth = Math.max(40, computedCompanyWidth * 0.85);
       const companyName = 'Allahabad Organic Agricultural Company Private Limited';
       const officeAddress = order.invoiceOffice
         ? formatOfficeAddress(order.invoiceOffice)
@@ -785,6 +881,11 @@ export async function generateInvoicePDF(
       const companyAddressLine =
         officeAddress ||
         '620 G Flr, Ganga Bihar, Anisabad, Phulwari, Patna - 800002, Bihar, India';
+      const jurisdictionParts = [
+        order.invoiceOffice?.city?.trim(),
+        order.invoiceOffice?.state?.trim()
+      ].filter(Boolean);
+      const jurisdictionLocation = jurisdictionParts.length ? jurisdictionParts.join(', ') : 'Prayagraj, Uttar Pradesh';
       const companyGstin = order.invoiceOffice?.gstin || '10ABECA4299B1Z4';
       const companyLines = [
         { text: companyName, size: 9 },
@@ -937,7 +1038,8 @@ export async function generateInvoicePDF(
             .filter(Boolean)
             .join(', ')
         : '',
-      order.shippingAddress ? `Phone: ${order.shippingAddress.phone}` : ''
+      order.shippingAddress ? `Phone: ${order.shippingAddress.phone}` : '',
+      `GSTIN: ${order.user.gstNumber || '-'}`
     ]
       .filter(Boolean)
       .map((line) => ({
@@ -963,7 +1065,7 @@ export async function generateInvoicePDF(
                 .join(', ')
             : '',
           `Phone: ${order.user.phone}`,
-          `GST: ${order.user.gstNumber || '-'}`
+          `GSTIN: ${order.user.gstNumber || '-'}`
         ]
           .filter(Boolean)
           .map((line) => ({
@@ -1031,18 +1133,40 @@ export async function generateInvoicePDF(
 
       y += blockHeight + 6;
 
-    const columns = [
+    const { stateCode: placeOfSupplyStateCode } = resolvePlaceOfSupply(order);
+    const companyStateCode = order.invoiceOffice?.stateCode || '';
+    const isIntraStateSupply =
+      Boolean(companyStateCode) &&
+      Boolean(placeOfSupplyStateCode) &&
+      companyStateCode === placeOfSupplyStateCode;
+
+    const baseColumns = [
       { label: 'Sr No', percent: 6, align: 'center' as const },
       { label: 'Item Name', percent: 24, align: 'left' as const },
       { label: 'HSN', percent: 8, align: 'center' as const },
       { label: 'Qty', percent: 6, align: 'center' as const },
       { label: 'Rate', percent: 8, align: 'right' as const },
-      { label: 'Taxable Amount', percent: 12, align: 'right' as const },
-      { label: 'Tax %', percent: 6, align: 'center' as const },
-      { label: 'Tax Amount', percent: 12, align: 'right' as const },
+      { label: 'Taxable Amount', percent: 12, align: 'right' as const }
+    ];
+
+    const taxColumns = isIntraStateSupply
+      ? [
+          { label: 'CGST %', percent: 4, align: 'center' as const },
+          { label: 'CGST Amt', percent: 5, align: 'right' as const },
+          { label: 'SGST %', percent: 4, align: 'center' as const },
+          { label: 'SGST Amt', percent: 5, align: 'right' as const }
+        ]
+      : [
+          { label: 'IGST %', percent: 6, align: 'center' as const },
+          { label: 'IGST Amt', percent: 12, align: 'right' as const }
+        ];
+
+    const tailColumns = [
       { label: 'Discount', percent: 8, align: 'right' as const },
       { label: 'Line Total', percent: 10, align: 'right' as const }
     ];
+
+    const columns = [...baseColumns, ...taxColumns, ...tailColumns];
     const widths: number[] = [];
     let used = 0;
     columns.forEach((col, index) => {
@@ -1095,6 +1219,18 @@ export async function generateInvoicePDF(
       totalTax += taxAmount;
 
       const itemName = item.productName || `Product ${item.productId}`;
+      const taxCells = isIntraStateSupply
+        ? [
+            wrapText(`${taxPercent / 2}`, widths[6] - 6, ctx.font, BODY_FONT_SIZE),
+            wrapText(formatAmount(taxAmount / 2), widths[7] - 6, ctx.font, BODY_FONT_SIZE),
+            wrapText(`${taxPercent / 2}`, widths[8] - 6, ctx.font, BODY_FONT_SIZE),
+            wrapText(formatAmount(taxAmount / 2), widths[9] - 6, ctx.font, BODY_FONT_SIZE)
+          ]
+        : [
+            wrapText(`${taxPercent}`, widths[6] - 6, ctx.font, BODY_FONT_SIZE),
+            wrapText(formatAmount(taxAmount), widths[7] - 6, ctx.font, BODY_FONT_SIZE)
+          ];
+
       const cellLines = [
         wrapText(String(index + 1), widths[0] - 6, ctx.font, BODY_FONT_SIZE),
         wrapText(itemName, widths[1] - 6, ctx.font, BODY_FONT_SIZE),
@@ -1102,10 +1238,9 @@ export async function generateInvoicePDF(
         wrapText(String(qty), widths[3] - 6, ctx.font, BODY_FONT_SIZE),
         wrapText(formatAmount(rate), widths[4] - 6, ctx.font, BODY_FONT_SIZE),
         wrapText(formatAmount(taxableAmount), widths[5] - 6, ctx.font, BODY_FONT_SIZE),
-        wrapText(`${taxPercent}`, widths[6] - 6, ctx.font, BODY_FONT_SIZE),
-        wrapText(formatAmount(taxAmount), widths[7] - 6, ctx.font, BODY_FONT_SIZE),
-        wrapText(formatAmount(discount), widths[8] - 6, ctx.font, BODY_FONT_SIZE),
-        wrapText(formatAmount(total), widths[9] - 6, ctx.font, BODY_FONT_SIZE)
+        ...taxCells,
+        wrapText(formatAmount(discount), widths[widths.length - 2] - 6, ctx.font, BODY_FONT_SIZE),
+        wrapText(formatAmount(total), widths[widths.length - 1] - 6, ctx.font, BODY_FONT_SIZE)
       ];
       const maxLines = Math.max(...cellLines.map((lines) => lines.length), 1);
       const rowHeight = Math.max(ROW_HEIGHT, maxLines * LINE_HEIGHT + 6);
@@ -1130,37 +1265,69 @@ export async function generateInvoicePDF(
       });
 
       x = ctx.margin;
-      drawCellLines(ctx, cellLines[0], x, y + 4, widths[0], BODY_FONT_SIZE, 'center');
-      x += widths[0];
-      drawCellLines(ctx, cellLines[1], x, y + 4, widths[1], BODY_FONT_SIZE, 'left');
-      x += widths[1];
-      drawCellLines(ctx, cellLines[2], x, y + 4, widths[2], BODY_FONT_SIZE, 'center');
-      x += widths[2];
-      drawCellLines(ctx, cellLines[3], x, y + 4, widths[3], BODY_FONT_SIZE, 'center');
-      x += widths[3];
-      drawCellLines(ctx, cellLines[4], x, y + 4, widths[4], BODY_FONT_SIZE, 'right');
-      x += widths[4];
-      drawCellLines(ctx, cellLines[5], x, y + 4, widths[5], BODY_FONT_SIZE, 'right');
-      x += widths[5];
-      drawCellLines(ctx, cellLines[6], x, y + 4, widths[6], BODY_FONT_SIZE, 'center');
-      x += widths[6];
-      drawCellLines(ctx, cellLines[7], x, y + 4, widths[7], BODY_FONT_SIZE, 'right');
-      x += widths[7];
-      drawCellLines(ctx, cellLines[8], x, y + 4, widths[8], BODY_FONT_SIZE, 'right');
-      x += widths[8];
-      drawCellLines(ctx, cellLines[9], x, y + 4, widths[9], BODY_FONT_SIZE, 'right');
+      cellLines.forEach((lines, cellIndex) => {
+        drawCellLines(ctx, lines, x, y + 4, widths[cellIndex], BODY_FONT_SIZE, columns[cellIndex].align);
+        x += widths[cellIndex];
+      });
 
       y = y + rowHeight;
     });
 
     const shipping = Number(order.shippingAmount ?? 0);
+    const courierBase = shipping > 0 ? shipping / 1.18 : 0;
+    const courierTax = shipping > 0 ? shipping - courierBase : 0;
     const roundedTotal = Number(order.invoiceAmount ?? subtotal + totalTax + shipping);
+    const taxSummaryLines = isIntraStateSupply
+      ? [
+          { label: 'CGST', value: formatAmount(totalTax / 2) },
+          { label: 'SGST', value: formatAmount(totalTax / 2) }
+        ]
+      : [{ label: 'IGST', value: formatAmount(totalTax) }];
+
+    const courierTaxLines =
+      shipping > 0
+        ? isIntraStateSupply
+          ? [
+              { label: 'Courier Charges', value: formatAmount(courierBase) },
+              { label: 'Courier CGST', value: formatAmount(courierTax / 2) },
+              { label: 'Courier SGST', value: formatAmount(courierTax / 2) },
+              { label: 'Courier Total', value: formatAmount(shipping) }
+            ]
+          : [
+              { label: 'Courier Charges', value: formatAmount(courierBase) },
+              { label: 'Courier IGST', value: formatAmount(courierTax) },
+              { label: 'Courier Total', value: formatAmount(shipping) }
+            ]
+        : [];
+
     const summaryLines = [
       { label: 'Subtotal', value: formatAmount(subtotal) },
-      { label: 'Tax', value: formatAmount(totalTax) },
+      ...taxSummaryLines,
       { label: 'Discount', value: formatAmount(totalDiscount) },
-      { label: 'Shipping', value: formatAmount(shipping) },
+      ...courierTaxLines,
       { label: 'Invoice Amount', value: formatAmount(roundedTotal) }
+    ];
+
+    const bankDetails = [
+      { label: 'Bank Name', value: bank?.bankName || '-' },
+      { label: 'Account Holder Name', value: bank?.accountHolderName || '-' },
+      { label: 'Account Number', value: bank?.accountNumber || '-' },
+      { label: 'IFSC Code', value: bank?.ifsc || '-' },
+      { label: 'Branch', value: bank?.branch || '-' },
+      ...(bank?.swiftCode ? [{ label: 'SWIFT Code', value: bank.swiftCode }] : [])
+    ];
+    const bankNotes = [
+      `All cheques / DD should be made payable to ${companyName}.`
+    ];
+
+    const terms = [
+      'Goods once sold will not be taken back or exchanged unless agreed in writing.',
+      'Payment due within 7 days from invoice date unless otherwise agreed.',
+      'Interest @18% per annum on delayed payments.',
+      `All disputes are subject to ${jurisdictionLocation} jurisdiction only.`,
+      "Goods are dispatched at buyer's risk; no responsibility after dispatch.",
+      'Taxes are charged as applicable under GST laws.',
+      'Bank charges, if any, shall be borne by the buyer.'
     ];
 
     const summaryWidth = 220;
@@ -1174,16 +1341,43 @@ export async function generateInvoicePDF(
     const wordsLines = wrapText(words, summaryInnerWidth, ctx.font, BODY_FONT_SIZE);
     const wordsBlockHeight = LINE_HEIGHT + wordsLines.length * LINE_HEIGHT;
     const summaryRowHeights = summaryLines.map((line) => {
-      const labelLines = wrapText(line.label, labelColumnWidth, ctx.font, BODY_FONT_SIZE);
-      const valueLines = wrapText(line.value, valueColumnWidth, ctx.font, BODY_FONT_SIZE);
-      return Math.max(labelLines.length, valueLines.length, 1) * LINE_HEIGHT;
+      const rowSize = line.label === 'Invoice Amount' ? BODY_FONT_SIZE + 1 : BODY_FONT_SIZE;
+      const rowLineHeight = line.label === 'Invoice Amount' ? LINE_HEIGHT + 1 : LINE_HEIGHT;
+      const labelLines = wrapText(line.label, labelColumnWidth, ctx.font, rowSize);
+      const valueLines = wrapText(line.value, valueColumnWidth, ctx.font, rowSize);
+      return Math.max(labelLines.length, valueLines.length, 1) * rowLineHeight;
     });
     const summaryHeight =
       summaryPadding * 2 +
       summaryRowHeights.reduce((sum, rowHeight) => sum + rowHeight, 0) +
       wordsBlockHeight +
       2;
-    y = ensureSpace(ctx, y + 10, summaryHeight);
+
+    const bankGap = 10;
+    const bankWidth = Math.max(120, summaryX - ctx.margin - bankGap);
+    const bankPadding = 6;
+    const bankTitleSize = SECTION_TITLE_SIZE + 2;
+    const bankTitleGap = 4;
+    const bankInnerWidth = bankWidth - bankPadding * 2;
+    const bankLabelWidth = Math.floor(bankInnerWidth * 0.45);
+    const bankValueWidth = bankInnerWidth - bankLabelWidth;
+    const bankRowHeights = bankDetails.map((line) => {
+      const labelLines = wrapText(line.label, bankLabelWidth, ctx.boldFont, BODY_FONT_SIZE);
+      const valueLines = wrapText(line.value, bankValueWidth, ctx.font, BODY_FONT_SIZE);
+      return Math.max(labelLines.length, valueLines.length, 1) * LINE_HEIGHT;
+    });
+    const bankNoteLines = bankNotes.flatMap((note) =>
+      wrapText(note, bankInnerWidth, ctx.font, BODY_FONT_SIZE)
+    );
+    const bankNoteHeight = bankNoteLines.length * LINE_HEIGHT;
+    const bankHeight =
+      bankPadding * 2 +
+      bankTitleSize +
+      bankTitleGap +
+      bankRowHeights.reduce((sum, rowHeight) => sum + rowHeight, 0) +
+      (bankNoteLines.length ? bankNoteHeight + 4 : 0);
+
+    y = ensureSpace(ctx, y + 10, Math.max(summaryHeight, bankHeight));
 
     ctx.page.drawRectangle({
       x: summaryX,
@@ -1196,58 +1390,102 @@ export async function generateInvoicePDF(
 
     let summaryY = y + summaryPadding;
     summaryLines.forEach((line, index) => {
+      const isInvoiceAmount = line.label === 'Invoice Amount';
+      const rowSize = isInvoiceAmount ? BODY_FONT_SIZE + 1 : BODY_FONT_SIZE;
+      const rowLineHeight = isInvoiceAmount ? LINE_HEIGHT + 1 : LINE_HEIGHT;
       const rowHeight = summaryRowHeights[index];
-      const labelLines = wrapText(line.label, labelColumnWidth, ctx.font, BODY_FONT_SIZE);
-      const valueLines = wrapText(line.value, valueColumnWidth, ctx.font, BODY_FONT_SIZE);
-      drawCellLines(
-        ctx,
-        labelLines,
-        summaryX + summaryPadding,
-        summaryY,
-        labelColumnWidth,
-        BODY_FONT_SIZE,
-        'left'
-      );
-      drawCellLines(
-        ctx,
-        valueLines,
-        summaryX + summaryPadding + labelColumnWidth,
-        summaryY,
-        valueColumnWidth,
-        BODY_FONT_SIZE,
-        'right'
-      );
+      const labelLines = wrapText(line.label, labelColumnWidth, ctx.font, rowSize);
+      const valueLines = wrapText(line.value, valueColumnWidth, ctx.font, rowSize);
+
+      let labelLineY = summaryY;
+      labelLines.forEach((labelLine) => {
+        drawTextLine(
+          ctx,
+          labelLine,
+          summaryX + summaryPadding,
+          labelLineY,
+          rowSize,
+          isInvoiceAmount ? ctx.boldFont : ctx.font
+        );
+        labelLineY += rowLineHeight;
+      });
+
+      let valueLineY = summaryY;
+      valueLines.forEach((valueLine) => {
+        const textWidth = (isInvoiceAmount ? ctx.boldFont : ctx.font).widthOfTextAtSize(valueLine, rowSize);
+        const textX = summaryX + summaryPadding + labelColumnWidth + valueColumnWidth - textWidth;
+        drawTextLine(
+          ctx,
+          valueLine,
+          textX,
+          valueLineY,
+          rowSize,
+          isInvoiceAmount ? ctx.boldFont : ctx.font
+        );
+        valueLineY += rowLineHeight;
+      });
+
       summaryY += rowHeight;
     });
 
     const wordsStartY = summaryY + 2;
-    drawTextLine(ctx, wordsLabel, summaryX + summaryPadding, wordsStartY, BODY_FONT_SIZE);
-    drawTextBlock(
-      ctx,
-      wordsLines,
-      summaryX + summaryPadding,
-      wordsStartY + LINE_HEIGHT,
-      BODY_FONT_SIZE
-    );
-    y += summaryHeight + 6;
+    drawTextLine(ctx, wordsLabel, summaryX + summaryPadding, wordsStartY, BODY_FONT_SIZE, ctx.boldFont);
+    let wordsLineY = wordsStartY + LINE_HEIGHT;
+    wordsLines.forEach((line) => {
+      drawTextLine(ctx, line, summaryX + summaryPadding, wordsLineY, BODY_FONT_SIZE, ctx.boldFont);
+      wordsLineY += LINE_HEIGHT;
+    });
 
-      if (signImage) {
-      const signHeight = 70;
-      const signWidth = (signImage.width / signImage.height) * signHeight;
-      const signY = ensureSpace(ctx, y, signHeight + 10);
-      drawImageAtTopLeft(
-        ctx,
-        signImage,
-        ctx.pageWidth - ctx.margin - signWidth,
-        signY,
-        signWidth,
-        signHeight
-      );
-      const signText = 'Authorized Signatory';
-      const signTextWidth = ctx.font.widthOfTextAtSize(signText, BODY_FONT_SIZE);
-      const signTextX = ctx.pageWidth - ctx.margin - signWidth + (signWidth - signTextWidth) / 2;
-      drawTextLine(ctx, signText, signTextX, signY + signHeight + 4, BODY_FONT_SIZE);
-      }
+    const bankX = ctx.margin;
+    ctx.page.drawRectangle({
+      x: bankX,
+      y: ctx.pageHeight - y - bankHeight,
+      width: bankWidth,
+      height: bankHeight,
+      borderWidth: 1,
+      borderColor: rgb(0, 0, 0)
+    });
+
+    drawTextLine(ctx, 'Bank Details', bankX + bankPadding, y + bankPadding, bankTitleSize, ctx.boldFont);
+    let bankLineY = y + bankPadding + bankTitleSize + bankTitleGap;
+    bankDetails.forEach((line, index) => {
+      const rowHeight = bankRowHeights[index];
+      const labelLines = wrapText(line.label, bankLabelWidth, ctx.boldFont, BODY_FONT_SIZE);
+      const valueLines = wrapText(line.value, bankValueWidth, ctx.font, BODY_FONT_SIZE);
+      labelLines.forEach((labelLine, lineIndex) => {
+        drawTextLine(
+          ctx,
+          labelLine,
+          bankX + bankPadding,
+          bankLineY + lineIndex * LINE_HEIGHT,
+          BODY_FONT_SIZE,
+          ctx.boldFont
+        );
+      });
+      valueLines.forEach((valueLine, lineIndex) => {
+        drawTextLine(
+          ctx,
+          valueLine,
+          bankX + bankPadding + bankLabelWidth,
+          bankLineY + lineIndex * LINE_HEIGHT,
+          BODY_FONT_SIZE
+        );
+      });
+      bankLineY += rowHeight;
+    });
+    if (bankNoteLines.length) {
+      bankLineY += 4;
+      bankNoteLines.forEach((noteLine, index) => {
+        drawTextLine(ctx, noteLine, bankX + bankPadding, bankLineY + index * LINE_HEIGHT, BODY_FONT_SIZE);
+      });
+    }
+
+    y += Math.max(summaryHeight, bankHeight) + 6;
+
+    const termsWidth = ctx.pageWidth - ctx.margin * 2;
+    const termsHeight = getTermsBlockHeight(ctx, terms, termsWidth, Boolean(signImage));
+    const termsY = ensureSpace(ctx, y, termsHeight);
+    y = drawTermsBlock(ctx, terms, ctx.margin, termsY, termsWidth, signImage) + 6;
     };
 
     const normalizedCopies: InvoiceCopyType[] = copies.length ? copies : ['original'];
