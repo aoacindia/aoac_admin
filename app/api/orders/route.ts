@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { userPrisma } from "@/lib/user-prisma";
+import { adminPrisma } from "@/lib/admin-prisma";
 
 // Helper function to get financial year in format YYYY(YY+1)
 // Financial year in India: April 1 to March 31
@@ -38,26 +39,37 @@ function getFinancialYearStart(date: Date): Date {
 }
 
 // Helper function to generate invoice number
-// Format: 
-// - PI: P2025261, P2025262, etc. (separate sequence for all PI invoices)
-// - TAX_INVOICE Business: B2025261, B2025262, etc.
-// - TAX_INVOICE Non-business: R2025261, R2025262, etc.
+// Format:
+// - PI: P2025261, P2025262, etc. (state code 10)
+// - TAX_INVOICE Business: B2025261, B2025262, etc. (state code 10)
+// - TAX_INVOICE Non-business: R2025261, R2025262, etc. (state code 10)
+// - Other states: add state code after prefix, ex: P122025261, B092025261
 async function generateInvoiceNumber(
   invoiceType: "PI" | "TAX_INVOICE",
   isBusinessAccount: boolean,
   financialYear: string,
-  financialYearStart: Date
+  financialYearStart: Date,
+  invoiceOfficeStateCode?: string | number | null
 ): Promise<{ invoiceNumber: string; sequenceNumber: number }> {
   // For PI, use "P" prefix regardless of customer type
   // For TAX_INVOICE, use "B" for business or "R" for non-business
   const prefix = invoiceType === "PI" ? "P" : (isBusinessAccount ? "B" : "R");
-  
-  // Find the last invoice for this invoice type and prefix in the current financial year
+  const normalizedStateCode =
+    invoiceOfficeStateCode === null || invoiceOfficeStateCode === undefined
+      ? ""
+      : String(invoiceOfficeStateCode).trim();
+  const stateCodeSegment =
+    normalizedStateCode && normalizedStateCode !== "10"
+      ? normalizedStateCode
+      : "";
+  const prefixAndFY = `${prefix}${stateCodeSegment}${financialYear}`;
+
+  // Find the last invoice for this invoice type and prefix/state in the current financial year
   const lastInvoice = await userPrisma.order.findFirst({
     where: {
       invoiceType: invoiceType,
       InvoiceNumber: {
-        startsWith: prefix,
+        startsWith: prefixAndFY,
       },
       orderDate: {
         gte: financialYearStart,
@@ -72,11 +84,11 @@ async function generateInvoiceNumber(
   
   if (lastInvoice?.InvoiceNumber) {
     // Extract sequence from invoice number
-    // Format: P2025261, B2025261, or R2025261
+    // Format:
+    // - State 10: P2025261, B2025261, or R2025261
+    // - Other states: P122025261, B092025261, etc.
     // Extract the last part (sequence)
     const invoiceNumber = lastInvoice.InvoiceNumber;
-    // Remove prefix and financial year (e.g., "P202526", "B202526", or "R202526")
-    const prefixAndFY = `${prefix}${financialYear}`;
     if (invoiceNumber.startsWith(prefixAndFY)) {
       const sequenceStr = invoiceNumber.substring(prefixAndFY.length);
       const lastSequence = parseInt(sequenceStr, 10);
@@ -87,7 +99,7 @@ async function generateInvoiceNumber(
   }
 
   // Format sequence without padding (just the number)
-  const invoiceNumber = `${prefix}${financialYear}${nextSequenceNumber}`;
+  const invoiceNumber = `${prefixAndFY}${nextSequenceNumber}`;
 
   return { invoiceNumber, sequenceNumber: nextSequenceNumber };
 }
@@ -264,6 +276,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const invoiceOffice = await adminPrisma.office.findUnique({
+      where: { id: invoiceOfficeId },
+      select: { stateCode: true },
+    });
+
+    if (!invoiceOffice) {
+      return NextResponse.json(
+        { success: false, error: "Invoice office not found" },
+        { status: 404 }
+      );
+    }
+
     // Verify customer exists and get business account status
     const customer = await userPrisma.user.findUnique({
       where: { id: customerId },
@@ -327,7 +351,8 @@ export async function POST(request: NextRequest) {
       invoiceType,
       isBusinessAccount,
       financialYear,
-      financialYearStart
+      financialYearStart,
+      invoiceOffice.stateCode
     );
 
     const invoiceData = {

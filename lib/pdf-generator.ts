@@ -209,19 +209,7 @@ function toPdfY(ctx: PdfContext, yFromTop: number, fontSize: number): number {
 }
 
 function truncateText(text: string, maxWidth: number, font: PDFFont, fontSize: number): string {
-  if (!text) return '';
-  if (font.widthOfTextAtSize(text, fontSize) <= maxWidth) return text;
-  const ellipsis = '...';
-  const ellipsisWidth = font.widthOfTextAtSize(ellipsis, fontSize);
-  if (ellipsisWidth > maxWidth) return '';
-  let truncated = text;
-  while (
-    truncated.length > 0 &&
-    font.widthOfTextAtSize(truncated, fontSize) + ellipsisWidth > maxWidth
-  ) {
-    truncated = truncated.slice(0, -1);
-  }
-  return `${truncated}${ellipsis}`;
+  throw new Error('truncateText() WAS CALLED AT RUNTIME');
 }
 
 function drawTextLine(
@@ -1180,8 +1168,13 @@ export async function generateInvoicePDF(
     });
 
     const drawTableHeader = () => {
-      const headerHeight = 20;
+      const wrappedHeaderLines = columns.map((col, index) =>
+        wrapText(col.label, widths[index] - 6, ctx.font, BODY_FONT_SIZE)
+      );
+      const maxHeaderLines = Math.max(...wrappedHeaderLines.map((lines) => lines.length), 1);
+      const headerHeight = Math.max(20, maxHeaderLines * LINE_HEIGHT + 8);
       const headerY = ensureSpace(ctx, y, headerHeight);
+      const headerTextStartY = headerY + Math.max(2, (headerHeight - maxHeaderLines * LINE_HEIGHT) / 2);
       let x = ctx.margin;
       columns.forEach((col, index) => {
         ctx.page.drawRectangle({
@@ -1192,7 +1185,7 @@ export async function generateInvoicePDF(
           borderWidth: 1,
           borderColor: rgb(0, 0, 0)
         });
-        drawCellText(ctx, col.label, x, headerY + 4, widths[index], BODY_FONT_SIZE, 'center');
+        drawCellLines(ctx, wrappedHeaderLines[index], x, headerTextStartY, widths[index], BODY_FONT_SIZE, 'center');
         x += widths[index];
       });
       y = headerY + headerHeight;
