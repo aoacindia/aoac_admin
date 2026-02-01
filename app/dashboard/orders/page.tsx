@@ -66,6 +66,7 @@ export default function OrdersPage() {
   const [showDownloadPopup, setShowDownloadPopup] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [invoiceCopies, setInvoiceCopies] = useState({
     original: true,
     duplicate: false,
@@ -130,6 +131,42 @@ export default function OrdersPage() {
         return "bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200";
       default:
         return "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200";
+    }
+  };
+
+  const handleDeleteOrder = async (order: Order) => {
+    const roundedAmount = order.invoiceAmount ?? order.totalAmount ?? 0;
+    const details = [
+      `Order ID: ${order.id}`,
+      `Rounded Amount: ₹${roundedAmount.toFixed(2)}`,
+      `Buyer: ${order.user.name}`,
+      order.user.businessName ? `Business Name: ${order.user.businessName}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete this order?\n\n${details}`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingOrderId(order.id);
+    try {
+      const response = await fetch(`/api/orders/${order.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete order");
+      }
+
+      setOrders((prev) => prev.filter((item) => item.id !== order.id));
+    } catch (error: any) {
+      alert("Error deleting order: " + error.message);
+    } finally {
+      setDeletingOrderId(null);
     }
   };
 
@@ -356,6 +393,13 @@ export default function OrdersPage() {
                           className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
                         >
                           Download PDF
+                        </Button>
+                        <Button
+                          onClick={() => handleDeleteOrder(order)}
+                          disabled={deletingOrderId === order.id}
+                          className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {deletingOrderId === order.id ? "Deleting..." : "Delete"}
                         </Button>
                       </div>
                     </TableCell>

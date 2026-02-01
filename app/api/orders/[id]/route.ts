@@ -376,4 +376,42 @@ export async function PUT(
   }
 }
 
+// DELETE order (order items first, then order)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    const existingOrder = await userPrisma.order.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!existingOrder) {
+      return NextResponse.json(
+        { success: false, error: "Order not found" },
+        { status: 404 }
+      );
+    }
+
+    await userPrisma.orderItem.deleteMany({
+      where: { orderId: id },
+    });
+
+    await userPrisma.order.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Error deleting order:", error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
 
