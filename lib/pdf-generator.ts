@@ -783,6 +783,8 @@ interface InvoiceOrder {
     price: number;
     tax: number;
     discount: number;
+    customWeightItem?: boolean | null;
+    customWeight?: number | null;
     productName?: string;
     hsnsac?: string;
     weight?: number | null;
@@ -817,6 +819,21 @@ function formatOfficeAddress(office: InvoiceOffice): string {
   ].filter(Boolean);
 
   return parts.join(', ');
+}
+
+function formatWeightLabel(weightGrams?: number | null): string | null {
+  if (weightGrams === null || weightGrams === undefined) {
+    return null;
+  }
+  const grams = Number(weightGrams);
+  if (!Number.isFinite(grams) || grams <= 0) {
+    return null;
+  }
+  const formatNumber = (value: number) => value.toFixed(2).replace(/\.?0+$/, '');
+  if (grams < 1000) {
+    return `${formatNumber(grams)} g`;
+  }
+  return `${formatNumber(grams / 1000)} kg`;
 }
 
 export async function generateInvoicePDF(
@@ -1212,6 +1229,12 @@ export async function generateInvoicePDF(
       totalTax += taxAmount;
 
       const itemName = item.productName || `Product ${item.productId}`;
+      const itemWeightGrams =
+        item.customWeightItem === true && typeof item.customWeight === 'number'
+          ? item.customWeight
+          : item.weight ?? null;
+      const weightLabel = formatWeightLabel(itemWeightGrams);
+      const itemDisplayName = weightLabel ? `${itemName} (${weightLabel})` : itemName;
       const taxCells = isIntraStateSupply
         ? [
             wrapText(`${taxPercent / 2}`, widths[6] - 6, ctx.font, BODY_FONT_SIZE),
@@ -1226,7 +1249,7 @@ export async function generateInvoicePDF(
 
       const cellLines = [
         wrapText(String(index + 1), widths[0] - 6, ctx.font, BODY_FONT_SIZE),
-        wrapText(itemName, widths[1] - 6, ctx.font, BODY_FONT_SIZE),
+        wrapText(itemDisplayName, widths[1] - 6, ctx.font, BODY_FONT_SIZE),
         wrapText(item.hsnsac || '-', widths[2] - 6, ctx.font, BODY_FONT_SIZE),
         wrapText(String(qty), widths[3] - 6, ctx.font, BODY_FONT_SIZE),
         wrapText(formatAmount(rate), widths[4] - 6, ctx.font, BODY_FONT_SIZE),

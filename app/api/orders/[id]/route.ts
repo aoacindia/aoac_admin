@@ -341,6 +341,11 @@ export async function PUT(
           price: parseFloat(item.price),
           tax: parseInt(item.tax || 0), // Include tax field
           discount: parseFloat(item.discount || 0),
+          customWeightItem: item.customWeightItem === true,
+          customWeight:
+            item.customWeightItem === true && item.customWeight !== undefined && item.customWeight !== null
+              ? parseFloat(item.customWeight)
+              : null,
         })),
       });
 

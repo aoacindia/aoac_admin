@@ -87,13 +87,17 @@ export async function POST(
           });
           return {
             ...item,
+            customWeightItem: item.customWeightItem === true,
+            customWeight: typeof item.customWeight === "number" ? item.customWeight : null,
             productName: product?.name || `Product ${item.productId}`,
             hsnsac: product?.hsnsac || "-",
-            weight: product?.weight || null,
+            weight: product?.weight ?? null,
           };
         } catch (error) {
           return {
             ...item,
+            customWeightItem: item.customWeightItem === true,
+            customWeight: typeof item.customWeight === "number" ? item.customWeight : null,
             productName: `Product ${item.productId}`,
             hsnsac: "-",
             weight: null,

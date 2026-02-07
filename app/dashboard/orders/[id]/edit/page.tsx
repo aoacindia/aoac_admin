@@ -36,6 +36,7 @@ interface Product {
   price: number;
   tax: number;
   description?: string;
+  weight?: number | null;
 }
 
 interface OrderItem {
@@ -48,6 +49,10 @@ interface OrderItem {
   discount: number;
   lineTotal: number;
   totalDiscount: number;
+  weightKg: number;
+  originalWeightGrams: number | null;
+  customWeightItem: boolean;
+  customWeightGrams: number | null;
 }
 
 interface Supplier {
@@ -81,6 +86,8 @@ interface OrderData {
     price: number;
     tax: number;
     discount: number;
+    customWeightItem?: boolean | null;
+    customWeight?: number | null;
   }>;
   shippingAmount: number | null;
   shippingCourierName: string | null;
@@ -189,6 +196,12 @@ export default function EditOrderPage() {
             const productResponse = await fetch(`/api/products/${item.productId}`);
             const productData = await productResponse.json();
             const product = productData.success ? productData.data : null;
+            const productWeightGrams =
+              typeof product?.weight === "number" ? product.weight : null;
+            const effectiveWeightGrams =
+              item.customWeightItem && typeof item.customWeight === "number"
+                ? item.customWeight
+                : productWeightGrams;
 
             return {
               id: item.id,
@@ -200,6 +213,11 @@ export default function EditOrderPage() {
               discount: item.discount,
               lineTotal: item.price * item.quantity - item.discount * item.quantity,
               totalDiscount: item.discount * item.quantity,
+              weightKg: effectiveWeightGrams ? effectiveWeightGrams / 1000 : 0,
+              originalWeightGrams: productWeightGrams,
+              customWeightItem: item.customWeightItem === true,
+              customWeightGrams:
+                typeof item.customWeight === "number" ? item.customWeight : null,
             };
           })
         );
@@ -290,6 +308,10 @@ export default function EditOrderPage() {
         discount: 0,
         lineTotal: 0,
         totalDiscount: 0,
+        weightKg: 0,
+        originalWeightGrams: null,
+        customWeightItem: false,
+        customWeightGrams: null,
       },
     ]);
   };
@@ -297,6 +319,40 @@ export default function EditOrderPage() {
   const handleRemoveItem = (itemId: string) => {
     if (items.length > 1) {
       setItems(items.filter((item) => item.id !== itemId));
+    }
+  };
+
+  const gramsToKg = (grams?: number | null) => {
+    if (typeof grams !== "number" || Number.isNaN(grams)) {
+      return 0;
+    }
+    return grams / 1000;
+  };
+
+  const kgToGrams = (kg: number) => {
+    if (Number.isNaN(kg)) {
+      return null;
+    }
+    return Math.round(kg * 1000);
+  };
+
+  const applyCustomWeight = (updatedItem: OrderItem, nextWeightKg: number) => {
+    const nextWeightGrams = kgToGrams(nextWeightKg);
+    updatedItem.weightKg = nextWeightKg;
+
+    if (nextWeightGrams === null) {
+      updatedItem.customWeightItem = false;
+      updatedItem.customWeightGrams = null;
+      return;
+    }
+
+    const originalWeight = updatedItem.originalWeightGrams;
+    if (typeof originalWeight === "number" && nextWeightGrams === originalWeight) {
+      updatedItem.customWeightItem = false;
+      updatedItem.customWeightGrams = null;
+    } else {
+      updatedItem.customWeightItem = true;
+      updatedItem.customWeightGrams = nextWeightGrams;
     }
   };
 
@@ -317,7 +373,17 @@ export default function EditOrderPage() {
               updatedItem.productName = product.name;
               updatedItem.price = product.price;
               updatedItem.tax = product.tax || 0; // Set tax from product
+              const productWeightGrams =
+                typeof product.weight === "number" ? product.weight : null;
+              updatedItem.originalWeightGrams = productWeightGrams;
+              updatedItem.weightKg = gramsToKg(productWeightGrams);
+              updatedItem.customWeightItem = false;
+              updatedItem.customWeightGrams = null;
             }
+          }
+
+          if (field === "weightKg") {
+            applyCustomWeight(updatedItem, Number(value));
           }
 
           // Recalculate line totals whenever product, quantity, price, or discount changes
@@ -408,6 +474,8 @@ export default function EditOrderPage() {
           price: item.price,
           tax: item.tax || 0, // Include tax field
           discount: item.discount,
+          customWeightItem: item.customWeightItem,
+          customWeight: item.customWeightGrams,
         })),
         invoiceOfficeId: selectedInvoiceOfficeId,
         orderDate: invoiceDate || null,
@@ -719,7 +787,7 @@ export default function EditOrderPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
                   <div className="md:col-span-2">
                     <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                       Product <span className="text-red-500">*</span>
@@ -732,11 +800,16 @@ export default function EditOrderPage() {
                       className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">Select a product</option>
-                      {products.map((product) => (
-                        <option key={product.id} value={product.id}>
-                          {product.code} - {product.name} (₹{product.price})
-                        </option>
-                      ))}
+                      {products.map((product) => {
+                        const weightDisplay = product.weight && product.weight > 0
+                          ? ` (${(product.weight / 1000).toFixed(2)} kg)`
+                          : "";
+                        return (
+                          <option key={product.id} value={product.id}>
+                            {product.code} - {product.name}{weightDisplay} (₹{product.price})
+                          </option>
+                        );
+                      })}
                     </Select>
                   </div>
 
@@ -780,6 +853,22 @@ export default function EditOrderPage() {
                       value={item.discount}
                       onChange={(e) =>
                         handleItemChange(item.id, "discount", parseFloat(e.target.value) || 0)
+                      }
+                      className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                      Weight (kg)
+                    </Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={item.weightKg}
+                      onChange={(e) =>
+                        handleItemChange(item.id, "weightKg", parseFloat(e.target.value) || 0)
                       }
                       className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />

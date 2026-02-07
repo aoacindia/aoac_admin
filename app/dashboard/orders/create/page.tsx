@@ -52,6 +52,10 @@ interface OrderItem {
   discount: number;
   lineTotal: number;
   totalDiscount: number;
+  weightKg: number;
+  originalWeightGrams: number | null;
+  customWeightItem: boolean;
+  customWeightGrams: number | null;
 }
 
 interface Supplier {
@@ -102,6 +106,10 @@ export default function CreateOrderPage() {
       discount: 0,
       lineTotal: 0,
       totalDiscount: 0,
+      weightKg: 0,
+      originalWeightGrams: null,
+      customWeightItem: false,
+      customWeightGrams: null,
     },
   ]);
   const [deliveryCharge, setDeliveryCharge] = useState<string>("");
@@ -227,6 +235,10 @@ export default function CreateOrderPage() {
         discount: 0,
         lineTotal: 0,
         totalDiscount: 0,
+        weightKg: 0,
+        originalWeightGrams: null,
+        customWeightItem: false,
+        customWeightGrams: null,
       },
     ]);
   };
@@ -247,6 +259,40 @@ export default function CreateOrderPage() {
     return { taxableAmount, taxAmount };
   };
 
+  const gramsToKg = (grams?: number | null) => {
+    if (typeof grams !== "number" || Number.isNaN(grams)) {
+      return 0;
+    }
+    return grams / 1000;
+  };
+
+  const kgToGrams = (kg: number) => {
+    if (Number.isNaN(kg)) {
+      return null;
+    }
+    return Math.round(kg * 1000);
+  };
+
+  const applyCustomWeight = (updatedItem: OrderItem, nextWeightKg: number) => {
+    const nextWeightGrams = kgToGrams(nextWeightKg);
+    updatedItem.weightKg = nextWeightKg;
+
+    if (nextWeightGrams === null) {
+      updatedItem.customWeightItem = false;
+      updatedItem.customWeightGrams = null;
+      return;
+    }
+
+    const originalWeight = updatedItem.originalWeightGrams;
+    if (typeof originalWeight === "number" && nextWeightGrams === originalWeight) {
+      updatedItem.customWeightItem = false;
+      updatedItem.customWeightGrams = null;
+    } else {
+      updatedItem.customWeightItem = true;
+      updatedItem.customWeightGrams = nextWeightGrams;
+    }
+  };
+
   const handleItemChange = (
     itemId: string,
     field: keyof OrderItem,
@@ -265,11 +311,21 @@ export default function CreateOrderPage() {
               updatedItem.productName = product.name;
               updatedItem.price = product.price;
               updatedItem.tax = product.tax;
+              const productWeightGrams =
+                typeof product.weight === "number" ? product.weight : null;
+              updatedItem.originalWeightGrams = productWeightGrams;
+              updatedItem.weightKg = gramsToKg(productWeightGrams);
+              updatedItem.customWeightItem = false;
+              updatedItem.customWeightGrams = null;
               // Calculate taxable amount and tax amount
               const { taxableAmount, taxAmount } = calculateTaxDetails(product.price, product.tax);
               updatedItem.taxableAmount = taxableAmount;
               updatedItem.taxAmount = taxAmount;
             }
+          }
+
+          if (field === "weightKg") {
+            applyCustomWeight(updatedItem, Number(value));
           }
 
           // Recalculate line totals whenever product, quantity, price, or discount changes
@@ -408,6 +464,8 @@ export default function CreateOrderPage() {
           price: item.price, // Total price with tax included
           tax: item.tax,
           discount: item.discount,
+          customWeightItem: item.customWeightItem,
+          customWeight: item.customWeightGrams,
         })),
         deliveryCharge: deliveryCharge || null,
         deliveryPartner: deliveryPartner || null,
@@ -671,7 +729,7 @@ export default function CreateOrderPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
                   <div className="md:col-span-2">
                     <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                       Product <span className="text-red-500">*</span>
@@ -740,6 +798,22 @@ export default function CreateOrderPage() {
                       value={item.discount}
                       onChange={(e) =>
                         handleItemChange(item.id, "discount", parseFloat(e.target.value) || 0)
+                      }
+                      className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                      Weight (kg)
+                    </Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={item.weightKg}
+                      onChange={(e) =>
+                        handleItemChange(item.id, "weightKg", parseFloat(e.target.value) || 0)
                       }
                       className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />

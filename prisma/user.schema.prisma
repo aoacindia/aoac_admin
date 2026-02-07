@@ -175,6 +175,8 @@ model OrderItem {
   price       Float
   discount    Float    @default(0)
   tax         Int      // Tax percentage
+  customWeightItem Boolean @default(false)
+  customWeight     Float?  // Custom weight in grams when overridden
   
   order       Order    @relation(fields: [orderId], references: [id])
 
