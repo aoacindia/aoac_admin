@@ -36,6 +36,7 @@ model Product {
   images      Json?
   inStock     Boolean    @default(true)
   approved    Boolean
+  webVisible  Boolean    @default(true)
   stockCount  Int?
   vegetable   Boolean    @default(false)
   veg         Boolean    @default(false)

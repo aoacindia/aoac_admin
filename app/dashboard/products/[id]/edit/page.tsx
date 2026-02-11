@@ -33,6 +33,7 @@ interface Product {
   images: any;
   inStock: boolean;
   approved: boolean;
+  webVisible: boolean;
   stockCount: number | null;
   categoryId: string;
   vegetable: boolean;
@@ -87,6 +88,7 @@ export default function EditProductPage() {
     images: "",
     inStock: true,
     approved: false,
+    webVisible: true,
     stockCount: "",
     categoryId: "",
     vegetable: false,
@@ -158,6 +160,7 @@ export default function EditProductPage() {
               : "",
           inStock: product.inStock,
           approved: product.approved,
+          webVisible: product.webVisible ?? true,
           stockCount: product.stockCount?.toString() || "",
           categoryId: product.categoryId,
           vegetable: product.vegetable || false,
@@ -1164,6 +1167,19 @@ export default function EditProductPage() {
                 />
                 <span className="text-sm text-zinc-700 dark:text-zinc-300">
                   Approved
+                </span>
+              </Label>
+
+              <Label className="flex items-center space-x-2 cursor-pointer">
+                <Input
+                  type="checkbox"
+                  name="webVisible"
+                  checked={formData.webVisible}
+                  onChange={handleChange}
+                  className="w-4 h-4 text-blue-600 border-zinc-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                  Web Visible
                 </span>
               </Label>
             </div>

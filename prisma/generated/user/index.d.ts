@@ -8918,6 +8918,7 @@ export namespace Prisma {
     price: number | null
     discount: number | null
     tax: number | null
+    customWeight: number | null
   }
 
   export type OrderItemSumAggregateOutputType = {
@@ -8925,6 +8926,7 @@ export namespace Prisma {
     price: number | null
     discount: number | null
     tax: number | null
+    customWeight: number | null
   }
 
   export type OrderItemMinAggregateOutputType = {
@@ -8935,6 +8937,8 @@ export namespace Prisma {
     price: number | null
     discount: number | null
     tax: number | null
+    customWeightItem: boolean | null
+    customWeight: number | null
   }
 
   export type OrderItemMaxAggregateOutputType = {
@@ -8945,6 +8949,8 @@ export namespace Prisma {
     price: number | null
     discount: number | null
     tax: number | null
+    customWeightItem: boolean | null
+    customWeight: number | null
   }
 
   export type OrderItemCountAggregateOutputType = {
@@ -8955,6 +8961,8 @@ export namespace Prisma {
     price: number
     discount: number
     tax: number
+    customWeightItem: number
+    customWeight: number
     _all: number
   }
 
@@ -8964,6 +8972,7 @@ export namespace Prisma {
     price?: true
     discount?: true
     tax?: true
+    customWeight?: true
   }
 
   export type OrderItemSumAggregateInputType = {
@@ -8971,6 +8980,7 @@ export namespace Prisma {
     price?: true
     discount?: true
     tax?: true
+    customWeight?: true
   }
 
   export type OrderItemMinAggregateInputType = {
@@ -8981,6 +8991,8 @@ export namespace Prisma {
     price?: true
     discount?: true
     tax?: true
+    customWeightItem?: true
+    customWeight?: true
   }
 
   export type OrderItemMaxAggregateInputType = {
@@ -8991,6 +9003,8 @@ export namespace Prisma {
     price?: true
     discount?: true
     tax?: true
+    customWeightItem?: true
+    customWeight?: true
   }
 
   export type OrderItemCountAggregateInputType = {
@@ -9001,6 +9015,8 @@ export namespace Prisma {
     price?: true
     discount?: true
     tax?: true
+    customWeightItem?: true
+    customWeight?: true
     _all?: true
   }
 
@@ -9098,6 +9114,8 @@ export namespace Prisma {
     price: number
     discount: number
     tax: number
+    customWeightItem: boolean
+    customWeight: number | null
     _count: OrderItemCountAggregateOutputType | null
     _avg: OrderItemAvgAggregateOutputType | null
     _sum: OrderItemSumAggregateOutputType | null
@@ -9127,6 +9145,8 @@ export namespace Prisma {
     price?: boolean
     discount?: boolean
     tax?: boolean
+    customWeightItem?: boolean
+    customWeight?: boolean
     order?: boolean | OrderDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["orderItem"]>
 
@@ -9140,9 +9160,11 @@ export namespace Prisma {
     price?: boolean
     discount?: boolean
     tax?: boolean
+    customWeightItem?: boolean
+    customWeight?: boolean
   }
 
-  export type OrderItemOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "orderId" | "productId" | "quantity" | "price" | "discount" | "tax", ExtArgs["result"]["orderItem"]>
+  export type OrderItemOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "orderId" | "productId" | "quantity" | "price" | "discount" | "tax" | "customWeightItem" | "customWeight", ExtArgs["result"]["orderItem"]>
   export type OrderItemInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     order?: boolean | OrderDefaultArgs<ExtArgs>
   }
@@ -9160,6 +9182,8 @@ export namespace Prisma {
       price: number
       discount: number
       tax: number
+      customWeightItem: boolean
+      customWeight: number | null
     }, ExtArgs["result"]["orderItem"]>
     composites: {}
   }
@@ -9537,6 +9561,8 @@ export namespace Prisma {
     readonly price: FieldRef<"OrderItem", 'Float'>
     readonly discount: FieldRef<"OrderItem", 'Float'>
     readonly tax: FieldRef<"OrderItem", 'Int'>
+    readonly customWeightItem: FieldRef<"OrderItem", 'Boolean'>
+    readonly customWeight: FieldRef<"OrderItem", 'Float'>
   }
     
 
@@ -17594,7 +17620,9 @@ export namespace Prisma {
     quantity: 'quantity',
     price: 'price',
     discount: 'discount',
-    tax: 'tax'
+    tax: 'tax',
+    customWeightItem: 'customWeightItem',
+    customWeight: 'customWeight'
   };
 
   export type OrderItemScalarFieldEnum = (typeof OrderItemScalarFieldEnum)[keyof typeof OrderItemScalarFieldEnum]
@@ -18678,6 +18706,8 @@ export namespace Prisma {
     price?: FloatFilter<"OrderItem"> | number
     discount?: FloatFilter<"OrderItem"> | number
     tax?: IntFilter<"OrderItem"> | number
+    customWeightItem?: BoolFilter<"OrderItem"> | boolean
+    customWeight?: FloatNullableFilter<"OrderItem"> | number | null
     order?: XOR<OrderScalarRelationFilter, OrderWhereInput>
   }
 
@@ -18689,6 +18719,8 @@ export namespace Prisma {
     price?: SortOrder
     discount?: SortOrder
     tax?: SortOrder
+    customWeightItem?: SortOrder
+    customWeight?: SortOrderInput | SortOrder
     order?: OrderOrderByWithRelationInput
     _relevance?: OrderItemOrderByRelevanceInput
   }
@@ -18704,6 +18736,8 @@ export namespace Prisma {
     price?: FloatFilter<"OrderItem"> | number
     discount?: FloatFilter<"OrderItem"> | number
     tax?: IntFilter<"OrderItem"> | number
+    customWeightItem?: BoolFilter<"OrderItem"> | boolean
+    customWeight?: FloatNullableFilter<"OrderItem"> | number | null
     order?: XOR<OrderScalarRelationFilter, OrderWhereInput>
   }, "id">
 
@@ -18715,6 +18749,8 @@ export namespace Prisma {
     price?: SortOrder
     discount?: SortOrder
     tax?: SortOrder
+    customWeightItem?: SortOrder
+    customWeight?: SortOrderInput | SortOrder
     _count?: OrderItemCountOrderByAggregateInput
     _avg?: OrderItemAvgOrderByAggregateInput
     _max?: OrderItemMaxOrderByAggregateInput
@@ -18733,6 +18769,8 @@ export namespace Prisma {
     price?: FloatWithAggregatesFilter<"OrderItem"> | number
     discount?: FloatWithAggregatesFilter<"OrderItem"> | number
     tax?: IntWithAggregatesFilter<"OrderItem"> | number
+    customWeightItem?: BoolWithAggregatesFilter<"OrderItem"> | boolean
+    customWeight?: FloatNullableWithAggregatesFilter<"OrderItem"> | number | null
   }
 
   export type PasswordResetWhereInput = {
@@ -20117,6 +20155,8 @@ export namespace Prisma {
     price: number
     discount?: number
     tax: number
+    customWeightItem?: boolean
+    customWeight?: number | null
     order: OrderCreateNestedOneWithoutOrderItemsInput
   }
 
@@ -20128,6 +20168,8 @@ export namespace Prisma {
     price: number
     discount?: number
     tax: number
+    customWeightItem?: boolean
+    customWeight?: number | null
   }
 
   export type OrderItemUpdateInput = {
@@ -20137,6 +20179,8 @@ export namespace Prisma {
     price?: FloatFieldUpdateOperationsInput | number
     discount?: FloatFieldUpdateOperationsInput | number
     tax?: IntFieldUpdateOperationsInput | number
+    customWeightItem?: BoolFieldUpdateOperationsInput | boolean
+    customWeight?: NullableFloatFieldUpdateOperationsInput | number | null
     order?: OrderUpdateOneRequiredWithoutOrderItemsNestedInput
   }
 
@@ -20148,6 +20192,8 @@ export namespace Prisma {
     price?: FloatFieldUpdateOperationsInput | number
     discount?: FloatFieldUpdateOperationsInput | number
     tax?: IntFieldUpdateOperationsInput | number
+    customWeightItem?: BoolFieldUpdateOperationsInput | boolean
+    customWeight?: NullableFloatFieldUpdateOperationsInput | number | null
   }
 
   export type OrderItemCreateManyInput = {
@@ -20158,6 +20204,8 @@ export namespace Prisma {
     price: number
     discount?: number
     tax: number
+    customWeightItem?: boolean
+    customWeight?: number | null
   }
 
   export type OrderItemUpdateManyMutationInput = {
@@ -20167,6 +20215,8 @@ export namespace Prisma {
     price?: FloatFieldUpdateOperationsInput | number
     discount?: FloatFieldUpdateOperationsInput | number
     tax?: IntFieldUpdateOperationsInput | number
+    customWeightItem?: BoolFieldUpdateOperationsInput | boolean
+    customWeight?: NullableFloatFieldUpdateOperationsInput | number | null
   }
 
   export type OrderItemUncheckedUpdateManyInput = {
@@ -20177,6 +20227,8 @@ export namespace Prisma {
     price?: FloatFieldUpdateOperationsInput | number
     discount?: FloatFieldUpdateOperationsInput | number
     tax?: IntFieldUpdateOperationsInput | number
+    customWeightItem?: BoolFieldUpdateOperationsInput | boolean
+    customWeight?: NullableFloatFieldUpdateOperationsInput | number | null
   }
 
   export type PasswordResetCreateInput = {
@@ -21604,6 +21656,8 @@ export namespace Prisma {
     price?: SortOrder
     discount?: SortOrder
     tax?: SortOrder
+    customWeightItem?: SortOrder
+    customWeight?: SortOrder
   }
 
   export type OrderItemAvgOrderByAggregateInput = {
@@ -21611,6 +21665,7 @@ export namespace Prisma {
     price?: SortOrder
     discount?: SortOrder
     tax?: SortOrder
+    customWeight?: SortOrder
   }
 
   export type OrderItemMaxOrderByAggregateInput = {
@@ -21621,6 +21676,8 @@ export namespace Prisma {
     price?: SortOrder
     discount?: SortOrder
     tax?: SortOrder
+    customWeightItem?: SortOrder
+    customWeight?: SortOrder
   }
 
   export type OrderItemMinOrderByAggregateInput = {
@@ -21631,6 +21688,8 @@ export namespace Prisma {
     price?: SortOrder
     discount?: SortOrder
     tax?: SortOrder
+    customWeightItem?: SortOrder
+    customWeight?: SortOrder
   }
 
   export type OrderItemSumOrderByAggregateInput = {
@@ -21638,6 +21697,7 @@ export namespace Prisma {
     price?: SortOrder
     discount?: SortOrder
     tax?: SortOrder
+    customWeight?: SortOrder
   }
 
   export type PasswordResetOrderByRelevanceInput = {
@@ -23883,6 +23943,8 @@ export namespace Prisma {
     price: number
     discount?: number
     tax: number
+    customWeightItem?: boolean
+    customWeight?: number | null
   }
 
   export type OrderItemUncheckedCreateWithoutOrderInput = {
@@ -23892,6 +23954,8 @@ export namespace Prisma {
     price: number
     discount?: number
     tax: number
+    customWeightItem?: boolean
+    customWeight?: number | null
   }
 
   export type OrderItemCreateOrConnectWithoutOrderInput = {
@@ -24082,6 +24146,8 @@ export namespace Prisma {
     price?: FloatFilter<"OrderItem"> | number
     discount?: FloatFilter<"OrderItem"> | number
     tax?: IntFilter<"OrderItem"> | number
+    customWeightItem?: BoolFilter<"OrderItem"> | boolean
+    customWeight?: FloatNullableFilter<"OrderItem"> | number | null
   }
 
   export type AddressUpsertWithoutOrdersInput = {
@@ -25413,6 +25479,8 @@ export namespace Prisma {
     price: number
     discount?: number
     tax: number
+    customWeightItem?: boolean
+    customWeight?: number | null
   }
 
   export type OrderItemUpdateWithoutOrderInput = {
@@ -25422,6 +25490,8 @@ export namespace Prisma {
     price?: FloatFieldUpdateOperationsInput | number
     discount?: FloatFieldUpdateOperationsInput | number
     tax?: IntFieldUpdateOperationsInput | number
+    customWeightItem?: BoolFieldUpdateOperationsInput | boolean
+    customWeight?: NullableFloatFieldUpdateOperationsInput | number | null
   }
 
   export type OrderItemUncheckedUpdateWithoutOrderInput = {
@@ -25431,6 +25501,8 @@ export namespace Prisma {
     price?: FloatFieldUpdateOperationsInput | number
     discount?: FloatFieldUpdateOperationsInput | number
     tax?: IntFieldUpdateOperationsInput | number
+    customWeightItem?: BoolFieldUpdateOperationsInput | boolean
+    customWeight?: NullableFloatFieldUpdateOperationsInput | number | null
   }
 
   export type OrderItemUncheckedUpdateManyWithoutOrderInput = {
@@ -25440,6 +25512,8 @@ export namespace Prisma {
     price?: FloatFieldUpdateOperationsInput | number
     discount?: FloatFieldUpdateOperationsInput | number
     tax?: IntFieldUpdateOperationsInput | number
+    customWeightItem?: BoolFieldUpdateOperationsInput | boolean
+    customWeight?: NullableFloatFieldUpdateOperationsInput | number | null
   }
 
   export type OrderCreateManySupplierInput = {

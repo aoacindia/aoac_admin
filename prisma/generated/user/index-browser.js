@@ -240,7 +240,9 @@ exports.Prisma.OrderItemScalarFieldEnum = {
   quantity: 'quantity',
   price: 'price',
   discount: 'discount',
-  tax: 'tax'
+  tax: 'tax',
+  customWeightItem: 'customWeightItem',
+  customWeight: 'customWeight'
 };
 
 exports.Prisma.PasswordResetScalarFieldEnum = {

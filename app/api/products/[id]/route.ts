@@ -62,6 +62,7 @@ export async function PUT(
       images,
       inStock,
       approved,
+      webVisible,
       stockCount,
       categoryId,
       updatedBy,
@@ -89,6 +90,7 @@ export async function PUT(
     if (images !== undefined) updateData.images = images && typeof images === "string" ? JSON.parse(images) : images || null;
     if (inStock !== undefined) updateData.inStock = inStock;
     if (approved !== undefined) updateData.approved = approved;
+    if (webVisible !== undefined) updateData.webVisible = webVisible;
     if (stockCount !== undefined)
       updateData.stockCount = stockCount ? parseInt(stockCount) : null;
     if (vegetable !== undefined) updateData.vegetable = vegetable;

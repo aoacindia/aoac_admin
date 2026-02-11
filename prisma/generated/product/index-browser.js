@@ -146,6 +146,7 @@ exports.Prisma.ProductScalarFieldEnum = {
   images: 'images',
   inStock: 'inStock',
   approved: 'approved',
+  webVisible: 'webVisible',
   stockCount: 'stockCount',
   vegetable: 'vegetable',
   veg: 'veg',

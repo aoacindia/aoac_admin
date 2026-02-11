@@ -2412,6 +2412,7 @@ export namespace Prisma {
     mainImage: string | null
     inStock: boolean | null
     approved: boolean | null
+    webVisible: boolean | null
     stockCount: number | null
     vegetable: boolean | null
     veg: boolean | null
@@ -2442,6 +2443,7 @@ export namespace Prisma {
     mainImage: string | null
     inStock: boolean | null
     approved: boolean | null
+    webVisible: boolean | null
     stockCount: number | null
     vegetable: boolean | null
     veg: boolean | null
@@ -2473,6 +2475,7 @@ export namespace Prisma {
     images: number
     inStock: number
     approved: number
+    webVisible: number
     stockCount: number
     vegetable: number
     veg: number
@@ -2529,6 +2532,7 @@ export namespace Prisma {
     mainImage?: true
     inStock?: true
     approved?: true
+    webVisible?: true
     stockCount?: true
     vegetable?: true
     veg?: true
@@ -2559,6 +2563,7 @@ export namespace Prisma {
     mainImage?: true
     inStock?: true
     approved?: true
+    webVisible?: true
     stockCount?: true
     vegetable?: true
     veg?: true
@@ -2590,6 +2595,7 @@ export namespace Prisma {
     images?: true
     inStock?: true
     approved?: true
+    webVisible?: true
     stockCount?: true
     vegetable?: true
     veg?: true
@@ -2708,6 +2714,7 @@ export namespace Prisma {
     images: JsonValue | null
     inStock: boolean
     approved: boolean
+    webVisible: boolean
     stockCount: number | null
     vegetable: boolean
     veg: boolean
@@ -2758,6 +2765,7 @@ export namespace Prisma {
     images?: boolean
     inStock?: boolean
     approved?: boolean
+    webVisible?: boolean
     stockCount?: boolean
     vegetable?: boolean
     veg?: boolean
@@ -2796,6 +2804,7 @@ export namespace Prisma {
     images?: boolean
     inStock?: boolean
     approved?: boolean
+    webVisible?: boolean
     stockCount?: boolean
     vegetable?: boolean
     veg?: boolean
@@ -2809,7 +2818,7 @@ export namespace Prisma {
     categoryId?: boolean
   }
 
-  export type ProductOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "code" | "name" | "description" | "price" | "regularPrice" | "length" | "breadth" | "height" | "weight" | "packingWeight" | "tax" | "hsnsac" | "mainImage" | "images" | "inStock" | "approved" | "stockCount" | "vegetable" | "veg" | "frozen" | "createdAt" | "createdBy" | "updatedAt" | "updatedBy" | "approvedAt" | "approvedBy" | "categoryId", ExtArgs["result"]["product"]>
+  export type ProductOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "code" | "name" | "description" | "price" | "regularPrice" | "length" | "breadth" | "height" | "weight" | "packingWeight" | "tax" | "hsnsac" | "mainImage" | "images" | "inStock" | "approved" | "webVisible" | "stockCount" | "vegetable" | "veg" | "frozen" | "createdAt" | "createdBy" | "updatedAt" | "updatedBy" | "approvedAt" | "approvedBy" | "categoryId", ExtArgs["result"]["product"]>
   export type ProductInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     category?: boolean | CategoryDefaultArgs<ExtArgs>
     discountPrices?: boolean | Product$discountPricesArgs<ExtArgs>
@@ -2844,6 +2853,7 @@ export namespace Prisma {
       images: Prisma.JsonValue | null
       inStock: boolean
       approved: boolean
+      webVisible: boolean
       stockCount: number | null
       vegetable: boolean
       veg: boolean
@@ -3245,6 +3255,7 @@ export namespace Prisma {
     readonly images: FieldRef<"Product", 'Json'>
     readonly inStock: FieldRef<"Product", 'Boolean'>
     readonly approved: FieldRef<"Product", 'Boolean'>
+    readonly webVisible: FieldRef<"Product", 'Boolean'>
     readonly stockCount: FieldRef<"Product", 'Int'>
     readonly vegetable: FieldRef<"Product", 'Boolean'>
     readonly veg: FieldRef<"Product", 'Boolean'>
@@ -7654,6 +7665,7 @@ export namespace Prisma {
     images: 'images',
     inStock: 'inStock',
     approved: 'approved',
+    webVisible: 'webVisible',
     stockCount: 'stockCount',
     vegetable: 'vegetable',
     veg: 'veg',
@@ -7948,6 +7960,7 @@ export namespace Prisma {
     images?: JsonNullableFilter<"Product">
     inStock?: BoolFilter<"Product"> | boolean
     approved?: BoolFilter<"Product"> | boolean
+    webVisible?: BoolFilter<"Product"> | boolean
     stockCount?: IntNullableFilter<"Product"> | number | null
     vegetable?: BoolFilter<"Product"> | boolean
     veg?: BoolFilter<"Product"> | boolean
@@ -7983,6 +7996,7 @@ export namespace Prisma {
     images?: SortOrderInput | SortOrder
     inStock?: SortOrder
     approved?: SortOrder
+    webVisible?: SortOrder
     stockCount?: SortOrderInput | SortOrder
     vegetable?: SortOrder
     veg?: SortOrder
@@ -8022,6 +8036,7 @@ export namespace Prisma {
     images?: JsonNullableFilter<"Product">
     inStock?: BoolFilter<"Product"> | boolean
     approved?: BoolFilter<"Product"> | boolean
+    webVisible?: BoolFilter<"Product"> | boolean
     stockCount?: IntNullableFilter<"Product"> | number | null
     vegetable?: BoolFilter<"Product"> | boolean
     veg?: BoolFilter<"Product"> | boolean
@@ -8057,6 +8072,7 @@ export namespace Prisma {
     images?: SortOrderInput | SortOrder
     inStock?: SortOrder
     approved?: SortOrder
+    webVisible?: SortOrder
     stockCount?: SortOrderInput | SortOrder
     vegetable?: SortOrder
     veg?: SortOrder
@@ -8096,6 +8112,7 @@ export namespace Prisma {
     images?: JsonNullableWithAggregatesFilter<"Product">
     inStock?: BoolWithAggregatesFilter<"Product"> | boolean
     approved?: BoolWithAggregatesFilter<"Product"> | boolean
+    webVisible?: BoolWithAggregatesFilter<"Product"> | boolean
     stockCount?: IntNullableWithAggregatesFilter<"Product"> | number | null
     vegetable?: BoolWithAggregatesFilter<"Product"> | boolean
     veg?: BoolWithAggregatesFilter<"Product"> | boolean
@@ -8438,6 +8455,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: boolean
     approved: boolean
+    webVisible?: boolean
     stockCount?: number | null
     vegetable?: boolean
     veg?: boolean
@@ -8472,6 +8490,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: boolean
     approved: boolean
+    webVisible?: boolean
     stockCount?: number | null
     vegetable?: boolean
     veg?: boolean
@@ -8506,6 +8525,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: BoolFieldUpdateOperationsInput | boolean
     approved?: BoolFieldUpdateOperationsInput | boolean
+    webVisible?: BoolFieldUpdateOperationsInput | boolean
     stockCount?: NullableIntFieldUpdateOperationsInput | number | null
     vegetable?: BoolFieldUpdateOperationsInput | boolean
     veg?: BoolFieldUpdateOperationsInput | boolean
@@ -8540,6 +8560,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: BoolFieldUpdateOperationsInput | boolean
     approved?: BoolFieldUpdateOperationsInput | boolean
+    webVisible?: BoolFieldUpdateOperationsInput | boolean
     stockCount?: NullableIntFieldUpdateOperationsInput | number | null
     vegetable?: BoolFieldUpdateOperationsInput | boolean
     veg?: BoolFieldUpdateOperationsInput | boolean
@@ -8574,6 +8595,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: boolean
     approved: boolean
+    webVisible?: boolean
     stockCount?: number | null
     vegetable?: boolean
     veg?: boolean
@@ -8605,6 +8627,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: BoolFieldUpdateOperationsInput | boolean
     approved?: BoolFieldUpdateOperationsInput | boolean
+    webVisible?: BoolFieldUpdateOperationsInput | boolean
     stockCount?: NullableIntFieldUpdateOperationsInput | number | null
     vegetable?: BoolFieldUpdateOperationsInput | boolean
     veg?: BoolFieldUpdateOperationsInput | boolean
@@ -8635,6 +8658,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: BoolFieldUpdateOperationsInput | boolean
     approved?: BoolFieldUpdateOperationsInput | boolean
+    webVisible?: BoolFieldUpdateOperationsInput | boolean
     stockCount?: NullableIntFieldUpdateOperationsInput | number | null
     vegetable?: BoolFieldUpdateOperationsInput | boolean
     veg?: BoolFieldUpdateOperationsInput | boolean
@@ -9159,6 +9183,7 @@ export namespace Prisma {
     images?: SortOrder
     inStock?: SortOrder
     approved?: SortOrder
+    webVisible?: SortOrder
     stockCount?: SortOrder
     vegetable?: SortOrder
     veg?: SortOrder
@@ -9201,6 +9226,7 @@ export namespace Prisma {
     mainImage?: SortOrder
     inStock?: SortOrder
     approved?: SortOrder
+    webVisible?: SortOrder
     stockCount?: SortOrder
     vegetable?: SortOrder
     veg?: SortOrder
@@ -9231,6 +9257,7 @@ export namespace Prisma {
     mainImage?: SortOrder
     inStock?: SortOrder
     approved?: SortOrder
+    webVisible?: SortOrder
     stockCount?: SortOrder
     vegetable?: SortOrder
     veg?: SortOrder
@@ -10230,6 +10257,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: boolean
     approved: boolean
+    webVisible?: boolean
     stockCount?: number | null
     vegetable?: boolean
     veg?: boolean
@@ -10263,6 +10291,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: boolean
     approved: boolean
+    webVisible?: boolean
     stockCount?: number | null
     vegetable?: boolean
     veg?: boolean
@@ -10351,6 +10380,7 @@ export namespace Prisma {
     images?: JsonNullableFilter<"Product">
     inStock?: BoolFilter<"Product"> | boolean
     approved?: BoolFilter<"Product"> | boolean
+    webVisible?: BoolFilter<"Product"> | boolean
     stockCount?: IntNullableFilter<"Product"> | number | null
     vegetable?: BoolFilter<"Product"> | boolean
     veg?: BoolFilter<"Product"> | boolean
@@ -10709,6 +10739,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: boolean
     approved: boolean
+    webVisible?: boolean
     stockCount?: number | null
     vegetable?: boolean
     veg?: boolean
@@ -10742,6 +10773,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: boolean
     approved: boolean
+    webVisible?: boolean
     stockCount?: number | null
     vegetable?: boolean
     veg?: boolean
@@ -10812,6 +10844,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: BoolFieldUpdateOperationsInput | boolean
     approved?: BoolFieldUpdateOperationsInput | boolean
+    webVisible?: BoolFieldUpdateOperationsInput | boolean
     stockCount?: NullableIntFieldUpdateOperationsInput | number | null
     vegetable?: BoolFieldUpdateOperationsInput | boolean
     veg?: BoolFieldUpdateOperationsInput | boolean
@@ -10845,6 +10878,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: BoolFieldUpdateOperationsInput | boolean
     approved?: BoolFieldUpdateOperationsInput | boolean
+    webVisible?: BoolFieldUpdateOperationsInput | boolean
     stockCount?: NullableIntFieldUpdateOperationsInput | number | null
     vegetable?: BoolFieldUpdateOperationsInput | boolean
     veg?: BoolFieldUpdateOperationsInput | boolean
@@ -10905,6 +10939,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: boolean
     approved: boolean
+    webVisible?: boolean
     stockCount?: number | null
     vegetable?: boolean
     veg?: boolean
@@ -10938,6 +10973,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: boolean
     approved: boolean
+    webVisible?: boolean
     stockCount?: number | null
     vegetable?: boolean
     veg?: boolean
@@ -10987,6 +11023,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: BoolFieldUpdateOperationsInput | boolean
     approved?: BoolFieldUpdateOperationsInput | boolean
+    webVisible?: BoolFieldUpdateOperationsInput | boolean
     stockCount?: NullableIntFieldUpdateOperationsInput | number | null
     vegetable?: BoolFieldUpdateOperationsInput | boolean
     veg?: BoolFieldUpdateOperationsInput | boolean
@@ -11020,6 +11057,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: BoolFieldUpdateOperationsInput | boolean
     approved?: BoolFieldUpdateOperationsInput | boolean
+    webVisible?: BoolFieldUpdateOperationsInput | boolean
     stockCount?: NullableIntFieldUpdateOperationsInput | number | null
     vegetable?: BoolFieldUpdateOperationsInput | boolean
     veg?: BoolFieldUpdateOperationsInput | boolean
@@ -11053,6 +11091,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: boolean
     approved: boolean
+    webVisible?: boolean
     stockCount?: number | null
     vegetable?: boolean
     veg?: boolean
@@ -11086,6 +11125,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: boolean
     approved: boolean
+    webVisible?: boolean
     stockCount?: number | null
     vegetable?: boolean
     veg?: boolean
@@ -11135,6 +11175,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: BoolFieldUpdateOperationsInput | boolean
     approved?: BoolFieldUpdateOperationsInput | boolean
+    webVisible?: BoolFieldUpdateOperationsInput | boolean
     stockCount?: NullableIntFieldUpdateOperationsInput | number | null
     vegetable?: BoolFieldUpdateOperationsInput | boolean
     veg?: BoolFieldUpdateOperationsInput | boolean
@@ -11168,6 +11209,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: BoolFieldUpdateOperationsInput | boolean
     approved?: BoolFieldUpdateOperationsInput | boolean
+    webVisible?: BoolFieldUpdateOperationsInput | boolean
     stockCount?: NullableIntFieldUpdateOperationsInput | number | null
     vegetable?: BoolFieldUpdateOperationsInput | boolean
     veg?: BoolFieldUpdateOperationsInput | boolean
@@ -11201,6 +11243,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: boolean
     approved: boolean
+    webVisible?: boolean
     stockCount?: number | null
     vegetable?: boolean
     veg?: boolean
@@ -11238,6 +11281,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: BoolFieldUpdateOperationsInput | boolean
     approved?: BoolFieldUpdateOperationsInput | boolean
+    webVisible?: BoolFieldUpdateOperationsInput | boolean
     stockCount?: NullableIntFieldUpdateOperationsInput | number | null
     vegetable?: BoolFieldUpdateOperationsInput | boolean
     veg?: BoolFieldUpdateOperationsInput | boolean
@@ -11271,6 +11315,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: BoolFieldUpdateOperationsInput | boolean
     approved?: BoolFieldUpdateOperationsInput | boolean
+    webVisible?: BoolFieldUpdateOperationsInput | boolean
     stockCount?: NullableIntFieldUpdateOperationsInput | number | null
     vegetable?: BoolFieldUpdateOperationsInput | boolean
     veg?: BoolFieldUpdateOperationsInput | boolean
@@ -11304,6 +11349,7 @@ export namespace Prisma {
     images?: NullableJsonNullValueInput | InputJsonValue
     inStock?: BoolFieldUpdateOperationsInput | boolean
     approved?: BoolFieldUpdateOperationsInput | boolean
+    webVisible?: BoolFieldUpdateOperationsInput | boolean
     stockCount?: NullableIntFieldUpdateOperationsInput | number | null
     vegetable?: BoolFieldUpdateOperationsInput | boolean
     veg?: BoolFieldUpdateOperationsInput | boolean
