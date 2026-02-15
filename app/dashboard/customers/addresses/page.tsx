@@ -45,11 +45,15 @@ export default function AddressesPage() {
   const [showPopup, setShowPopup] = useState(false);
   const [showEditPopup, setShowEditPopup] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [billingAddress, setBillingAddress] = useState<any>(null);
   const [loadingBillingAddress, setLoadingBillingAddress] = useState(false);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState("");
+  const [customerSearchResults, setCustomerSearchResults] = useState<User[]>([]);
+  const [customerSearchHasRun, setCustomerSearchHasRun] = useState(false);
+  const [searchingCustomers, setSearchingCustomers] = useState(false);
+  const [customerSearchError, setCustomerSearchError] = useState<string | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<User | null>(null);
 
   // Search filters
   const [searchFilters, setSearchFilters] = useState({
@@ -80,7 +84,6 @@ export default function AddressesPage() {
 
   useEffect(() => {
     fetchAddresses();
-    fetchUsers();
   }, []);
 
   const fetchAddresses = async () => {
@@ -110,22 +113,6 @@ export default function AddressesPage() {
       setError(err.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      setLoadingUsers(true);
-      const response = await fetch("/api/customers");
-      const data = await response.json();
-
-      if (data.success) {
-        setUsers(data.data);
-      }
-    } catch (err: any) {
-      console.error("Error fetching users:", err);
-    } finally {
-      setLoadingUsers(false);
     }
   };
 
@@ -166,6 +153,11 @@ export default function AddressesPage() {
       isDefault: false,
     });
     setBillingAddress(null);
+    setCustomerSearchQuery("");
+    setCustomerSearchResults([]);
+    setCustomerSearchHasRun(false);
+    setCustomerSearchError(null);
+    setSelectedCustomer(null);
   };
 
   const handleClosePopup = () => {
@@ -240,22 +232,63 @@ export default function AddressesPage() {
     }));
   };
 
-  const handleUserSelect = async (userId: string) => {
-    const selectedUser = users.find((u) => u.id === userId);
-    if (selectedUser) {
-      setFormData((prev) => ({
-        ...prev,
-        userId,
-        name: selectedUser.name,
-        phone: selectedUser.phone,
-      }));
+  const handleUserSelect = async (user: User) => {
+    setSelectedCustomer(user);
+    setFormData((prev) => ({
+      ...prev,
+      userId: user.id,
+      name: user.name,
+      phone: user.phone,
+    }));
+    setCustomerSearchQuery(
+      user.isBusinessAccount && user.businessName
+        ? `${user.businessName} (${user.name})`
+        : user.name
+    );
+    setCustomerSearchResults([]);
+    setCustomerSearchHasRun(false);
+    setCustomerSearchError(null);
 
-      // Fetch billing address if it's a business account
-      if (selectedUser.isBusinessAccount) {
-        await fetchBillingAddress(userId);
+    // Fetch billing address if it's a business account
+    if (user.isBusinessAccount) {
+      await fetchBillingAddress(user.id);
+    } else {
+      setBillingAddress(null);
+    }
+  };
+
+  const handleCustomerSearch = async () => {
+    const query = customerSearchQuery.trim();
+    setCustomerSearchHasRun(true);
+    setCustomerSearchError(null);
+
+    if (!query) {
+      setCustomerSearchResults([]);
+      return;
+    }
+
+    try {
+      setSearchingCustomers(true);
+      const params = new URLSearchParams({
+        search: query,
+        searchMode: "prefix",
+        page: "1",
+        limit: "50",
+      });
+      const response = await fetch(`/api/customers?${params.toString()}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setCustomerSearchResults(data.data || []);
       } else {
-        setBillingAddress(null);
+        setCustomerSearchResults([]);
+        setCustomerSearchError(data.error || "Unable to search customers.");
       }
+    } catch (err: any) {
+      setCustomerSearchResults([]);
+      setCustomerSearchError(err.message || "Unable to search customers.");
+    } finally {
+      setSearchingCustomers(false);
     }
   };
 
@@ -559,32 +592,76 @@ export default function AddressesPage() {
           panelClassName="max-h-[90vh] overflow-y-auto"
         >
           <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Customer Selection */}
+              {/* Customer Search */}
               <div>
                 <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                   Select Customer <span className="text-red-500">*</span>
                 </Label>
-                {loadingUsers ? (
-                  <p className="text-zinc-600 dark:text-zinc-400">Loading customers...</p>
-                ) : (
-                  <Select
-                    name="userId"
-                    value={formData.userId}
-                    onChange={(e) => handleUserSelect(e.target.value)}
-                    required
-                    className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select a customer</option>
-                    {users.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.isBusinessAccount && user.businessName
-                          ? `${user.businessName} (${user.name})`
-                          : user.name}{" "}
-                        - {user.email}
-                      </option>
-                    ))}
-                  </Select>
-                )}
+                <div className="space-y-3">
+                  <div className="flex flex-col md:flex-row gap-3">
+                    <Input
+                      type="text"
+                      placeholder="Search by customer or business name"
+                      value={customerSearchQuery}
+                      onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                      className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleCustomerSearch}
+                      disabled={searchingCustomers}
+                      className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {searchingCustomers ? "Searching..." : "Search"}
+                    </Button>
+                  </div>
+
+                  {customerSearchError && (
+                    <p className="text-sm text-red-600 dark:text-red-400">
+                      {customerSearchError}
+                    </p>
+                  )}
+
+                  {customerSearchHasRun &&
+                    !searchingCustomers &&
+                    customerSearchResults.length === 0 &&
+                    !customerSearchError && (
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                        No matching customers found.
+                      </p>
+                    )}
+
+                  {customerSearchResults.length > 0 && (
+                    <div className="max-h-56 overflow-y-auto border border-zinc-200 dark:border-zinc-700 rounded-lg divide-y divide-zinc-200 dark:divide-zinc-700">
+                      {customerSearchResults.map((user) => (
+                        <button
+                          type="button"
+                          key={user.id}
+                          onClick={() => handleUserSelect(user)}
+                          className="w-full text-left px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                        >
+                          <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                            {user.isBusinessAccount && user.businessName
+                              ? `${user.businessName} (${user.name})`
+                              : user.name}
+                          </div>
+                          <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                            {user.email}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {selectedCustomer && (
+                    <p className="text-sm text-emerald-600 dark:text-emerald-400">
+                      Selected customer:{" "}
+                      {selectedCustomer.isBusinessAccount && selectedCustomer.businessName
+                        ? `${selectedCustomer.businessName} (${selectedCustomer.name})`
+                        : selectedCustomer.name}
+                    </p>
+                  )}
+                </div>
                 {/* Billing Address Copy Option */}
                 {formData.userId && (
                   <div className="mt-3">
@@ -620,7 +697,7 @@ export default function AddressesPage() {
                       </div>
                     ) : (
                       <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                        {users.find((u) => u.id === formData.userId)?.isBusinessAccount
+                        {selectedCustomer?.isBusinessAccount
                           ? "No billing address found for this business"
                           : ""}
                       </p>

@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
+    const searchMode = searchParams.get("searchMode");
     const suspended = searchParams.get("suspended");
     const terminated = searchParams.get("terminated");
     const page = Number(searchParams.get("page") || "1");
@@ -16,14 +17,23 @@ export async function GET(request: NextRequest) {
 
     const where: any = {};
 
-    if (search) {
-      where.OR = [
-        { name: { contains: search } },
-        { email: { contains: search } },
-        { phone: { contains: search } },
-        { businessName: { contains: search } },
-        { gstNumber: { contains: search } },
-      ];
+    const searchTerm = search?.trim();
+
+    if (searchTerm) {
+      if (searchMode === "prefix") {
+        where.OR = [
+          { name: { startsWith: searchTerm } },
+          { businessName: { startsWith: searchTerm } },
+        ];
+      } else {
+        where.OR = [
+          { name: { contains: searchTerm } },
+          { email: { contains: searchTerm } },
+          { phone: { contains: searchTerm } },
+          { businessName: { contains: searchTerm } },
+          { gstNumber: { contains: searchTerm } },
+        ];
+      }
     }
 
     if (suspended !== null) {
