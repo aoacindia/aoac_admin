@@ -837,8 +837,10 @@ export default function EditOrderPage() {
                       type="number"
                       step="0.01"
                       value={item.price}
-                      disabled
-                      className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 cursor-not-allowed"
+                      onChange={(e) =>
+                        handleItemChange(item.id, "price", parseFloat(e.target.value) || 0)
+                      }
+                      className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
 
