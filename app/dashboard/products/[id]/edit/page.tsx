@@ -15,6 +15,11 @@ interface Category {
   name: string;
 }
 
+interface Nutrition {
+  name: string;
+  grams: string;
+}
+
 interface Product {
   id: string;
   code: string;
@@ -39,6 +44,7 @@ interface Product {
   vegetable: boolean;
   veg: boolean;
   frozen: boolean;
+  nutrition?: Array<{ name: string; grams: number }>;
 }
 
 export default function EditProductPage() {
@@ -57,6 +63,9 @@ export default function EditProductPage() {
   const [uploadingAdditionalImages, setUploadingAdditionalImages] = useState(false);
   const [mainImageProgress, setMainImageProgress] = useState({ status: "", progress: 0 });
   const [additionalImagesProgress, setAdditionalImagesProgress] = useState<{ [key: number]: { status: string; progress: number } }>({});
+  const [nutritionValues, setNutritionValues] = useState<Nutrition[]>([
+    { name: "", grams: "" },
+  ]);
   
   // Crop modal state
   const [cropModalOpen, setCropModalOpen] = useState(false);
@@ -167,6 +176,18 @@ export default function EditProductPage() {
           veg: product.veg || false,
           frozen: product.frozen || false,
         });
+
+        const nutritionList = Array.isArray(product.nutrition)
+          ? product.nutrition
+          : [];
+        setNutritionValues(
+          nutritionList.length > 0
+            ? nutritionList.map((item) => ({
+                name: item.name,
+                grams: item.grams.toString(),
+              }))
+            : [{ name: "", grams: "" }]
+        );
         
         // Set existing images for preview
         if (product.mainImage) {
@@ -642,6 +663,23 @@ export default function EditProductPage() {
     });
   };
 
+  // Nutrition handlers
+  const addNutritionLine = () => {
+    setNutritionValues((prev) => [...prev, { name: "", grams: "" }]);
+  };
+
+  const removeNutritionLine = (index: number) => {
+    if (nutritionValues.length > 1) {
+      setNutritionValues((prev) => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateNutritionValue = (index: number, field: keyof Nutrition, value: string) => {
+    setNutritionValues((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -662,6 +700,10 @@ export default function EditProductPage() {
         }
       }
 
+      const validNutrition = nutritionValues.filter(
+        (n) => n.name.trim() !== "" && n.grams.trim() !== ""
+      );
+
       const response = await fetch(`/api/products/${params.id}`, {
         method: "PUT",
         headers: {
@@ -671,6 +713,10 @@ export default function EditProductPage() {
           ...formData,
           mainImage: mainImageUrl || formData.mainImage || null,
           images: imagesArray,
+          nutrition: validNutrition.map((n) => ({
+            name: n.name,
+            grams: parseFloat(n.grams) || 0,
+          })),
           updatedBy: "4568",
         }),
       });
@@ -1139,6 +1185,68 @@ export default function EditProductPage() {
               rows={4}
               className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
+          </div>
+
+          {/* Nutrition Section */}
+          <div className="border-t border-zinc-200 dark:border-zinc-700 pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-zinc-700 dark:text-zinc-300">
+                Nutrition Information
+              </h3>
+              <Button
+                type="button"
+                onClick={addNutritionLine}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
+              >
+                Add More
+              </Button>
+            </div>
+            <div className="space-y-4">
+              {nutritionValues.map((nutrition, index) => (
+                <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                  <div className="md:col-span-5">
+                    <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                      Nutrition Name
+                    </Label>
+                    <Input
+                      type="text"
+                      value={nutrition.name}
+                      onChange={(e) =>
+                        updateNutritionValue(index, "name", e.target.value)
+                      }
+                      placeholder="e.g., Protein, Carbohydrates"
+                      className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div className="md:col-span-5">
+                    <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                      Grams
+                    </Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={nutrition.grams}
+                      onChange={(e) =>
+                        updateNutritionValue(index, "grams", e.target.value)
+                      }
+                      placeholder="0.00"
+                      className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    {nutritionValues.length > 1 && (
+                      <Button
+                        type="button"
+                        onClick={() => removeNutritionLine(index)}
+                        className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm"
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Checkboxes */}

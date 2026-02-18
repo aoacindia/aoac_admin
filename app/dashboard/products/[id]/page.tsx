@@ -191,7 +191,7 @@ export default function ViewProductPage() {
                   <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
                     Description:
                   </span>
-                  <p className="text-zinc-900 dark:text-zinc-100">
+                  <p className="text-zinc-900 dark:text-zinc-100 whitespace-pre-wrap">
                     {product.description}
                   </p>
                 </div>

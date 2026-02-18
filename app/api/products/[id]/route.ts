@@ -18,6 +18,7 @@ export async function GET(
             discount: true,
           },
         },
+        nutrition: true,
       },
     });
 
@@ -69,6 +70,7 @@ export async function PUT(
       vegetable,
       veg,
       frozen,
+      nutrition,
     } = body;
 
     const updateData: any = {};
@@ -98,6 +100,23 @@ export async function PUT(
     if (frozen !== undefined) updateData.frozen = frozen;
     if (categoryId !== undefined) updateData.categoryId = categoryId;
     if (updatedBy !== undefined) updateData.updatedBy = updatedBy || "4568";
+    if (nutrition !== undefined) {
+      const nutritionData = Array.isArray(nutrition)
+        ? nutrition.filter((n: any) => n?.name && n?.grams !== undefined)
+        : [];
+
+      updateData.nutrition = {
+        deleteMany: {},
+        ...(nutritionData.length > 0
+          ? {
+              create: nutritionData.map((n: any) => ({
+                name: n.name,
+                grams: parseFloat(n.grams) || 0,
+              })),
+            }
+          : {}),
+      };
+    }
 
     const product = await productPrisma.product.update({
       where: { id },

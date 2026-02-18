@@ -22,7 +22,7 @@ model Product {
   id          String     @id @default(cuid())
   code        String     @unique
   name        String
-  description String?
+  description String?  @db.Text
   price       Float
   regularPrice Float?
   length      Float?
