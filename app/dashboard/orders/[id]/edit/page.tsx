@@ -757,13 +757,6 @@ export default function EditOrderPage() {
             <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
               Items
             </h2>
-            <Button
-              type="button"
-              onClick={handleAddItem}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Add Item
-            </Button>
           </div>
 
           <div className="space-y-4">
@@ -897,6 +890,15 @@ export default function EditOrderPage() {
                 </div>
               </div>
             ))}
+          </div>
+          <div className="mt-4 flex justify-end">
+            <Button
+              type="button"
+              onClick={handleAddItem}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Add Item
+            </Button>
           </div>
         </div>
 

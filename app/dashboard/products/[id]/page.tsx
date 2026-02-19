@@ -36,6 +36,7 @@ interface Product {
   updatedBy: string;
   approvedAt: string | null;
   approvedBy: string | null;
+  nutrition?: Array<{ name: string; grams: number }>;
 }
 
 export default function ViewProductPage() {
@@ -408,6 +409,27 @@ export default function ViewProductPage() {
               </div>
             </div>
           </div>
+
+          {/* Nutrition Information */}
+          {product.nutrition && product.nutrition.length > 0 && (
+            <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md border border-zinc-200 dark:border-zinc-800 p-4 md:p-6">
+              <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
+                Nutrition
+              </h2>
+              <div className="grid grid-cols-2 gap-3">
+                {product.nutrition.map((item, index) => (
+                  <div key={`${item.name}-${index}`}>
+                    <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                      {item.name}:
+                    </span>
+                    <p className="text-zinc-900 dark:text-zinc-100">
+                      {item.grams} g
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Audit Information */}
           <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md border border-zinc-200 dark:border-zinc-800 p-4 md:p-6">

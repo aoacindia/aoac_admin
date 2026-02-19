@@ -123,6 +123,7 @@ export async function PUT(
       data: updateData,
       include: {
         category: true,
+        nutrition: true,
       },
     });
 

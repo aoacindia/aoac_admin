@@ -1223,6 +1223,7 @@ export async function generateInvoicePDF(
       const taxableAmount = grossAmount / taxDivisor;
       const taxAmount = grossAmount - taxableAmount;
       const total = taxableAmount + taxAmount;
+      const taxablePerUnit = qty > 0 ? taxableAmount / qty : 0;
 
       subtotal += taxableAmount;
       totalDiscount += discount;
@@ -1252,7 +1253,7 @@ export async function generateInvoicePDF(
         wrapText(itemDisplayName, widths[1] - 6, ctx.font, BODY_FONT_SIZE),
         wrapText(item.hsnsac || '-', widths[2] - 6, ctx.font, BODY_FONT_SIZE),
         wrapText(String(qty), widths[3] - 6, ctx.font, BODY_FONT_SIZE),
-        wrapText(formatAmount(rate), widths[4] - 6, ctx.font, BODY_FONT_SIZE),
+        wrapText(formatAmount(taxablePerUnit), widths[4] - 6, ctx.font, BODY_FONT_SIZE),
         wrapText(formatAmount(taxableAmount), widths[5] - 6, ctx.font, BODY_FONT_SIZE),
         ...taxCells,
         wrapText(formatAmount(discount), widths[widths.length - 2] - 6, ctx.font, BODY_FONT_SIZE),
