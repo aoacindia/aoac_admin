@@ -255,10 +255,9 @@ exports.Prisma.PasswordResetScalarFieldEnum = {
 
 exports.Prisma.ContactScalarFieldEnum = {
   id: 'id',
-  firstName: 'firstName',
-  lastName: 'lastName',
+  name: 'name',
   email: 'email',
-  phoneNumber: 'phoneNumber',
+  subject: 'subject',
   message: 'message',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -432,10 +431,9 @@ exports.Prisma.PasswordResetOrderByRelevanceFieldEnum = {
 
 exports.Prisma.ContactOrderByRelevanceFieldEnum = {
   id: 'id',
-  firstName: 'firstName',
-  lastName: 'lastName',
+  name: 'name',
   email: 'email',
-  phoneNumber: 'phoneNumber',
+  subject: 'subject',
   message: 'message'
 };
 

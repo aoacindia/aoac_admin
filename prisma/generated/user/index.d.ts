@@ -10865,10 +10865,9 @@ export namespace Prisma {
 
   export type ContactMinAggregateOutputType = {
     id: string | null
-    firstName: string | null
-    lastName: string | null
+    name: string | null
     email: string | null
-    phoneNumber: string | null
+    subject: string | null
     message: string | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -10876,10 +10875,9 @@ export namespace Prisma {
 
   export type ContactMaxAggregateOutputType = {
     id: string | null
-    firstName: string | null
-    lastName: string | null
+    name: string | null
     email: string | null
-    phoneNumber: string | null
+    subject: string | null
     message: string | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -10887,10 +10885,9 @@ export namespace Prisma {
 
   export type ContactCountAggregateOutputType = {
     id: number
-    firstName: number
-    lastName: number
+    name: number
     email: number
-    phoneNumber: number
+    subject: number
     message: number
     createdAt: number
     updatedAt: number
@@ -10900,10 +10897,9 @@ export namespace Prisma {
 
   export type ContactMinAggregateInputType = {
     id?: true
-    firstName?: true
-    lastName?: true
+    name?: true
     email?: true
-    phoneNumber?: true
+    subject?: true
     message?: true
     createdAt?: true
     updatedAt?: true
@@ -10911,10 +10907,9 @@ export namespace Prisma {
 
   export type ContactMaxAggregateInputType = {
     id?: true
-    firstName?: true
-    lastName?: true
+    name?: true
     email?: true
-    phoneNumber?: true
+    subject?: true
     message?: true
     createdAt?: true
     updatedAt?: true
@@ -10922,10 +10917,9 @@ export namespace Prisma {
 
   export type ContactCountAggregateInputType = {
     id?: true
-    firstName?: true
-    lastName?: true
+    name?: true
     email?: true
-    phoneNumber?: true
+    subject?: true
     message?: true
     createdAt?: true
     updatedAt?: true
@@ -11006,10 +11000,9 @@ export namespace Prisma {
 
   export type ContactGroupByOutputType = {
     id: string
-    firstName: string
-    lastName: string
+    name: string
     email: string
-    phoneNumber: string
+    subject: string
     message: string
     createdAt: Date
     updatedAt: Date
@@ -11034,10 +11027,9 @@ export namespace Prisma {
 
   export type ContactSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
-    firstName?: boolean
-    lastName?: boolean
+    name?: boolean
     email?: boolean
-    phoneNumber?: boolean
+    subject?: boolean
     message?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -11047,26 +11039,24 @@ export namespace Prisma {
 
   export type ContactSelectScalar = {
     id?: boolean
-    firstName?: boolean
-    lastName?: boolean
+    name?: boolean
     email?: boolean
-    phoneNumber?: boolean
+    subject?: boolean
     message?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type ContactOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "firstName" | "lastName" | "email" | "phoneNumber" | "message" | "createdAt" | "updatedAt", ExtArgs["result"]["contact"]>
+  export type ContactOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "email" | "subject" | "message" | "createdAt" | "updatedAt", ExtArgs["result"]["contact"]>
 
   export type $ContactPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "Contact"
     objects: {}
     scalars: $Extensions.GetPayloadResult<{
       id: string
-      firstName: string
-      lastName: string
+      name: string
       email: string
-      phoneNumber: string
+      subject: string
       message: string
       createdAt: Date
       updatedAt: Date
@@ -11440,10 +11430,9 @@ export namespace Prisma {
    */
   interface ContactFieldRefs {
     readonly id: FieldRef<"Contact", 'String'>
-    readonly firstName: FieldRef<"Contact", 'String'>
-    readonly lastName: FieldRef<"Contact", 'String'>
+    readonly name: FieldRef<"Contact", 'String'>
     readonly email: FieldRef<"Contact", 'String'>
-    readonly phoneNumber: FieldRef<"Contact", 'String'>
+    readonly subject: FieldRef<"Contact", 'String'>
     readonly message: FieldRef<"Contact", 'String'>
     readonly createdAt: FieldRef<"Contact", 'DateTime'>
     readonly updatedAt: FieldRef<"Contact", 'DateTime'>
@@ -17641,10 +17630,9 @@ export namespace Prisma {
 
   export const ContactScalarFieldEnum: {
     id: 'id',
-    firstName: 'firstName',
-    lastName: 'lastName',
+    name: 'name',
     email: 'email',
-    phoneNumber: 'phoneNumber',
+    subject: 'subject',
     message: 'message',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
@@ -17869,10 +17857,9 @@ export namespace Prisma {
 
   export const ContactOrderByRelevanceFieldEnum: {
     id: 'id',
-    firstName: 'firstName',
-    lastName: 'lastName',
+    name: 'name',
     email: 'email',
-    phoneNumber: 'phoneNumber',
+    subject: 'subject',
     message: 'message'
   };
 
@@ -18834,10 +18821,9 @@ export namespace Prisma {
     OR?: ContactWhereInput[]
     NOT?: ContactWhereInput | ContactWhereInput[]
     id?: StringFilter<"Contact"> | string
-    firstName?: StringFilter<"Contact"> | string
-    lastName?: StringFilter<"Contact"> | string
+    name?: StringFilter<"Contact"> | string
     email?: StringFilter<"Contact"> | string
-    phoneNumber?: StringFilter<"Contact"> | string
+    subject?: StringFilter<"Contact"> | string
     message?: StringFilter<"Contact"> | string
     createdAt?: DateTimeFilter<"Contact"> | Date | string
     updatedAt?: DateTimeFilter<"Contact"> | Date | string
@@ -18845,10 +18831,9 @@ export namespace Prisma {
 
   export type ContactOrderByWithRelationInput = {
     id?: SortOrder
-    firstName?: SortOrder
-    lastName?: SortOrder
+    name?: SortOrder
     email?: SortOrder
-    phoneNumber?: SortOrder
+    subject?: SortOrder
     message?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -18860,10 +18845,9 @@ export namespace Prisma {
     AND?: ContactWhereInput | ContactWhereInput[]
     OR?: ContactWhereInput[]
     NOT?: ContactWhereInput | ContactWhereInput[]
-    firstName?: StringFilter<"Contact"> | string
-    lastName?: StringFilter<"Contact"> | string
+    name?: StringFilter<"Contact"> | string
     email?: StringFilter<"Contact"> | string
-    phoneNumber?: StringFilter<"Contact"> | string
+    subject?: StringFilter<"Contact"> | string
     message?: StringFilter<"Contact"> | string
     createdAt?: DateTimeFilter<"Contact"> | Date | string
     updatedAt?: DateTimeFilter<"Contact"> | Date | string
@@ -18871,10 +18855,9 @@ export namespace Prisma {
 
   export type ContactOrderByWithAggregationInput = {
     id?: SortOrder
-    firstName?: SortOrder
-    lastName?: SortOrder
+    name?: SortOrder
     email?: SortOrder
-    phoneNumber?: SortOrder
+    subject?: SortOrder
     message?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -18888,10 +18871,9 @@ export namespace Prisma {
     OR?: ContactScalarWhereWithAggregatesInput[]
     NOT?: ContactScalarWhereWithAggregatesInput | ContactScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"Contact"> | string
-    firstName?: StringWithAggregatesFilter<"Contact"> | string
-    lastName?: StringWithAggregatesFilter<"Contact"> | string
+    name?: StringWithAggregatesFilter<"Contact"> | string
     email?: StringWithAggregatesFilter<"Contact"> | string
-    phoneNumber?: StringWithAggregatesFilter<"Contact"> | string
+    subject?: StringWithAggregatesFilter<"Contact"> | string
     message?: StringWithAggregatesFilter<"Contact"> | string
     createdAt?: DateTimeWithAggregatesFilter<"Contact"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Contact"> | Date | string
@@ -20288,10 +20270,9 @@ export namespace Prisma {
 
   export type ContactCreateInput = {
     id?: string
-    firstName: string
-    lastName: string
+    name: string
     email: string
-    phoneNumber: string
+    subject: string
     message: string
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -20299,10 +20280,9 @@ export namespace Prisma {
 
   export type ContactUncheckedCreateInput = {
     id?: string
-    firstName: string
-    lastName: string
+    name: string
     email: string
-    phoneNumber: string
+    subject: string
     message: string
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -20310,10 +20290,9 @@ export namespace Prisma {
 
   export type ContactUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
-    firstName?: StringFieldUpdateOperationsInput | string
-    lastName?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
-    phoneNumber?: StringFieldUpdateOperationsInput | string
+    subject?: StringFieldUpdateOperationsInput | string
     message?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -20321,10 +20300,9 @@ export namespace Prisma {
 
   export type ContactUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
-    firstName?: StringFieldUpdateOperationsInput | string
-    lastName?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
-    phoneNumber?: StringFieldUpdateOperationsInput | string
+    subject?: StringFieldUpdateOperationsInput | string
     message?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -20332,10 +20310,9 @@ export namespace Prisma {
 
   export type ContactCreateManyInput = {
     id?: string
-    firstName: string
-    lastName: string
+    name: string
     email: string
-    phoneNumber: string
+    subject: string
     message: string
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -20343,10 +20320,9 @@ export namespace Prisma {
 
   export type ContactUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
-    firstName?: StringFieldUpdateOperationsInput | string
-    lastName?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
-    phoneNumber?: StringFieldUpdateOperationsInput | string
+    subject?: StringFieldUpdateOperationsInput | string
     message?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -20354,10 +20330,9 @@ export namespace Prisma {
 
   export type ContactUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
-    firstName?: StringFieldUpdateOperationsInput | string
-    lastName?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
     email?: StringFieldUpdateOperationsInput | string
-    phoneNumber?: StringFieldUpdateOperationsInput | string
+    subject?: StringFieldUpdateOperationsInput | string
     message?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -21738,10 +21713,9 @@ export namespace Prisma {
 
   export type ContactCountOrderByAggregateInput = {
     id?: SortOrder
-    firstName?: SortOrder
-    lastName?: SortOrder
+    name?: SortOrder
     email?: SortOrder
-    phoneNumber?: SortOrder
+    subject?: SortOrder
     message?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -21749,10 +21723,9 @@ export namespace Prisma {
 
   export type ContactMaxOrderByAggregateInput = {
     id?: SortOrder
-    firstName?: SortOrder
-    lastName?: SortOrder
+    name?: SortOrder
     email?: SortOrder
-    phoneNumber?: SortOrder
+    subject?: SortOrder
     message?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -21760,10 +21733,9 @@ export namespace Prisma {
 
   export type ContactMinOrderByAggregateInput = {
     id?: SortOrder
-    firstName?: SortOrder
-    lastName?: SortOrder
+    name?: SortOrder
     email?: SortOrder
-    phoneNumber?: SortOrder
+    subject?: SortOrder
     message?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder

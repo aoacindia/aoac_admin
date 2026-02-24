@@ -69,6 +69,13 @@ const sections: Section[] = [
       { label: "Create User", href: "/dashboard/users/create" },
     ],
   },
+  {
+    name: "Contacts",
+    icon: "📧",
+    subsections: [
+      { label: "All Contacts", href: "/dashboard/contacts" },
+    ],
+  },
 ];
 
 export default function DashboardPage() {
