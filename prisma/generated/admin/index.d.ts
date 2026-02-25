@@ -33,6 +33,11 @@ export type Office = $Result.DefaultSelection<Prisma.$OfficePayload>
  * 
  */
 export type Account = $Result.DefaultSelection<Prisma.$AccountPayload>
+/**
+ * Model EmailAccount
+ * 
+ */
+export type EmailAccount = $Result.DefaultSelection<Prisma.$EmailAccountPayload>
 
 /**
  * Enums
@@ -209,6 +214,16 @@ export class PrismaClient<
     * ```
     */
   get account(): Prisma.AccountDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.emailAccount`: Exposes CRUD operations for the **EmailAccount** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more EmailAccounts
+    * const emailAccounts = await prisma.emailAccount.findMany()
+    * ```
+    */
+  get emailAccount(): Prisma.EmailAccountDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -653,7 +668,8 @@ export namespace Prisma {
     User: 'User',
     OtpVerification: 'OtpVerification',
     Office: 'Office',
-    Account: 'Account'
+    Account: 'Account',
+    EmailAccount: 'EmailAccount'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -672,7 +688,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "otpVerification" | "office" | "account"
+      modelProps: "user" | "otpVerification" | "office" | "account" | "emailAccount"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -940,6 +956,72 @@ export namespace Prisma {
           }
         }
       }
+      EmailAccount: {
+        payload: Prisma.$EmailAccountPayload<ExtArgs>
+        fields: Prisma.EmailAccountFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.EmailAccountFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EmailAccountPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.EmailAccountFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EmailAccountPayload>
+          }
+          findFirst: {
+            args: Prisma.EmailAccountFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EmailAccountPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.EmailAccountFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EmailAccountPayload>
+          }
+          findMany: {
+            args: Prisma.EmailAccountFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EmailAccountPayload>[]
+          }
+          create: {
+            args: Prisma.EmailAccountCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EmailAccountPayload>
+          }
+          createMany: {
+            args: Prisma.EmailAccountCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          delete: {
+            args: Prisma.EmailAccountDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EmailAccountPayload>
+          }
+          update: {
+            args: Prisma.EmailAccountUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EmailAccountPayload>
+          }
+          deleteMany: {
+            args: Prisma.EmailAccountDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.EmailAccountUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.EmailAccountUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EmailAccountPayload>
+          }
+          aggregate: {
+            args: Prisma.EmailAccountAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateEmailAccount>
+          }
+          groupBy: {
+            args: Prisma.EmailAccountGroupByArgs<ExtArgs>
+            result: $Utils.Optional<EmailAccountGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.EmailAccountCountArgs<ExtArgs>
+            result: $Utils.Optional<EmailAccountCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -1040,6 +1122,7 @@ export namespace Prisma {
     otpVerification?: OtpVerificationOmit
     office?: OfficeOmit
     account?: AccountOmit
+    emailAccount?: EmailAccountOmit
   }
 
   /* Types for Logging */
@@ -4870,6 +4953,966 @@ export namespace Prisma {
 
 
   /**
+   * Model EmailAccount
+   */
+
+  export type AggregateEmailAccount = {
+    _count: EmailAccountCountAggregateOutputType | null
+    _avg: EmailAccountAvgAggregateOutputType | null
+    _sum: EmailAccountSumAggregateOutputType | null
+    _min: EmailAccountMinAggregateOutputType | null
+    _max: EmailAccountMaxAggregateOutputType | null
+  }
+
+  export type EmailAccountAvgAggregateOutputType = {
+    smtpPort: number | null
+  }
+
+  export type EmailAccountSumAggregateOutputType = {
+    smtpPort: number | null
+  }
+
+  export type EmailAccountMinAggregateOutputType = {
+    id: string | null
+    fromEmail: string | null
+    smtpHost: string | null
+    smtpPort: number | null
+    smtpUser: string | null
+    smtpPassword: string | null
+    isActive: boolean | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type EmailAccountMaxAggregateOutputType = {
+    id: string | null
+    fromEmail: string | null
+    smtpHost: string | null
+    smtpPort: number | null
+    smtpUser: string | null
+    smtpPassword: string | null
+    isActive: boolean | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type EmailAccountCountAggregateOutputType = {
+    id: number
+    fromEmail: number
+    smtpHost: number
+    smtpPort: number
+    smtpUser: number
+    smtpPassword: number
+    isActive: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type EmailAccountAvgAggregateInputType = {
+    smtpPort?: true
+  }
+
+  export type EmailAccountSumAggregateInputType = {
+    smtpPort?: true
+  }
+
+  export type EmailAccountMinAggregateInputType = {
+    id?: true
+    fromEmail?: true
+    smtpHost?: true
+    smtpPort?: true
+    smtpUser?: true
+    smtpPassword?: true
+    isActive?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type EmailAccountMaxAggregateInputType = {
+    id?: true
+    fromEmail?: true
+    smtpHost?: true
+    smtpPort?: true
+    smtpUser?: true
+    smtpPassword?: true
+    isActive?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type EmailAccountCountAggregateInputType = {
+    id?: true
+    fromEmail?: true
+    smtpHost?: true
+    smtpPort?: true
+    smtpUser?: true
+    smtpPassword?: true
+    isActive?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type EmailAccountAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which EmailAccount to aggregate.
+     */
+    where?: EmailAccountWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of EmailAccounts to fetch.
+     */
+    orderBy?: EmailAccountOrderByWithRelationInput | EmailAccountOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: EmailAccountWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` EmailAccounts from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` EmailAccounts.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned EmailAccounts
+    **/
+    _count?: true | EmailAccountCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: EmailAccountAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: EmailAccountSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: EmailAccountMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: EmailAccountMaxAggregateInputType
+  }
+
+  export type GetEmailAccountAggregateType<T extends EmailAccountAggregateArgs> = {
+        [P in keyof T & keyof AggregateEmailAccount]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateEmailAccount[P]>
+      : GetScalarType<T[P], AggregateEmailAccount[P]>
+  }
+
+
+
+
+  export type EmailAccountGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: EmailAccountWhereInput
+    orderBy?: EmailAccountOrderByWithAggregationInput | EmailAccountOrderByWithAggregationInput[]
+    by: EmailAccountScalarFieldEnum[] | EmailAccountScalarFieldEnum
+    having?: EmailAccountScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: EmailAccountCountAggregateInputType | true
+    _avg?: EmailAccountAvgAggregateInputType
+    _sum?: EmailAccountSumAggregateInputType
+    _min?: EmailAccountMinAggregateInputType
+    _max?: EmailAccountMaxAggregateInputType
+  }
+
+  export type EmailAccountGroupByOutputType = {
+    id: string
+    fromEmail: string
+    smtpHost: string
+    smtpPort: number
+    smtpUser: string
+    smtpPassword: string
+    isActive: boolean
+    createdAt: Date
+    updatedAt: Date
+    _count: EmailAccountCountAggregateOutputType | null
+    _avg: EmailAccountAvgAggregateOutputType | null
+    _sum: EmailAccountSumAggregateOutputType | null
+    _min: EmailAccountMinAggregateOutputType | null
+    _max: EmailAccountMaxAggregateOutputType | null
+  }
+
+  type GetEmailAccountGroupByPayload<T extends EmailAccountGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<EmailAccountGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof EmailAccountGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], EmailAccountGroupByOutputType[P]>
+            : GetScalarType<T[P], EmailAccountGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type EmailAccountSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    fromEmail?: boolean
+    smtpHost?: boolean
+    smtpPort?: boolean
+    smtpUser?: boolean
+    smtpPassword?: boolean
+    isActive?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["emailAccount"]>
+
+
+
+  export type EmailAccountSelectScalar = {
+    id?: boolean
+    fromEmail?: boolean
+    smtpHost?: boolean
+    smtpPort?: boolean
+    smtpUser?: boolean
+    smtpPassword?: boolean
+    isActive?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type EmailAccountOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "fromEmail" | "smtpHost" | "smtpPort" | "smtpUser" | "smtpPassword" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["emailAccount"]>
+
+  export type $EmailAccountPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "EmailAccount"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      fromEmail: string
+      smtpHost: string
+      smtpPort: number
+      smtpUser: string
+      smtpPassword: string
+      isActive: boolean
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["emailAccount"]>
+    composites: {}
+  }
+
+  type EmailAccountGetPayload<S extends boolean | null | undefined | EmailAccountDefaultArgs> = $Result.GetResult<Prisma.$EmailAccountPayload, S>
+
+  type EmailAccountCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<EmailAccountFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: EmailAccountCountAggregateInputType | true
+    }
+
+  export interface EmailAccountDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['EmailAccount'], meta: { name: 'EmailAccount' } }
+    /**
+     * Find zero or one EmailAccount that matches the filter.
+     * @param {EmailAccountFindUniqueArgs} args - Arguments to find a EmailAccount
+     * @example
+     * // Get one EmailAccount
+     * const emailAccount = await prisma.emailAccount.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends EmailAccountFindUniqueArgs>(args: SelectSubset<T, EmailAccountFindUniqueArgs<ExtArgs>>): Prisma__EmailAccountClient<$Result.GetResult<Prisma.$EmailAccountPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one EmailAccount that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {EmailAccountFindUniqueOrThrowArgs} args - Arguments to find a EmailAccount
+     * @example
+     * // Get one EmailAccount
+     * const emailAccount = await prisma.emailAccount.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends EmailAccountFindUniqueOrThrowArgs>(args: SelectSubset<T, EmailAccountFindUniqueOrThrowArgs<ExtArgs>>): Prisma__EmailAccountClient<$Result.GetResult<Prisma.$EmailAccountPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first EmailAccount that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {EmailAccountFindFirstArgs} args - Arguments to find a EmailAccount
+     * @example
+     * // Get one EmailAccount
+     * const emailAccount = await prisma.emailAccount.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends EmailAccountFindFirstArgs>(args?: SelectSubset<T, EmailAccountFindFirstArgs<ExtArgs>>): Prisma__EmailAccountClient<$Result.GetResult<Prisma.$EmailAccountPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first EmailAccount that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {EmailAccountFindFirstOrThrowArgs} args - Arguments to find a EmailAccount
+     * @example
+     * // Get one EmailAccount
+     * const emailAccount = await prisma.emailAccount.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends EmailAccountFindFirstOrThrowArgs>(args?: SelectSubset<T, EmailAccountFindFirstOrThrowArgs<ExtArgs>>): Prisma__EmailAccountClient<$Result.GetResult<Prisma.$EmailAccountPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more EmailAccounts that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {EmailAccountFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all EmailAccounts
+     * const emailAccounts = await prisma.emailAccount.findMany()
+     * 
+     * // Get first 10 EmailAccounts
+     * const emailAccounts = await prisma.emailAccount.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const emailAccountWithIdOnly = await prisma.emailAccount.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends EmailAccountFindManyArgs>(args?: SelectSubset<T, EmailAccountFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$EmailAccountPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a EmailAccount.
+     * @param {EmailAccountCreateArgs} args - Arguments to create a EmailAccount.
+     * @example
+     * // Create one EmailAccount
+     * const EmailAccount = await prisma.emailAccount.create({
+     *   data: {
+     *     // ... data to create a EmailAccount
+     *   }
+     * })
+     * 
+     */
+    create<T extends EmailAccountCreateArgs>(args: SelectSubset<T, EmailAccountCreateArgs<ExtArgs>>): Prisma__EmailAccountClient<$Result.GetResult<Prisma.$EmailAccountPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many EmailAccounts.
+     * @param {EmailAccountCreateManyArgs} args - Arguments to create many EmailAccounts.
+     * @example
+     * // Create many EmailAccounts
+     * const emailAccount = await prisma.emailAccount.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends EmailAccountCreateManyArgs>(args?: SelectSubset<T, EmailAccountCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Delete a EmailAccount.
+     * @param {EmailAccountDeleteArgs} args - Arguments to delete one EmailAccount.
+     * @example
+     * // Delete one EmailAccount
+     * const EmailAccount = await prisma.emailAccount.delete({
+     *   where: {
+     *     // ... filter to delete one EmailAccount
+     *   }
+     * })
+     * 
+     */
+    delete<T extends EmailAccountDeleteArgs>(args: SelectSubset<T, EmailAccountDeleteArgs<ExtArgs>>): Prisma__EmailAccountClient<$Result.GetResult<Prisma.$EmailAccountPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one EmailAccount.
+     * @param {EmailAccountUpdateArgs} args - Arguments to update one EmailAccount.
+     * @example
+     * // Update one EmailAccount
+     * const emailAccount = await prisma.emailAccount.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends EmailAccountUpdateArgs>(args: SelectSubset<T, EmailAccountUpdateArgs<ExtArgs>>): Prisma__EmailAccountClient<$Result.GetResult<Prisma.$EmailAccountPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more EmailAccounts.
+     * @param {EmailAccountDeleteManyArgs} args - Arguments to filter EmailAccounts to delete.
+     * @example
+     * // Delete a few EmailAccounts
+     * const { count } = await prisma.emailAccount.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends EmailAccountDeleteManyArgs>(args?: SelectSubset<T, EmailAccountDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more EmailAccounts.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {EmailAccountUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many EmailAccounts
+     * const emailAccount = await prisma.emailAccount.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends EmailAccountUpdateManyArgs>(args: SelectSubset<T, EmailAccountUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one EmailAccount.
+     * @param {EmailAccountUpsertArgs} args - Arguments to update or create a EmailAccount.
+     * @example
+     * // Update or create a EmailAccount
+     * const emailAccount = await prisma.emailAccount.upsert({
+     *   create: {
+     *     // ... data to create a EmailAccount
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the EmailAccount we want to update
+     *   }
+     * })
+     */
+    upsert<T extends EmailAccountUpsertArgs>(args: SelectSubset<T, EmailAccountUpsertArgs<ExtArgs>>): Prisma__EmailAccountClient<$Result.GetResult<Prisma.$EmailAccountPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of EmailAccounts.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {EmailAccountCountArgs} args - Arguments to filter EmailAccounts to count.
+     * @example
+     * // Count the number of EmailAccounts
+     * const count = await prisma.emailAccount.count({
+     *   where: {
+     *     // ... the filter for the EmailAccounts we want to count
+     *   }
+     * })
+    **/
+    count<T extends EmailAccountCountArgs>(
+      args?: Subset<T, EmailAccountCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], EmailAccountCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a EmailAccount.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {EmailAccountAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends EmailAccountAggregateArgs>(args: Subset<T, EmailAccountAggregateArgs>): Prisma.PrismaPromise<GetEmailAccountAggregateType<T>>
+
+    /**
+     * Group by EmailAccount.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {EmailAccountGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends EmailAccountGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: EmailAccountGroupByArgs['orderBy'] }
+        : { orderBy?: EmailAccountGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, EmailAccountGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetEmailAccountGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the EmailAccount model
+   */
+  readonly fields: EmailAccountFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for EmailAccount.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__EmailAccountClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the EmailAccount model
+   */
+  interface EmailAccountFieldRefs {
+    readonly id: FieldRef<"EmailAccount", 'String'>
+    readonly fromEmail: FieldRef<"EmailAccount", 'String'>
+    readonly smtpHost: FieldRef<"EmailAccount", 'String'>
+    readonly smtpPort: FieldRef<"EmailAccount", 'Int'>
+    readonly smtpUser: FieldRef<"EmailAccount", 'String'>
+    readonly smtpPassword: FieldRef<"EmailAccount", 'String'>
+    readonly isActive: FieldRef<"EmailAccount", 'Boolean'>
+    readonly createdAt: FieldRef<"EmailAccount", 'DateTime'>
+    readonly updatedAt: FieldRef<"EmailAccount", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * EmailAccount findUnique
+   */
+  export type EmailAccountFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EmailAccount
+     */
+    select?: EmailAccountSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EmailAccount
+     */
+    omit?: EmailAccountOmit<ExtArgs> | null
+    /**
+     * Filter, which EmailAccount to fetch.
+     */
+    where: EmailAccountWhereUniqueInput
+  }
+
+  /**
+   * EmailAccount findUniqueOrThrow
+   */
+  export type EmailAccountFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EmailAccount
+     */
+    select?: EmailAccountSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EmailAccount
+     */
+    omit?: EmailAccountOmit<ExtArgs> | null
+    /**
+     * Filter, which EmailAccount to fetch.
+     */
+    where: EmailAccountWhereUniqueInput
+  }
+
+  /**
+   * EmailAccount findFirst
+   */
+  export type EmailAccountFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EmailAccount
+     */
+    select?: EmailAccountSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EmailAccount
+     */
+    omit?: EmailAccountOmit<ExtArgs> | null
+    /**
+     * Filter, which EmailAccount to fetch.
+     */
+    where?: EmailAccountWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of EmailAccounts to fetch.
+     */
+    orderBy?: EmailAccountOrderByWithRelationInput | EmailAccountOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for EmailAccounts.
+     */
+    cursor?: EmailAccountWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` EmailAccounts from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` EmailAccounts.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of EmailAccounts.
+     */
+    distinct?: EmailAccountScalarFieldEnum | EmailAccountScalarFieldEnum[]
+  }
+
+  /**
+   * EmailAccount findFirstOrThrow
+   */
+  export type EmailAccountFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EmailAccount
+     */
+    select?: EmailAccountSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EmailAccount
+     */
+    omit?: EmailAccountOmit<ExtArgs> | null
+    /**
+     * Filter, which EmailAccount to fetch.
+     */
+    where?: EmailAccountWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of EmailAccounts to fetch.
+     */
+    orderBy?: EmailAccountOrderByWithRelationInput | EmailAccountOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for EmailAccounts.
+     */
+    cursor?: EmailAccountWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` EmailAccounts from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` EmailAccounts.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of EmailAccounts.
+     */
+    distinct?: EmailAccountScalarFieldEnum | EmailAccountScalarFieldEnum[]
+  }
+
+  /**
+   * EmailAccount findMany
+   */
+  export type EmailAccountFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EmailAccount
+     */
+    select?: EmailAccountSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EmailAccount
+     */
+    omit?: EmailAccountOmit<ExtArgs> | null
+    /**
+     * Filter, which EmailAccounts to fetch.
+     */
+    where?: EmailAccountWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of EmailAccounts to fetch.
+     */
+    orderBy?: EmailAccountOrderByWithRelationInput | EmailAccountOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing EmailAccounts.
+     */
+    cursor?: EmailAccountWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` EmailAccounts from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` EmailAccounts.
+     */
+    skip?: number
+    distinct?: EmailAccountScalarFieldEnum | EmailAccountScalarFieldEnum[]
+  }
+
+  /**
+   * EmailAccount create
+   */
+  export type EmailAccountCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EmailAccount
+     */
+    select?: EmailAccountSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EmailAccount
+     */
+    omit?: EmailAccountOmit<ExtArgs> | null
+    /**
+     * The data needed to create a EmailAccount.
+     */
+    data: XOR<EmailAccountCreateInput, EmailAccountUncheckedCreateInput>
+  }
+
+  /**
+   * EmailAccount createMany
+   */
+  export type EmailAccountCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many EmailAccounts.
+     */
+    data: EmailAccountCreateManyInput | EmailAccountCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * EmailAccount update
+   */
+  export type EmailAccountUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EmailAccount
+     */
+    select?: EmailAccountSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EmailAccount
+     */
+    omit?: EmailAccountOmit<ExtArgs> | null
+    /**
+     * The data needed to update a EmailAccount.
+     */
+    data: XOR<EmailAccountUpdateInput, EmailAccountUncheckedUpdateInput>
+    /**
+     * Choose, which EmailAccount to update.
+     */
+    where: EmailAccountWhereUniqueInput
+  }
+
+  /**
+   * EmailAccount updateMany
+   */
+  export type EmailAccountUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update EmailAccounts.
+     */
+    data: XOR<EmailAccountUpdateManyMutationInput, EmailAccountUncheckedUpdateManyInput>
+    /**
+     * Filter which EmailAccounts to update
+     */
+    where?: EmailAccountWhereInput
+    /**
+     * Limit how many EmailAccounts to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * EmailAccount upsert
+   */
+  export type EmailAccountUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EmailAccount
+     */
+    select?: EmailAccountSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EmailAccount
+     */
+    omit?: EmailAccountOmit<ExtArgs> | null
+    /**
+     * The filter to search for the EmailAccount to update in case it exists.
+     */
+    where: EmailAccountWhereUniqueInput
+    /**
+     * In case the EmailAccount found by the `where` argument doesn't exist, create a new EmailAccount with this data.
+     */
+    create: XOR<EmailAccountCreateInput, EmailAccountUncheckedCreateInput>
+    /**
+     * In case the EmailAccount was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<EmailAccountUpdateInput, EmailAccountUncheckedUpdateInput>
+  }
+
+  /**
+   * EmailAccount delete
+   */
+  export type EmailAccountDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EmailAccount
+     */
+    select?: EmailAccountSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EmailAccount
+     */
+    omit?: EmailAccountOmit<ExtArgs> | null
+    /**
+     * Filter which EmailAccount to delete.
+     */
+    where: EmailAccountWhereUniqueInput
+  }
+
+  /**
+   * EmailAccount deleteMany
+   */
+  export type EmailAccountDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which EmailAccounts to delete
+     */
+    where?: EmailAccountWhereInput
+    /**
+     * Limit how many EmailAccounts to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * EmailAccount without action
+   */
+  export type EmailAccountDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EmailAccount
+     */
+    select?: EmailAccountSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EmailAccount
+     */
+    omit?: EmailAccountOmit<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -4944,6 +5987,21 @@ export namespace Prisma {
   export type AccountScalarFieldEnum = (typeof AccountScalarFieldEnum)[keyof typeof AccountScalarFieldEnum]
 
 
+  export const EmailAccountScalarFieldEnum: {
+    id: 'id',
+    fromEmail: 'fromEmail',
+    smtpHost: 'smtpHost',
+    smtpPort: 'smtpPort',
+    smtpUser: 'smtpUser',
+    smtpPassword: 'smtpPassword',
+    isActive: 'isActive',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type EmailAccountScalarFieldEnum = (typeof EmailAccountScalarFieldEnum)[keyof typeof EmailAccountScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -5005,6 +6063,17 @@ export namespace Prisma {
   };
 
   export type AccountOrderByRelevanceFieldEnum = (typeof AccountOrderByRelevanceFieldEnum)[keyof typeof AccountOrderByRelevanceFieldEnum]
+
+
+  export const EmailAccountOrderByRelevanceFieldEnum: {
+    id: 'id',
+    fromEmail: 'fromEmail',
+    smtpHost: 'smtpHost',
+    smtpUser: 'smtpUser',
+    smtpPassword: 'smtpPassword'
+  };
+
+  export type EmailAccountOrderByRelevanceFieldEnum = (typeof EmailAccountOrderByRelevanceFieldEnum)[keyof typeof EmailAccountOrderByRelevanceFieldEnum]
 
 
   /**
@@ -5356,6 +6425,81 @@ export namespace Prisma {
     updatedAt?: DateTimeWithAggregatesFilter<"Account"> | Date | string
   }
 
+  export type EmailAccountWhereInput = {
+    AND?: EmailAccountWhereInput | EmailAccountWhereInput[]
+    OR?: EmailAccountWhereInput[]
+    NOT?: EmailAccountWhereInput | EmailAccountWhereInput[]
+    id?: StringFilter<"EmailAccount"> | string
+    fromEmail?: StringFilter<"EmailAccount"> | string
+    smtpHost?: StringFilter<"EmailAccount"> | string
+    smtpPort?: IntFilter<"EmailAccount"> | number
+    smtpUser?: StringFilter<"EmailAccount"> | string
+    smtpPassword?: StringFilter<"EmailAccount"> | string
+    isActive?: BoolFilter<"EmailAccount"> | boolean
+    createdAt?: DateTimeFilter<"EmailAccount"> | Date | string
+    updatedAt?: DateTimeFilter<"EmailAccount"> | Date | string
+  }
+
+  export type EmailAccountOrderByWithRelationInput = {
+    id?: SortOrder
+    fromEmail?: SortOrder
+    smtpHost?: SortOrder
+    smtpPort?: SortOrder
+    smtpUser?: SortOrder
+    smtpPassword?: SortOrder
+    isActive?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _relevance?: EmailAccountOrderByRelevanceInput
+  }
+
+  export type EmailAccountWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: EmailAccountWhereInput | EmailAccountWhereInput[]
+    OR?: EmailAccountWhereInput[]
+    NOT?: EmailAccountWhereInput | EmailAccountWhereInput[]
+    fromEmail?: StringFilter<"EmailAccount"> | string
+    smtpHost?: StringFilter<"EmailAccount"> | string
+    smtpPort?: IntFilter<"EmailAccount"> | number
+    smtpUser?: StringFilter<"EmailAccount"> | string
+    smtpPassword?: StringFilter<"EmailAccount"> | string
+    isActive?: BoolFilter<"EmailAccount"> | boolean
+    createdAt?: DateTimeFilter<"EmailAccount"> | Date | string
+    updatedAt?: DateTimeFilter<"EmailAccount"> | Date | string
+  }, "id">
+
+  export type EmailAccountOrderByWithAggregationInput = {
+    id?: SortOrder
+    fromEmail?: SortOrder
+    smtpHost?: SortOrder
+    smtpPort?: SortOrder
+    smtpUser?: SortOrder
+    smtpPassword?: SortOrder
+    isActive?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: EmailAccountCountOrderByAggregateInput
+    _avg?: EmailAccountAvgOrderByAggregateInput
+    _max?: EmailAccountMaxOrderByAggregateInput
+    _min?: EmailAccountMinOrderByAggregateInput
+    _sum?: EmailAccountSumOrderByAggregateInput
+  }
+
+  export type EmailAccountScalarWhereWithAggregatesInput = {
+    AND?: EmailAccountScalarWhereWithAggregatesInput | EmailAccountScalarWhereWithAggregatesInput[]
+    OR?: EmailAccountScalarWhereWithAggregatesInput[]
+    NOT?: EmailAccountScalarWhereWithAggregatesInput | EmailAccountScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"EmailAccount"> | string
+    fromEmail?: StringWithAggregatesFilter<"EmailAccount"> | string
+    smtpHost?: StringWithAggregatesFilter<"EmailAccount"> | string
+    smtpPort?: IntWithAggregatesFilter<"EmailAccount"> | number
+    smtpUser?: StringWithAggregatesFilter<"EmailAccount"> | string
+    smtpPassword?: StringWithAggregatesFilter<"EmailAccount"> | string
+    isActive?: BoolWithAggregatesFilter<"EmailAccount"> | boolean
+    createdAt?: DateTimeWithAggregatesFilter<"EmailAccount"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"EmailAccount"> | Date | string
+  }
+
   export type UserCreateInput = {
     id?: string
     name: string
@@ -5699,6 +6843,90 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type EmailAccountCreateInput = {
+    id?: string
+    fromEmail: string
+    smtpHost?: string
+    smtpPort?: number
+    smtpUser: string
+    smtpPassword: string
+    isActive?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type EmailAccountUncheckedCreateInput = {
+    id?: string
+    fromEmail: string
+    smtpHost?: string
+    smtpPort?: number
+    smtpUser: string
+    smtpPassword: string
+    isActive?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type EmailAccountUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fromEmail?: StringFieldUpdateOperationsInput | string
+    smtpHost?: StringFieldUpdateOperationsInput | string
+    smtpPort?: IntFieldUpdateOperationsInput | number
+    smtpUser?: StringFieldUpdateOperationsInput | string
+    smtpPassword?: StringFieldUpdateOperationsInput | string
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type EmailAccountUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fromEmail?: StringFieldUpdateOperationsInput | string
+    smtpHost?: StringFieldUpdateOperationsInput | string
+    smtpPort?: IntFieldUpdateOperationsInput | number
+    smtpUser?: StringFieldUpdateOperationsInput | string
+    smtpPassword?: StringFieldUpdateOperationsInput | string
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type EmailAccountCreateManyInput = {
+    id?: string
+    fromEmail: string
+    smtpHost?: string
+    smtpPort?: number
+    smtpUser: string
+    smtpPassword: string
+    isActive?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type EmailAccountUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fromEmail?: StringFieldUpdateOperationsInput | string
+    smtpHost?: StringFieldUpdateOperationsInput | string
+    smtpPort?: IntFieldUpdateOperationsInput | number
+    smtpUser?: StringFieldUpdateOperationsInput | string
+    smtpPassword?: StringFieldUpdateOperationsInput | string
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type EmailAccountUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    fromEmail?: StringFieldUpdateOperationsInput | string
+    smtpHost?: StringFieldUpdateOperationsInput | string
+    smtpPort?: IntFieldUpdateOperationsInput | number
+    smtpUser?: StringFieldUpdateOperationsInput | string
+    smtpPassword?: StringFieldUpdateOperationsInput | string
+    isActive?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[]
@@ -6029,6 +7257,56 @@ export namespace Prisma {
     isDefault?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+  }
+
+  export type EmailAccountOrderByRelevanceInput = {
+    fields: EmailAccountOrderByRelevanceFieldEnum | EmailAccountOrderByRelevanceFieldEnum[]
+    sort: SortOrder
+    search: string
+  }
+
+  export type EmailAccountCountOrderByAggregateInput = {
+    id?: SortOrder
+    fromEmail?: SortOrder
+    smtpHost?: SortOrder
+    smtpPort?: SortOrder
+    smtpUser?: SortOrder
+    smtpPassword?: SortOrder
+    isActive?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type EmailAccountAvgOrderByAggregateInput = {
+    smtpPort?: SortOrder
+  }
+
+  export type EmailAccountMaxOrderByAggregateInput = {
+    id?: SortOrder
+    fromEmail?: SortOrder
+    smtpHost?: SortOrder
+    smtpPort?: SortOrder
+    smtpUser?: SortOrder
+    smtpPassword?: SortOrder
+    isActive?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type EmailAccountMinOrderByAggregateInput = {
+    id?: SortOrder
+    fromEmail?: SortOrder
+    smtpHost?: SortOrder
+    smtpPort?: SortOrder
+    smtpUser?: SortOrder
+    smtpPassword?: SortOrder
+    isActive?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type EmailAccountSumOrderByAggregateInput = {
+    smtpPort?: SortOrder
   }
 
   export type StringFieldUpdateOperationsInput = {

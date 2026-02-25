@@ -142,6 +142,18 @@ exports.Prisma.AccountScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.EmailAccountScalarFieldEnum = {
+  id: 'id',
+  fromEmail: 'fromEmail',
+  smtpHost: 'smtpHost',
+  smtpPort: 'smtpPort',
+  smtpUser: 'smtpUser',
+  smtpPassword: 'smtpPassword',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -186,6 +198,14 @@ exports.Prisma.AccountOrderByRelevanceFieldEnum = {
   swiftCode: 'swiftCode',
   bankName: 'bankName'
 };
+
+exports.Prisma.EmailAccountOrderByRelevanceFieldEnum = {
+  id: 'id',
+  fromEmail: 'fromEmail',
+  smtpHost: 'smtpHost',
+  smtpUser: 'smtpUser',
+  smtpPassword: 'smtpPassword'
+};
 exports.AdminRole = exports.$Enums.AdminRole = {
   ADMIN: 'ADMIN',
   MANAGER: 'MANAGER',
@@ -196,7 +216,8 @@ exports.Prisma.ModelName = {
   User: 'User',
   OtpVerification: 'OtpVerification',
   Office: 'Office',
-  Account: 'Account'
+  Account: 'Account',
+  EmailAccount: 'EmailAccount'
 };
 /**
  * Create the Client
@@ -245,13 +266,13 @@ const config = {
       }
     }
   },
-  "inlineSchema": "// prisma/admin.schema.prisma\ndatasource db {\n  provider = \"mysql\"\n  url      = env(\"ADMIN_DATABASE_URL\")\n}\n\ngenerator client {\n  provider = \"prisma-client-js\"\n  output   = \"./generated/admin\"\n}\n\nmodel User {\n  id               String    @id @default(cuid())\n  name             String\n  email            String    @unique\n  role             AdminRole @default(STAFF)\n  suspended        Boolean   @default(false)\n  suspended_number Int       @default(0)\n  terminated       Boolean   @default(false)\n  phone            String    @unique\n  createdAt        DateTime  @default(now())\n  updatedAt        DateTime  @updatedAt\n}\n\nenum AdminRole {\n  ADMIN\n  MANAGER\n  STAFF\n}\n\nmodel OtpVerification {\n  id        String   @id @default(cuid())\n  email     String?\n  token     String   @unique\n  otp       String\n  expiresAt DateTime\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@index([email])\n  @@index([token])\n}\n\nmodel Office {\n  id        String   @id @default(cuid())\n  gstin     String   @unique\n  address   String\n  city      String?\n  state     String\n  stateCode String\n  pincode   String?\n  country   String?\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nmodel Account {\n  id                String   @id @default(cuid())\n  accountHolderName String\n  accountNumber     String\n  ifsc              String\n  branch            String\n  swiftCode         String?\n  bankName          String\n  isDefault         Boolean  @default(false) @map(\"default\")\n  createdAt         DateTime @default(now())\n  updatedAt         DateTime @updatedAt\n}\n",
-  "inlineSchemaHash": "9e845ddc84f92749ad191258d4ed6b6120e579664ff8df2073d0af57a2b0d6b0",
+  "inlineSchema": "// prisma/admin.schema.prisma\ndatasource db {\n  provider = \"mysql\"\n  url      = env(\"ADMIN_DATABASE_URL\")\n}\n\ngenerator client {\n  provider = \"prisma-client-js\"\n  output   = \"./generated/admin\"\n}\n\nmodel User {\n  id               String    @id @default(cuid())\n  name             String\n  email            String    @unique\n  role             AdminRole @default(STAFF)\n  suspended        Boolean   @default(false)\n  suspended_number Int       @default(0)\n  terminated       Boolean   @default(false)\n  phone            String    @unique\n  createdAt        DateTime  @default(now())\n  updatedAt        DateTime  @updatedAt\n}\n\nenum AdminRole {\n  ADMIN\n  MANAGER\n  STAFF\n}\n\nmodel OtpVerification {\n  id        String   @id @default(cuid())\n  email     String?\n  token     String   @unique\n  otp       String\n  expiresAt DateTime\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@index([email])\n  @@index([token])\n}\n\nmodel Office {\n  id        String   @id @default(cuid())\n  gstin     String   @unique\n  address   String\n  city      String?\n  state     String\n  stateCode String\n  pincode   String?\n  country   String?\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nmodel Account {\n  id                String   @id @default(cuid())\n  accountHolderName String\n  accountNumber     String\n  ifsc              String\n  branch            String\n  swiftCode         String?\n  bankName          String\n  isDefault         Boolean  @default(false) @map(\"default\")\n  createdAt         DateTime @default(now())\n  updatedAt         DateTime @updatedAt\n}\n\nmodel EmailAccount {\n  id           String   @id @default(cuid())\n  fromEmail    String\n  smtpHost     String   @default(\"smtp.hostinger.com\")\n  smtpPort     Int      @default(587)\n  smtpUser     String\n  smtpPassword String\n  isActive     Boolean  @default(true)\n  createdAt    DateTime @default(now())\n  updatedAt    DateTime @updatedAt\n\n  @@index([isActive])\n}\n",
+  "inlineSchemaHash": "b1db028c10927499db7376de4f8c9f42afff5aebb3ba1b8e8dd4c293bbec8bc0",
   "copyEngine": true
 }
 config.dirname = '/'
 
-config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"role\",\"kind\":\"enum\",\"type\":\"AdminRole\"},{\"name\":\"suspended\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"suspended_number\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"terminated\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"phone\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"OtpVerification\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"token\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"otp\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"Office\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"gstin\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"address\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"city\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"state\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"stateCode\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"pincode\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"country\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"Account\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"accountHolderName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"accountNumber\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"ifsc\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"branch\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"swiftCode\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"bankName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"isDefault\",\"kind\":\"scalar\",\"type\":\"Boolean\",\"dbName\":\"default\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
+config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"role\",\"kind\":\"enum\",\"type\":\"AdminRole\"},{\"name\":\"suspended\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"suspended_number\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"terminated\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"phone\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"OtpVerification\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"token\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"otp\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"Office\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"gstin\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"address\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"city\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"state\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"stateCode\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"pincode\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"country\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"Account\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"accountHolderName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"accountNumber\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"ifsc\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"branch\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"swiftCode\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"bankName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"isDefault\",\"kind\":\"scalar\",\"type\":\"Boolean\",\"dbName\":\"default\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"EmailAccount\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"fromEmail\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"smtpHost\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"smtpPort\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"smtpUser\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"smtpPassword\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"isActive\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
 defineDmmfProperty(exports.Prisma, config.runtimeDataModel)
 config.engineWasm = {
   getRuntime: async () => require('./query_engine_bg.js'),

@@ -76,6 +76,14 @@ const sections: Section[] = [
       { label: "All Contacts", href: "/dashboard/contacts" },
     ],
   },
+  {
+    name: "Email",
+    icon: "✉️",
+    subsections: [
+      { label: "Add Email Account", href: "/dashboard/emails/create" },
+      { label: "All Email Accounts", href: "/dashboard/emails" },
+    ],
+  },
 ];
 
 export default function DashboardPage() {

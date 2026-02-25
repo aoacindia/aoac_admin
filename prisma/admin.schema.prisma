@@ -67,4 +67,18 @@ model Account {
   updatedAt         DateTime @updatedAt
 }
 
+model EmailAccount {
+  id          String   @id @default(cuid())
+  fromEmail   String
+  smtpHost    String   @default("smtp.hostinger.com")
+  smtpPort    Int      @default(587)
+  smtpUser    String
+  smtpPassword String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([isActive])
+}
+
 

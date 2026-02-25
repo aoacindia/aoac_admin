@@ -170,6 +170,18 @@ exports.Prisma.AccountScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.EmailAccountScalarFieldEnum = {
+  id: 'id',
+  fromEmail: 'fromEmail',
+  smtpHost: 'smtpHost',
+  smtpPort: 'smtpPort',
+  smtpUser: 'smtpUser',
+  smtpPassword: 'smtpPassword',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -214,6 +226,14 @@ exports.Prisma.AccountOrderByRelevanceFieldEnum = {
   swiftCode: 'swiftCode',
   bankName: 'bankName'
 };
+
+exports.Prisma.EmailAccountOrderByRelevanceFieldEnum = {
+  id: 'id',
+  fromEmail: 'fromEmail',
+  smtpHost: 'smtpHost',
+  smtpUser: 'smtpUser',
+  smtpPassword: 'smtpPassword'
+};
 exports.AdminRole = exports.$Enums.AdminRole = {
   ADMIN: 'ADMIN',
   MANAGER: 'MANAGER',
@@ -224,7 +244,8 @@ exports.Prisma.ModelName = {
   User: 'User',
   OtpVerification: 'OtpVerification',
   Office: 'Office',
-  Account: 'Account'
+  Account: 'Account',
+  EmailAccount: 'EmailAccount'
 };
 
 /**
