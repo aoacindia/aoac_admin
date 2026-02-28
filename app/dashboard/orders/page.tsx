@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Modal from "@/app/components/Modal";
 import Link from "next/link";
@@ -56,13 +56,20 @@ interface Order {
   orderItems: OrderItem[];
 }
 
+type TabType = "business" | "personal" | "pending";
+
 export default function OrdersPage() {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<TabType>("business");
   const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [loadedTabs, setLoadedTabs] = useState<Set<TabType>>(new Set());
   const [showDownloadPopup, setShowDownloadPopup] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -79,9 +86,22 @@ export default function OrdersPage() {
   const [recipientEmail, setRecipientEmail] = useState<string>("");
   const [sendingPI, setSendingPI] = useState(false);
 
+  // Track previous tab to detect tab changes
+  const prevTabRef = useRef<TabType>(activeTab);
+
   useEffect(() => {
-    fetchOrders();
-  }, [filterStatus]);
+    // If tab changed, reset to page 1
+    if (prevTabRef.current !== activeTab) {
+      setCurrentPage(1);
+      setOrders([]);
+      prevTabRef.current = activeTab;
+      fetchOrders(activeTab, 1);
+    } else {
+      // Tab didn't change, just page changed
+      fetchOrders(activeTab, currentPage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, currentPage]);
 
   useEffect(() => {
     if (showSendPIPopup) {
@@ -104,24 +124,29 @@ export default function OrdersPage() {
     }
   };
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (tabType: TabType, page: number = 1) => {
     try {
       setLoading(true);
       setError(null);
       
       const params = new URLSearchParams();
+      params.append("orderType", tabType);
+      params.append("page", page.toString());
+      params.append("limit", "10");
       if (searchTerm) params.append("search", searchTerm);
       if (filterStatus) params.append("status", filterStatus);
 
-      const url = params.toString() 
-        ? `/api/orders?${params.toString()}`
-        : "/api/orders";
+      const url = `/api/orders?${params.toString()}`;
 
       const response = await fetch(url);
       const data = await response.json();
 
       if (data.success) {
         setOrders(data.data);
+        setTotalPages(data.meta?.totalPages || 1);
+        setTotalOrders(data.meta?.total || 0);
+        // Mark this tab as loaded
+        setLoadedTabs((prev) => new Set(prev).add(tabType));
       } else {
         setError(data.error || "Failed to fetch orders");
       }
@@ -134,15 +159,36 @@ export default function OrdersPage() {
   };
 
   const handleSearch = () => {
-    fetchOrders();
+    setCurrentPage(1);
+    fetchOrders(activeTab, 1);
   };
 
   const handleReset = () => {
     setSearchTerm("");
     setFilterStatus("");
+    setCurrentPage(1);
     setTimeout(() => {
-      fetchOrders();
+      fetchOrders(activeTab, 1);
     }, 100);
+  };
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+    setSearchTerm("");
+    setFilterStatus("");
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -189,23 +235,14 @@ export default function OrdersPage() {
         throw new Error(error.error || "Failed to delete order");
       }
 
-      setOrders((prev) => prev.filter((item) => item.id !== order.id));
+      // Refresh current tab after deletion
+      fetchOrders(activeTab, currentPage);
     } catch (error: any) {
       alert("Error deleting order: " + error.message);
     } finally {
       setDeletingOrderId(null);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="p-4 md:p-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <p className="text-zinc-600 dark:text-zinc-400">Loading orders...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="p-4 md:p-8">
@@ -225,6 +262,42 @@ export default function OrdersPage() {
           >
             Create New Order
           </Link>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md border border-zinc-200 dark:border-zinc-800 mb-6">
+        <div className="flex border-b border-zinc-200 dark:border-zinc-700">
+          <button
+            onClick={() => handleTabChange("business")}
+            className={`px-6 py-3 font-medium text-sm transition-colors ${
+              activeTab === "business"
+                ? "border-b-2 border-blue-600 text-blue-600 dark:text-blue-400"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+            }`}
+          >
+            Business Orders
+          </button>
+          <button
+            onClick={() => handleTabChange("personal")}
+            className={`px-6 py-3 font-medium text-sm transition-colors ${
+              activeTab === "personal"
+                ? "border-b-2 border-blue-600 text-blue-600 dark:text-blue-400"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+            }`}
+          >
+            Personal Orders
+          </button>
+          <button
+            onClick={() => handleTabChange("pending")}
+            className={`px-6 py-3 font-medium text-sm transition-colors ${
+              activeTab === "pending"
+                ? "border-b-2 border-blue-600 text-blue-600 dark:text-blue-400"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+            }`}
+          >
+            Pending Orders
+          </button>
         </div>
       </div>
 
@@ -295,10 +368,22 @@ export default function OrdersPage() {
 
       {/* Orders List */}
       <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md border border-zinc-200 dark:border-zinc-800 p-4 md:p-6">
-        <h2 className="text-xl md:text-2xl font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
-          Orders ({orders.length})
-        </h2>
-        {orders.length === 0 ? (
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl md:text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
+            {activeTab === "business" && "Business Orders"}
+            {activeTab === "personal" && "Personal Orders"}
+            {activeTab === "pending" && "Pending Orders"}
+            {totalOrders > 0 && ` (${totalOrders})`}
+          </h2>
+          {loading && (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading...</p>
+          )}
+        </div>
+        {loading && orders.length === 0 ? (
+          <div className="flex items-center justify-center min-h-[400px]">
+            <p className="text-zinc-600 dark:text-zinc-400">Loading orders...</p>
+          </div>
+        ) : orders.length === 0 ? (
           <p className="text-zinc-600 dark:text-zinc-400">
             No orders found.
           </p>
@@ -444,6 +529,31 @@ export default function OrdersPage() {
                 ))}
               </TableBody>
             </Table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {orders.length > 0 && (
+          <div className="flex items-center justify-between mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+            <div className="text-sm text-zinc-600 dark:text-zinc-400">
+              Page {currentPage} of {totalPages} ({totalOrders} total orders)
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={handlePrevPage}
+                disabled={currentPage === 1 || loading}
+                className="px-4 py-2 bg-zinc-600 hover:bg-zinc-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </Button>
+              <Button
+                onClick={handleNextPage}
+                disabled={currentPage >= totalPages || loading}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </Button>
+            </div>
           </div>
         )}
       </div>

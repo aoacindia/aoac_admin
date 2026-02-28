@@ -174,22 +174,62 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const status = searchParams.get("status");
+    const orderType = searchParams.get("orderType"); // "business", "personal", or "pending"
+    const page = Number(searchParams.get("page") || "1");
+    const limit = Number(searchParams.get("limit") || "10");
+    const safePage = Number.isFinite(page) && page > 0 ? page : 1;
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 10;
 
     const where: any = {};
 
-    if (search) {
-      where.OR = [
-        { id: { contains: search } },
-        { InvoiceNumber: { contains: search } },
-        { user: { name: { contains: search } } },
-        { user: { email: { contains: search } } },
-        { user: { businessName: { contains: search } } },
+    // Build user filter for order type
+    const userConditions: any = {};
+    if (orderType === "business") {
+      userConditions.isBusinessAccount = true;
+    } else if (orderType === "personal") {
+      userConditions.OR = [
+        { isBusinessAccount: false },
+        { isBusinessAccount: null },
       ];
     }
 
+    // Status filter
     if (status) {
       where.status = status;
+    } else if (orderType === "pending") {
+      where.status = "PENDING";
     }
+
+    // Search filter
+    if (search) {
+      const searchConditions: any[] = [
+        { id: { contains: search } },
+        { InvoiceNumber: { contains: search } },
+      ];
+
+      // Build user search conditions
+      const userSearchConditions: any = {
+        OR: [
+          { name: { contains: search } },
+          { email: { contains: search } },
+          { businessName: { contains: search } },
+        ],
+      };
+
+      // Combine user type filter with search if needed
+      if (Object.keys(userConditions).length > 0) {
+        userSearchConditions.AND = [userConditions];
+      }
+
+      searchConditions.push({ user: userSearchConditions });
+      where.OR = searchConditions;
+    } else if (Object.keys(userConditions).length > 0) {
+      // Only order type filter, no search
+      where.user = userConditions;
+    }
+
+    // Get total count for pagination
+    const total = await userPrisma.order.count({ where });
 
     const orders = await userPrisma.order.findMany({
       where,
@@ -202,6 +242,7 @@ export async function GET(request: NextRequest) {
             phone: true,
             businessName: true,
             gstNumber: true,
+            isBusinessAccount: true,
           },
         },
         shippingAddress: true,
@@ -210,9 +251,20 @@ export async function GET(request: NextRequest) {
       orderBy: {
         orderDate: "desc",
       },
+      skip: (safePage - 1) * safeLimit,
+      take: safeLimit,
     });
 
-    return NextResponse.json({ success: true, data: orders });
+    return NextResponse.json({
+      success: true,
+      data: orders,
+      meta: {
+        total,
+        page: safePage,
+        limit: safeLimit,
+        totalPages: Math.ceil(total / safeLimit),
+      },
+    });
   } catch (error: any) {
     console.error("Error fetching orders:", error);
     return NextResponse.json(

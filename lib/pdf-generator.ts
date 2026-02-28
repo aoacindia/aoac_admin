@@ -1213,6 +1213,9 @@ export async function generateInvoicePDF(
     let subtotal = 0;
     let totalDiscount = 0;
     let totalTax = 0;
+    let highestAmountItemTax = 18; // Default to 18% if no items
+    let highestAmountItemHsn = '-';
+    let highestAmount = 0;
     order.orderItems.forEach((item, index) => {
       const rate = Number(item.price ?? 0);
       const qty = Number(item.quantity ?? 0);
@@ -1224,6 +1227,13 @@ export async function generateInvoicePDF(
       const taxAmount = grossAmount - taxableAmount;
       const total = taxableAmount + taxAmount;
       const taxablePerUnit = qty > 0 ? taxableAmount / qty : 0;
+
+      // Track item with highest amount for delivery charges tax calculation
+      if (total > highestAmount) {
+        highestAmount = total;
+        highestAmountItemTax = taxPercent;
+        highestAmountItemHsn = item.hsnsac || '-';
+      }
 
       subtotal += taxableAmount;
       totalDiscount += discount;
@@ -1291,7 +1301,8 @@ export async function generateInvoicePDF(
     });
 
     const shipping = Number(order.shippingAmount ?? 0);
-    const courierBase = shipping > 0 ? shipping / 1.18 : 0;
+    const courierTaxDivisor = highestAmountItemTax > 0 ? 1 + highestAmountItemTax / 100 : 1;
+    const courierBase = shipping > 0 ? shipping / courierTaxDivisor : 0;
     const courierTax = shipping > 0 ? shipping - courierBase : 0;
     const roundedTotal = Number(order.invoiceAmount ?? subtotal + totalTax + shipping);
     const taxSummaryLines = isIntraStateSupply
@@ -1300,6 +1311,12 @@ export async function generateInvoicePDF(
           { label: 'SGST', value: formatAmount(totalTax / 2) }
         ]
       : [{ label: 'IGST', value: formatAmount(totalTax) }];
+
+    const deliveryChargesInfoLines = shipping > 0
+      ? [
+          { label: 'Delivery Charges HSN', value: highestAmountItemHsn }
+        ]
+      : [];
 
     const courierTaxLines =
       shipping > 0
@@ -1320,6 +1337,7 @@ export async function generateInvoicePDF(
     const summaryLines = [
       { label: 'Subtotal', value: formatAmount(subtotal) },
       ...taxSummaryLines,
+      ...deliveryChargesInfoLines,
       { label: 'Discount', value: formatAmount(totalDiscount) },
       ...courierTaxLines,
       { label: 'Invoice Amount', value: formatAmount(roundedTotal) }
