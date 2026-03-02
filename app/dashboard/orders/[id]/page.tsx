@@ -45,20 +45,49 @@ interface Customer {
 
 interface Order {
   id: string;
-  InvoiceNumber: string | null;
-  invoiceType: string | null;
+  orderBy: string;
   orderDate: string;
   status: string;
   totalAmount: number;
   discountAmount: number | null;
-  shippingAmount: number | null;
-  invoiceAmount: number | null;
-  roundedOffAmount: number | null;
+  paidAmount: number | null;
+  packed: boolean;
+  refund: boolean;
+  customOrder: boolean;
+  // Payment Details
+  r_orderId: string | null;
+  r_paymentId: string | null;
+  paymentLinkUrl: string | null;
   paymentMethod: string | null;
+  paymentVpa: string | null;
+  // Shipping Details
+  courierId: number | null;
+  shippingId: string | null;
+  shippingAmount: number | null;
+  awsCode: string | null;
+  shippingInvoiceNumber: string | null;
   shippingCourierName: string | null;
-  deliveryCharge: number | null;
-  deliveryPartner: string | null;
-  deliveryPartnerName: string | null;
+  estimatedDeliveryDate: string | null;
+  pickupScheduled: string | null;
+  deliveredAt: string | null;
+  // Documentation
+  manifestGenerated: boolean | null;
+  InvoiceNumber: string | null;
+  invoiceType: string | null;
+  invoiceSequenceNumber: number | null;
+  invoiceOfficeId: string | null;
+  // Invoice Amounts
+  roundedOffAmount: number | null;
+  invoiceAmount: number | null;
+  // Refund Details
+  refundId: string | null;
+  refundReceipt: string | null;
+  refundArn: string | null;
+  refundCreatedAt: string | null;
+  // Supplier Details
+  isDifferentSupplier: boolean | null;
+  supplierId: string | null;
+  // Relations
   user: Customer;
   shippingAddress: Address | null;
   orderItems: OrderItem[];
@@ -276,8 +305,92 @@ export default function ViewOrderPage() {
               {order.paymentMethod || "N/A"}
             </p>
           </div>
+          <div>
+            <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+              Packed
+            </Label>
+            <p className="text-zinc-900 dark:text-zinc-100 font-medium">
+              {order.packed ? "Yes" : "No"}
+            </p>
+          </div>
+          <div>
+            <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+              Refund
+            </Label>
+            <p className="text-zinc-900 dark:text-zinc-100 font-medium">
+              {order.refund ? "Yes" : "No"}
+            </p>
+          </div>
+          <div>
+            <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+              Custom Order
+            </Label>
+            <p className="text-zinc-900 dark:text-zinc-100 font-medium">
+              {order.customOrder ? "Yes" : "No"}
+            </p>
+          </div>
+          {order.paidAmount !== null && order.paidAmount !== undefined && (
+            <div>
+              <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                Paid Amount
+              </Label>
+              <p className="text-zinc-900 dark:text-zinc-100 font-medium">
+                ₹{order.paidAmount.toFixed(2)}
+              </p>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Payment Details */}
+      {(order.r_orderId || order.r_paymentId || order.paymentLinkUrl || order.paymentVpa) && (
+        <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md border border-zinc-200 dark:border-zinc-800 p-4 md:p-6 mb-6">
+          <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
+            Payment Details
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {order.r_orderId && (
+              <div>
+                <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Razorpay Order ID
+                </Label>
+                <p className="text-zinc-900 dark:text-zinc-100 font-medium">{order.r_orderId}</p>
+              </div>
+            )}
+            {order.r_paymentId && (
+              <div>
+                <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Razorpay Payment ID
+                </Label>
+                <p className="text-zinc-900 dark:text-zinc-100 font-medium">{order.r_paymentId}</p>
+              </div>
+            )}
+            {order.paymentLinkUrl && (
+              <div>
+                <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Payment Link URL
+                </Label>
+                <a
+                  href={order.paymentLinkUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                >
+                  {order.paymentLinkUrl}
+                </a>
+              </div>
+            )}
+            {order.paymentVpa && (
+              <div>
+                <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Payment VPA
+                </Label>
+                <p className="text-zinc-900 dark:text-zinc-100 font-medium">{order.paymentVpa}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Customer Information */}
       <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md border border-zinc-200 dark:border-zinc-800 p-4 md:p-6 mb-6">
@@ -365,25 +478,15 @@ export default function ViewOrderPage() {
         </div>
       )}
 
-      {/* Delivery Information */}
-      {(order.deliveryPartner || order.shippingCourierName) && (
+      {/* Shipping Information */}
+      {(order.shippingCourierName || order.courierId || order.shippingId || order.awsCode || 
+        order.shippingInvoiceNumber || order.estimatedDeliveryDate || order.pickupScheduled || 
+        order.deliveredAt || order.manifestGenerated) && (
         <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md border border-zinc-200 dark:border-zinc-800 p-4 md:p-6 mb-6">
           <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
-            Delivery Information
+            Shipping Information
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {order.deliveryPartner && (
-              <div>
-                <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
-                  Delivery Partner
-                </Label>
-                <p className="text-zinc-900 dark:text-zinc-100 font-medium">
-                  {order.deliveryPartner === "OTHER"
-                    ? order.deliveryPartnerName || "Other"
-                    : order.deliveryPartner}
-                </p>
-              </div>
-            )}
             {order.shippingCourierName && (
               <div>
                 <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
@@ -392,6 +495,150 @@ export default function ViewOrderPage() {
                 <p className="text-zinc-900 dark:text-zinc-100 font-medium">
                   {order.shippingCourierName}
                 </p>
+              </div>
+            )}
+            {order.courierId !== null && order.courierId !== undefined && (
+              <div>
+                <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Courier ID
+                </Label>
+                <p className="text-zinc-900 dark:text-zinc-100 font-medium">{order.courierId}</p>
+              </div>
+            )}
+            {order.shippingId && (
+              <div>
+                <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Shipping ID
+                </Label>
+                <p className="text-zinc-900 dark:text-zinc-100 font-medium">{order.shippingId}</p>
+              </div>
+            )}
+            {order.awsCode && (
+              <div>
+                <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  AWS Code
+                </Label>
+                <p className="text-zinc-900 dark:text-zinc-100 font-medium">{order.awsCode}</p>
+              </div>
+            )}
+            {order.shippingInvoiceNumber && (
+              <div>
+                <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Shipping Invoice Number
+                </Label>
+                <p className="text-zinc-900 dark:text-zinc-100 font-medium">
+                  {order.shippingInvoiceNumber}
+                </p>
+              </div>
+            )}
+            {order.estimatedDeliveryDate && (
+              <div>
+                <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Estimated Delivery Date
+                </Label>
+                <p className="text-zinc-900 dark:text-zinc-100 font-medium">
+                  {order.estimatedDeliveryDate}
+                </p>
+              </div>
+            )}
+            {order.pickupScheduled && (
+              <div>
+                <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Pickup Scheduled
+                </Label>
+                <p className="text-zinc-900 dark:text-zinc-100 font-medium">
+                  {new Date(order.pickupScheduled).toLocaleString()}
+                </p>
+              </div>
+            )}
+            {order.deliveredAt && (
+              <div>
+                <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Delivered At
+                </Label>
+                <p className="text-zinc-900 dark:text-zinc-100 font-medium">
+                  {new Date(order.deliveredAt).toLocaleString()}
+                </p>
+              </div>
+            )}
+            {order.manifestGenerated !== null && order.manifestGenerated !== undefined && (
+              <div>
+                <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Manifest Generated
+                </Label>
+                <p className="text-zinc-900 dark:text-zinc-100 font-medium">
+                  {order.manifestGenerated ? "Yes" : "No"}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Refund Information */}
+      {(order.refundId || order.refundReceipt || order.refundArn || order.refundCreatedAt) && (
+        <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md border border-zinc-200 dark:border-zinc-800 p-4 md:p-6 mb-6">
+          <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
+            Refund Information
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {order.refundId && (
+              <div>
+                <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Refund ID
+                </Label>
+                <p className="text-zinc-900 dark:text-zinc-100 font-medium">{order.refundId}</p>
+              </div>
+            )}
+            {order.refundReceipt && (
+              <div>
+                <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Refund Receipt
+                </Label>
+                <p className="text-zinc-900 dark:text-zinc-100 font-medium">{order.refundReceipt}</p>
+              </div>
+            )}
+            {order.refundArn && (
+              <div>
+                <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Refund ARN
+                </Label>
+                <p className="text-zinc-900 dark:text-zinc-100 font-medium">{order.refundArn}</p>
+              </div>
+            )}
+            {order.refundCreatedAt && (
+              <div>
+                <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Refund Created At
+                </Label>
+                <p className="text-zinc-900 dark:text-zinc-100 font-medium">
+                  {new Date(order.refundCreatedAt).toLocaleString()}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Supplier Information */}
+      {order.isDifferentSupplier && order.supplierId && (
+        <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md border border-zinc-200 dark:border-zinc-800 p-4 md:p-6 mb-6">
+          <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
+            Supplier Information
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                Different Supplier
+              </Label>
+              <p className="text-zinc-900 dark:text-zinc-100 font-medium">Yes</p>
+            </div>
+            {order.supplierId && (
+              <div>
+                <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                  Supplier ID
+                </Label>
+                <p className="text-zinc-900 dark:text-zinc-100 font-medium">{order.supplierId}</p>
               </div>
             )}
           </div>

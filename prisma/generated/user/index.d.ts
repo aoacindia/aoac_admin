@@ -7431,7 +7431,6 @@ export namespace Prisma {
     courierId: number | null
     shippingAmount: number | null
     invoiceSequenceNumber: number | null
-    deliveryCharge: number | null
     roundedOffAmount: number | null
     invoiceAmount: number | null
   }
@@ -7443,7 +7442,6 @@ export namespace Prisma {
     courierId: number | null
     shippingAmount: number | null
     invoiceSequenceNumber: number | null
-    deliveryCharge: number | null
     roundedOffAmount: number | null
     invoiceAmount: number | null
   }
@@ -7463,11 +7461,9 @@ export namespace Prisma {
     r_paymentId: string | null
     paymentLinkUrl: string | null
     paymentMethod: string | null
-    paymentBank: string | null
     paymentVpa: string | null
     courierId: number | null
     shippingId: string | null
-    shippingOrderId: string | null
     shippingAmount: number | null
     awsCode: string | null
     shippingInvoiceNumber: string | null
@@ -7480,9 +7476,6 @@ export namespace Prisma {
     invoiceType: string | null
     invoiceSequenceNumber: number | null
     invoiceOfficeId: string | null
-    deliveryCharge: number | null
-    deliveryPartner: string | null
-    deliveryPartnerName: string | null
     roundedOffAmount: number | null
     invoiceAmount: number | null
     refundId: string | null
@@ -7509,11 +7502,9 @@ export namespace Prisma {
     r_paymentId: string | null
     paymentLinkUrl: string | null
     paymentMethod: string | null
-    paymentBank: string | null
     paymentVpa: string | null
     courierId: number | null
     shippingId: string | null
-    shippingOrderId: string | null
     shippingAmount: number | null
     awsCode: string | null
     shippingInvoiceNumber: string | null
@@ -7526,9 +7517,6 @@ export namespace Prisma {
     invoiceType: string | null
     invoiceSequenceNumber: number | null
     invoiceOfficeId: string | null
-    deliveryCharge: number | null
-    deliveryPartner: string | null
-    deliveryPartnerName: string | null
     roundedOffAmount: number | null
     invoiceAmount: number | null
     refundId: string | null
@@ -7555,11 +7543,9 @@ export namespace Prisma {
     r_paymentId: number
     paymentLinkUrl: number
     paymentMethod: number
-    paymentBank: number
     paymentVpa: number
     courierId: number
     shippingId: number
-    shippingOrderId: number
     shippingAmount: number
     awsCode: number
     shippingInvoiceNumber: number
@@ -7572,9 +7558,6 @@ export namespace Prisma {
     invoiceType: number
     invoiceSequenceNumber: number
     invoiceOfficeId: number
-    deliveryCharge: number
-    deliveryPartner: number
-    deliveryPartnerName: number
     roundedOffAmount: number
     invoiceAmount: number
     refundId: number
@@ -7595,7 +7578,6 @@ export namespace Prisma {
     courierId?: true
     shippingAmount?: true
     invoiceSequenceNumber?: true
-    deliveryCharge?: true
     roundedOffAmount?: true
     invoiceAmount?: true
   }
@@ -7607,7 +7589,6 @@ export namespace Prisma {
     courierId?: true
     shippingAmount?: true
     invoiceSequenceNumber?: true
-    deliveryCharge?: true
     roundedOffAmount?: true
     invoiceAmount?: true
   }
@@ -7627,11 +7608,9 @@ export namespace Prisma {
     r_paymentId?: true
     paymentLinkUrl?: true
     paymentMethod?: true
-    paymentBank?: true
     paymentVpa?: true
     courierId?: true
     shippingId?: true
-    shippingOrderId?: true
     shippingAmount?: true
     awsCode?: true
     shippingInvoiceNumber?: true
@@ -7644,9 +7623,6 @@ export namespace Prisma {
     invoiceType?: true
     invoiceSequenceNumber?: true
     invoiceOfficeId?: true
-    deliveryCharge?: true
-    deliveryPartner?: true
-    deliveryPartnerName?: true
     roundedOffAmount?: true
     invoiceAmount?: true
     refundId?: true
@@ -7673,11 +7649,9 @@ export namespace Prisma {
     r_paymentId?: true
     paymentLinkUrl?: true
     paymentMethod?: true
-    paymentBank?: true
     paymentVpa?: true
     courierId?: true
     shippingId?: true
-    shippingOrderId?: true
     shippingAmount?: true
     awsCode?: true
     shippingInvoiceNumber?: true
@@ -7690,9 +7664,6 @@ export namespace Prisma {
     invoiceType?: true
     invoiceSequenceNumber?: true
     invoiceOfficeId?: true
-    deliveryCharge?: true
-    deliveryPartner?: true
-    deliveryPartnerName?: true
     roundedOffAmount?: true
     invoiceAmount?: true
     refundId?: true
@@ -7719,11 +7690,9 @@ export namespace Prisma {
     r_paymentId?: true
     paymentLinkUrl?: true
     paymentMethod?: true
-    paymentBank?: true
     paymentVpa?: true
     courierId?: true
     shippingId?: true
-    shippingOrderId?: true
     shippingAmount?: true
     awsCode?: true
     shippingInvoiceNumber?: true
@@ -7736,9 +7705,6 @@ export namespace Prisma {
     invoiceType?: true
     invoiceSequenceNumber?: true
     invoiceOfficeId?: true
-    deliveryCharge?: true
-    deliveryPartner?: true
-    deliveryPartnerName?: true
     roundedOffAmount?: true
     invoiceAmount?: true
     refundId?: true
@@ -7852,11 +7818,9 @@ export namespace Prisma {
     r_paymentId: string | null
     paymentLinkUrl: string | null
     paymentMethod: string | null
-    paymentBank: string | null
     paymentVpa: string | null
     courierId: number | null
     shippingId: string | null
-    shippingOrderId: string | null
     shippingAmount: number | null
     awsCode: string | null
     shippingInvoiceNumber: string | null
@@ -7869,9 +7833,6 @@ export namespace Prisma {
     invoiceType: string | null
     invoiceSequenceNumber: number | null
     invoiceOfficeId: string | null
-    deliveryCharge: number | null
-    deliveryPartner: string | null
-    deliveryPartnerName: string | null
     roundedOffAmount: number | null
     invoiceAmount: number | null
     refundId: string | null
@@ -7917,11 +7878,9 @@ export namespace Prisma {
     r_paymentId?: boolean
     paymentLinkUrl?: boolean
     paymentMethod?: boolean
-    paymentBank?: boolean
     paymentVpa?: boolean
     courierId?: boolean
     shippingId?: boolean
-    shippingOrderId?: boolean
     shippingAmount?: boolean
     awsCode?: boolean
     shippingInvoiceNumber?: boolean
@@ -7934,9 +7893,6 @@ export namespace Prisma {
     invoiceType?: boolean
     invoiceSequenceNumber?: boolean
     invoiceOfficeId?: boolean
-    deliveryCharge?: boolean
-    deliveryPartner?: boolean
-    deliveryPartnerName?: boolean
     roundedOffAmount?: boolean
     invoiceAmount?: boolean
     refundId?: boolean
@@ -7970,11 +7926,9 @@ export namespace Prisma {
     r_paymentId?: boolean
     paymentLinkUrl?: boolean
     paymentMethod?: boolean
-    paymentBank?: boolean
     paymentVpa?: boolean
     courierId?: boolean
     shippingId?: boolean
-    shippingOrderId?: boolean
     shippingAmount?: boolean
     awsCode?: boolean
     shippingInvoiceNumber?: boolean
@@ -7987,9 +7941,6 @@ export namespace Prisma {
     invoiceType?: boolean
     invoiceSequenceNumber?: boolean
     invoiceOfficeId?: boolean
-    deliveryCharge?: boolean
-    deliveryPartner?: boolean
-    deliveryPartnerName?: boolean
     roundedOffAmount?: boolean
     invoiceAmount?: boolean
     refundId?: boolean
@@ -8001,7 +7952,7 @@ export namespace Prisma {
     shippingAddressId?: boolean
   }
 
-  export type OrderOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "orderBy" | "orderDate" | "status" | "totalAmount" | "discountAmount" | "paidAmount" | "packed" | "refund" | "customOrder" | "r_orderId" | "r_paymentId" | "paymentLinkUrl" | "paymentMethod" | "paymentBank" | "paymentVpa" | "courierId" | "shippingId" | "shippingOrderId" | "shippingAmount" | "awsCode" | "shippingInvoiceNumber" | "shippingCourierName" | "estimatedDeliveryDate" | "pickupScheduled" | "deliveredAt" | "manifestGenerated" | "InvoiceNumber" | "invoiceType" | "invoiceSequenceNumber" | "invoiceOfficeId" | "deliveryCharge" | "deliveryPartner" | "deliveryPartnerName" | "roundedOffAmount" | "invoiceAmount" | "refundId" | "refundReceipt" | "refundArn" | "refundCreatedAt" | "isDifferentSupplier" | "supplierId" | "shippingAddressId", ExtArgs["result"]["order"]>
+  export type OrderOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "orderBy" | "orderDate" | "status" | "totalAmount" | "discountAmount" | "paidAmount" | "packed" | "refund" | "customOrder" | "r_orderId" | "r_paymentId" | "paymentLinkUrl" | "paymentMethod" | "paymentVpa" | "courierId" | "shippingId" | "shippingAmount" | "awsCode" | "shippingInvoiceNumber" | "shippingCourierName" | "estimatedDeliveryDate" | "pickupScheduled" | "deliveredAt" | "manifestGenerated" | "InvoiceNumber" | "invoiceType" | "invoiceSequenceNumber" | "invoiceOfficeId" | "roundedOffAmount" | "invoiceAmount" | "refundId" | "refundReceipt" | "refundArn" | "refundCreatedAt" | "isDifferentSupplier" | "supplierId" | "shippingAddressId", ExtArgs["result"]["order"]>
   export type OrderInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     supplier?: boolean | Order$supplierArgs<ExtArgs>
     orderItems?: boolean | Order$orderItemsArgs<ExtArgs>
@@ -8033,11 +7984,9 @@ export namespace Prisma {
       r_paymentId: string | null
       paymentLinkUrl: string | null
       paymentMethod: string | null
-      paymentBank: string | null
       paymentVpa: string | null
       courierId: number | null
       shippingId: string | null
-      shippingOrderId: string | null
       shippingAmount: number | null
       awsCode: string | null
       shippingInvoiceNumber: string | null
@@ -8050,9 +7999,6 @@ export namespace Prisma {
       invoiceType: string | null
       invoiceSequenceNumber: number | null
       invoiceOfficeId: string | null
-      deliveryCharge: number | null
-      deliveryPartner: string | null
-      deliveryPartnerName: string | null
       roundedOffAmount: number | null
       invoiceAmount: number | null
       refundId: string | null
@@ -8449,11 +8395,9 @@ export namespace Prisma {
     readonly r_paymentId: FieldRef<"Order", 'String'>
     readonly paymentLinkUrl: FieldRef<"Order", 'String'>
     readonly paymentMethod: FieldRef<"Order", 'String'>
-    readonly paymentBank: FieldRef<"Order", 'String'>
     readonly paymentVpa: FieldRef<"Order", 'String'>
     readonly courierId: FieldRef<"Order", 'Int'>
     readonly shippingId: FieldRef<"Order", 'String'>
-    readonly shippingOrderId: FieldRef<"Order", 'String'>
     readonly shippingAmount: FieldRef<"Order", 'Float'>
     readonly awsCode: FieldRef<"Order", 'String'>
     readonly shippingInvoiceNumber: FieldRef<"Order", 'String'>
@@ -8466,9 +8410,6 @@ export namespace Prisma {
     readonly invoiceType: FieldRef<"Order", 'String'>
     readonly invoiceSequenceNumber: FieldRef<"Order", 'Int'>
     readonly invoiceOfficeId: FieldRef<"Order", 'String'>
-    readonly deliveryCharge: FieldRef<"Order", 'Float'>
-    readonly deliveryPartner: FieldRef<"Order", 'String'>
-    readonly deliveryPartnerName: FieldRef<"Order", 'String'>
     readonly roundedOffAmount: FieldRef<"Order", 'Float'>
     readonly invoiceAmount: FieldRef<"Order", 'Float'>
     readonly refundId: FieldRef<"Order", 'String'>
@@ -17568,11 +17509,9 @@ export namespace Prisma {
     r_paymentId: 'r_paymentId',
     paymentLinkUrl: 'paymentLinkUrl',
     paymentMethod: 'paymentMethod',
-    paymentBank: 'paymentBank',
     paymentVpa: 'paymentVpa',
     courierId: 'courierId',
     shippingId: 'shippingId',
-    shippingOrderId: 'shippingOrderId',
     shippingAmount: 'shippingAmount',
     awsCode: 'awsCode',
     shippingInvoiceNumber: 'shippingInvoiceNumber',
@@ -17585,9 +17524,6 @@ export namespace Prisma {
     invoiceType: 'invoiceType',
     invoiceSequenceNumber: 'invoiceSequenceNumber',
     invoiceOfficeId: 'invoiceOfficeId',
-    deliveryCharge: 'deliveryCharge',
-    deliveryPartner: 'deliveryPartner',
-    deliveryPartnerName: 'deliveryPartnerName',
     roundedOffAmount: 'roundedOffAmount',
     invoiceAmount: 'invoiceAmount',
     refundId: 'refundId',
@@ -17814,10 +17750,8 @@ export namespace Prisma {
     r_paymentId: 'r_paymentId',
     paymentLinkUrl: 'paymentLinkUrl',
     paymentMethod: 'paymentMethod',
-    paymentBank: 'paymentBank',
     paymentVpa: 'paymentVpa',
     shippingId: 'shippingId',
-    shippingOrderId: 'shippingOrderId',
     awsCode: 'awsCode',
     shippingInvoiceNumber: 'shippingInvoiceNumber',
     shippingCourierName: 'shippingCourierName',
@@ -17825,8 +17759,6 @@ export namespace Prisma {
     InvoiceNumber: 'InvoiceNumber',
     invoiceType: 'invoiceType',
     invoiceOfficeId: 'invoiceOfficeId',
-    deliveryPartner: 'deliveryPartner',
-    deliveryPartnerName: 'deliveryPartnerName',
     refundId: 'refundId',
     refundReceipt: 'refundReceipt',
     refundArn: 'refundArn',
@@ -18443,11 +18375,9 @@ export namespace Prisma {
     r_paymentId?: StringNullableFilter<"Order"> | string | null
     paymentLinkUrl?: StringNullableFilter<"Order"> | string | null
     paymentMethod?: StringNullableFilter<"Order"> | string | null
-    paymentBank?: StringNullableFilter<"Order"> | string | null
     paymentVpa?: StringNullableFilter<"Order"> | string | null
     courierId?: IntNullableFilter<"Order"> | number | null
     shippingId?: StringNullableFilter<"Order"> | string | null
-    shippingOrderId?: StringNullableFilter<"Order"> | string | null
     shippingAmount?: FloatNullableFilter<"Order"> | number | null
     awsCode?: StringNullableFilter<"Order"> | string | null
     shippingInvoiceNumber?: StringNullableFilter<"Order"> | string | null
@@ -18460,9 +18390,6 @@ export namespace Prisma {
     invoiceType?: StringNullableFilter<"Order"> | string | null
     invoiceSequenceNumber?: IntNullableFilter<"Order"> | number | null
     invoiceOfficeId?: StringNullableFilter<"Order"> | string | null
-    deliveryCharge?: FloatNullableFilter<"Order"> | number | null
-    deliveryPartner?: StringNullableFilter<"Order"> | string | null
-    deliveryPartnerName?: StringNullableFilter<"Order"> | string | null
     roundedOffAmount?: FloatNullableFilter<"Order"> | number | null
     invoiceAmount?: FloatNullableFilter<"Order"> | number | null
     refundId?: StringNullableFilter<"Order"> | string | null
@@ -18493,11 +18420,9 @@ export namespace Prisma {
     r_paymentId?: SortOrderInput | SortOrder
     paymentLinkUrl?: SortOrderInput | SortOrder
     paymentMethod?: SortOrderInput | SortOrder
-    paymentBank?: SortOrderInput | SortOrder
     paymentVpa?: SortOrderInput | SortOrder
     courierId?: SortOrderInput | SortOrder
     shippingId?: SortOrderInput | SortOrder
-    shippingOrderId?: SortOrderInput | SortOrder
     shippingAmount?: SortOrderInput | SortOrder
     awsCode?: SortOrderInput | SortOrder
     shippingInvoiceNumber?: SortOrderInput | SortOrder
@@ -18510,9 +18435,6 @@ export namespace Prisma {
     invoiceType?: SortOrderInput | SortOrder
     invoiceSequenceNumber?: SortOrderInput | SortOrder
     invoiceOfficeId?: SortOrderInput | SortOrder
-    deliveryCharge?: SortOrderInput | SortOrder
-    deliveryPartner?: SortOrderInput | SortOrder
-    deliveryPartnerName?: SortOrderInput | SortOrder
     roundedOffAmount?: SortOrderInput | SortOrder
     invoiceAmount?: SortOrderInput | SortOrder
     refundId?: SortOrderInput | SortOrder
@@ -18547,11 +18469,9 @@ export namespace Prisma {
     r_paymentId?: StringNullableFilter<"Order"> | string | null
     paymentLinkUrl?: StringNullableFilter<"Order"> | string | null
     paymentMethod?: StringNullableFilter<"Order"> | string | null
-    paymentBank?: StringNullableFilter<"Order"> | string | null
     paymentVpa?: StringNullableFilter<"Order"> | string | null
     courierId?: IntNullableFilter<"Order"> | number | null
     shippingId?: StringNullableFilter<"Order"> | string | null
-    shippingOrderId?: StringNullableFilter<"Order"> | string | null
     shippingAmount?: FloatNullableFilter<"Order"> | number | null
     awsCode?: StringNullableFilter<"Order"> | string | null
     shippingInvoiceNumber?: StringNullableFilter<"Order"> | string | null
@@ -18564,9 +18484,6 @@ export namespace Prisma {
     invoiceType?: StringNullableFilter<"Order"> | string | null
     invoiceSequenceNumber?: IntNullableFilter<"Order"> | number | null
     invoiceOfficeId?: StringNullableFilter<"Order"> | string | null
-    deliveryCharge?: FloatNullableFilter<"Order"> | number | null
-    deliveryPartner?: StringNullableFilter<"Order"> | string | null
-    deliveryPartnerName?: StringNullableFilter<"Order"> | string | null
     roundedOffAmount?: FloatNullableFilter<"Order"> | number | null
     invoiceAmount?: FloatNullableFilter<"Order"> | number | null
     refundId?: StringNullableFilter<"Order"> | string | null
@@ -18597,11 +18514,9 @@ export namespace Prisma {
     r_paymentId?: SortOrderInput | SortOrder
     paymentLinkUrl?: SortOrderInput | SortOrder
     paymentMethod?: SortOrderInput | SortOrder
-    paymentBank?: SortOrderInput | SortOrder
     paymentVpa?: SortOrderInput | SortOrder
     courierId?: SortOrderInput | SortOrder
     shippingId?: SortOrderInput | SortOrder
-    shippingOrderId?: SortOrderInput | SortOrder
     shippingAmount?: SortOrderInput | SortOrder
     awsCode?: SortOrderInput | SortOrder
     shippingInvoiceNumber?: SortOrderInput | SortOrder
@@ -18614,9 +18529,6 @@ export namespace Prisma {
     invoiceType?: SortOrderInput | SortOrder
     invoiceSequenceNumber?: SortOrderInput | SortOrder
     invoiceOfficeId?: SortOrderInput | SortOrder
-    deliveryCharge?: SortOrderInput | SortOrder
-    deliveryPartner?: SortOrderInput | SortOrder
-    deliveryPartnerName?: SortOrderInput | SortOrder
     roundedOffAmount?: SortOrderInput | SortOrder
     invoiceAmount?: SortOrderInput | SortOrder
     refundId?: SortOrderInput | SortOrder
@@ -18651,11 +18563,9 @@ export namespace Prisma {
     r_paymentId?: StringNullableWithAggregatesFilter<"Order"> | string | null
     paymentLinkUrl?: StringNullableWithAggregatesFilter<"Order"> | string | null
     paymentMethod?: StringNullableWithAggregatesFilter<"Order"> | string | null
-    paymentBank?: StringNullableWithAggregatesFilter<"Order"> | string | null
     paymentVpa?: StringNullableWithAggregatesFilter<"Order"> | string | null
     courierId?: IntNullableWithAggregatesFilter<"Order"> | number | null
     shippingId?: StringNullableWithAggregatesFilter<"Order"> | string | null
-    shippingOrderId?: StringNullableWithAggregatesFilter<"Order"> | string | null
     shippingAmount?: FloatNullableWithAggregatesFilter<"Order"> | number | null
     awsCode?: StringNullableWithAggregatesFilter<"Order"> | string | null
     shippingInvoiceNumber?: StringNullableWithAggregatesFilter<"Order"> | string | null
@@ -18668,9 +18578,6 @@ export namespace Prisma {
     invoiceType?: StringNullableWithAggregatesFilter<"Order"> | string | null
     invoiceSequenceNumber?: IntNullableWithAggregatesFilter<"Order"> | number | null
     invoiceOfficeId?: StringNullableWithAggregatesFilter<"Order"> | string | null
-    deliveryCharge?: FloatNullableWithAggregatesFilter<"Order"> | number | null
-    deliveryPartner?: StringNullableWithAggregatesFilter<"Order"> | string | null
-    deliveryPartnerName?: StringNullableWithAggregatesFilter<"Order"> | string | null
     roundedOffAmount?: FloatNullableWithAggregatesFilter<"Order"> | number | null
     invoiceAmount?: FloatNullableWithAggregatesFilter<"Order"> | number | null
     refundId?: StringNullableWithAggregatesFilter<"Order"> | string | null
@@ -19821,11 +19728,9 @@ export namespace Prisma {
     r_paymentId?: string | null
     paymentLinkUrl?: string | null
     paymentMethod?: string | null
-    paymentBank?: string | null
     paymentVpa?: string | null
     courierId?: number | null
     shippingId?: string | null
-    shippingOrderId?: string | null
     shippingAmount?: number | null
     awsCode?: string | null
     shippingInvoiceNumber?: string | null
@@ -19838,9 +19743,6 @@ export namespace Prisma {
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
     invoiceOfficeId?: string | null
-    deliveryCharge?: number | null
-    deliveryPartner?: string | null
-    deliveryPartnerName?: string | null
     roundedOffAmount?: number | null
     invoiceAmount?: number | null
     refundId?: string | null
@@ -19869,11 +19771,9 @@ export namespace Prisma {
     r_paymentId?: string | null
     paymentLinkUrl?: string | null
     paymentMethod?: string | null
-    paymentBank?: string | null
     paymentVpa?: string | null
     courierId?: number | null
     shippingId?: string | null
-    shippingOrderId?: string | null
     shippingAmount?: number | null
     awsCode?: string | null
     shippingInvoiceNumber?: string | null
@@ -19886,9 +19786,6 @@ export namespace Prisma {
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
     invoiceOfficeId?: string | null
-    deliveryCharge?: number | null
-    deliveryPartner?: string | null
-    deliveryPartnerName?: string | null
     roundedOffAmount?: number | null
     invoiceAmount?: number | null
     refundId?: string | null
@@ -19915,11 +19812,9 @@ export namespace Prisma {
     r_paymentId?: NullableStringFieldUpdateOperationsInput | string | null
     paymentLinkUrl?: NullableStringFieldUpdateOperationsInput | string | null
     paymentMethod?: NullableStringFieldUpdateOperationsInput | string | null
-    paymentBank?: NullableStringFieldUpdateOperationsInput | string | null
     paymentVpa?: NullableStringFieldUpdateOperationsInput | string | null
     courierId?: NullableIntFieldUpdateOperationsInput | number | null
     shippingId?: NullableStringFieldUpdateOperationsInput | string | null
-    shippingOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     shippingAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     awsCode?: NullableStringFieldUpdateOperationsInput | string | null
     shippingInvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
@@ -19932,9 +19827,6 @@ export namespace Prisma {
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
     invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
-    deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
     roundedOffAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     invoiceAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     refundId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -19963,11 +19855,9 @@ export namespace Prisma {
     r_paymentId?: NullableStringFieldUpdateOperationsInput | string | null
     paymentLinkUrl?: NullableStringFieldUpdateOperationsInput | string | null
     paymentMethod?: NullableStringFieldUpdateOperationsInput | string | null
-    paymentBank?: NullableStringFieldUpdateOperationsInput | string | null
     paymentVpa?: NullableStringFieldUpdateOperationsInput | string | null
     courierId?: NullableIntFieldUpdateOperationsInput | number | null
     shippingId?: NullableStringFieldUpdateOperationsInput | string | null
-    shippingOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     shippingAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     awsCode?: NullableStringFieldUpdateOperationsInput | string | null
     shippingInvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
@@ -19980,9 +19870,6 @@ export namespace Prisma {
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
     invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
-    deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
     roundedOffAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     invoiceAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     refundId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -20010,11 +19897,9 @@ export namespace Prisma {
     r_paymentId?: string | null
     paymentLinkUrl?: string | null
     paymentMethod?: string | null
-    paymentBank?: string | null
     paymentVpa?: string | null
     courierId?: number | null
     shippingId?: string | null
-    shippingOrderId?: string | null
     shippingAmount?: number | null
     awsCode?: string | null
     shippingInvoiceNumber?: string | null
@@ -20027,9 +19912,6 @@ export namespace Prisma {
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
     invoiceOfficeId?: string | null
-    deliveryCharge?: number | null
-    deliveryPartner?: string | null
-    deliveryPartnerName?: string | null
     roundedOffAmount?: number | null
     invoiceAmount?: number | null
     refundId?: string | null
@@ -20055,11 +19937,9 @@ export namespace Prisma {
     r_paymentId?: NullableStringFieldUpdateOperationsInput | string | null
     paymentLinkUrl?: NullableStringFieldUpdateOperationsInput | string | null
     paymentMethod?: NullableStringFieldUpdateOperationsInput | string | null
-    paymentBank?: NullableStringFieldUpdateOperationsInput | string | null
     paymentVpa?: NullableStringFieldUpdateOperationsInput | string | null
     courierId?: NullableIntFieldUpdateOperationsInput | number | null
     shippingId?: NullableStringFieldUpdateOperationsInput | string | null
-    shippingOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     shippingAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     awsCode?: NullableStringFieldUpdateOperationsInput | string | null
     shippingInvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
@@ -20072,9 +19952,6 @@ export namespace Prisma {
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
     invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
-    deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
     roundedOffAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     invoiceAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     refundId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -20099,11 +19976,9 @@ export namespace Prisma {
     r_paymentId?: NullableStringFieldUpdateOperationsInput | string | null
     paymentLinkUrl?: NullableStringFieldUpdateOperationsInput | string | null
     paymentMethod?: NullableStringFieldUpdateOperationsInput | string | null
-    paymentBank?: NullableStringFieldUpdateOperationsInput | string | null
     paymentVpa?: NullableStringFieldUpdateOperationsInput | string | null
     courierId?: NullableIntFieldUpdateOperationsInput | number | null
     shippingId?: NullableStringFieldUpdateOperationsInput | string | null
-    shippingOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     shippingAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     awsCode?: NullableStringFieldUpdateOperationsInput | string | null
     shippingInvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
@@ -20116,9 +19991,6 @@ export namespace Prisma {
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
     invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
-    deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
     roundedOffAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     invoiceAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     refundId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -21393,11 +21265,9 @@ export namespace Prisma {
     r_paymentId?: SortOrder
     paymentLinkUrl?: SortOrder
     paymentMethod?: SortOrder
-    paymentBank?: SortOrder
     paymentVpa?: SortOrder
     courierId?: SortOrder
     shippingId?: SortOrder
-    shippingOrderId?: SortOrder
     shippingAmount?: SortOrder
     awsCode?: SortOrder
     shippingInvoiceNumber?: SortOrder
@@ -21410,9 +21280,6 @@ export namespace Prisma {
     invoiceType?: SortOrder
     invoiceSequenceNumber?: SortOrder
     invoiceOfficeId?: SortOrder
-    deliveryCharge?: SortOrder
-    deliveryPartner?: SortOrder
-    deliveryPartnerName?: SortOrder
     roundedOffAmount?: SortOrder
     invoiceAmount?: SortOrder
     refundId?: SortOrder
@@ -21431,7 +21298,6 @@ export namespace Prisma {
     courierId?: SortOrder
     shippingAmount?: SortOrder
     invoiceSequenceNumber?: SortOrder
-    deliveryCharge?: SortOrder
     roundedOffAmount?: SortOrder
     invoiceAmount?: SortOrder
   }
@@ -21451,11 +21317,9 @@ export namespace Prisma {
     r_paymentId?: SortOrder
     paymentLinkUrl?: SortOrder
     paymentMethod?: SortOrder
-    paymentBank?: SortOrder
     paymentVpa?: SortOrder
     courierId?: SortOrder
     shippingId?: SortOrder
-    shippingOrderId?: SortOrder
     shippingAmount?: SortOrder
     awsCode?: SortOrder
     shippingInvoiceNumber?: SortOrder
@@ -21468,9 +21332,6 @@ export namespace Prisma {
     invoiceType?: SortOrder
     invoiceSequenceNumber?: SortOrder
     invoiceOfficeId?: SortOrder
-    deliveryCharge?: SortOrder
-    deliveryPartner?: SortOrder
-    deliveryPartnerName?: SortOrder
     roundedOffAmount?: SortOrder
     invoiceAmount?: SortOrder
     refundId?: SortOrder
@@ -21497,11 +21358,9 @@ export namespace Prisma {
     r_paymentId?: SortOrder
     paymentLinkUrl?: SortOrder
     paymentMethod?: SortOrder
-    paymentBank?: SortOrder
     paymentVpa?: SortOrder
     courierId?: SortOrder
     shippingId?: SortOrder
-    shippingOrderId?: SortOrder
     shippingAmount?: SortOrder
     awsCode?: SortOrder
     shippingInvoiceNumber?: SortOrder
@@ -21514,9 +21373,6 @@ export namespace Prisma {
     invoiceType?: SortOrder
     invoiceSequenceNumber?: SortOrder
     invoiceOfficeId?: SortOrder
-    deliveryCharge?: SortOrder
-    deliveryPartner?: SortOrder
-    deliveryPartnerName?: SortOrder
     roundedOffAmount?: SortOrder
     invoiceAmount?: SortOrder
     refundId?: SortOrder
@@ -21535,7 +21391,6 @@ export namespace Prisma {
     courierId?: SortOrder
     shippingAmount?: SortOrder
     invoiceSequenceNumber?: SortOrder
-    deliveryCharge?: SortOrder
     roundedOffAmount?: SortOrder
     invoiceAmount?: SortOrder
   }
@@ -22984,11 +22839,9 @@ export namespace Prisma {
     r_paymentId?: string | null
     paymentLinkUrl?: string | null
     paymentMethod?: string | null
-    paymentBank?: string | null
     paymentVpa?: string | null
     courierId?: number | null
     shippingId?: string | null
-    shippingOrderId?: string | null
     shippingAmount?: number | null
     awsCode?: string | null
     shippingInvoiceNumber?: string | null
@@ -23001,9 +22854,6 @@ export namespace Prisma {
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
     invoiceOfficeId?: string | null
-    deliveryCharge?: number | null
-    deliveryPartner?: string | null
-    deliveryPartnerName?: string | null
     roundedOffAmount?: number | null
     invoiceAmount?: number | null
     refundId?: string | null
@@ -23030,11 +22880,9 @@ export namespace Prisma {
     r_paymentId?: string | null
     paymentLinkUrl?: string | null
     paymentMethod?: string | null
-    paymentBank?: string | null
     paymentVpa?: string | null
     courierId?: number | null
     shippingId?: string | null
-    shippingOrderId?: string | null
     shippingAmount?: number | null
     awsCode?: string | null
     shippingInvoiceNumber?: string | null
@@ -23047,9 +22895,6 @@ export namespace Prisma {
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
     invoiceOfficeId?: string | null
-    deliveryCharge?: number | null
-    deliveryPartner?: string | null
-    deliveryPartnerName?: string | null
     roundedOffAmount?: number | null
     invoiceAmount?: number | null
     refundId?: string | null
@@ -23282,11 +23127,9 @@ export namespace Prisma {
     r_paymentId?: StringNullableFilter<"Order"> | string | null
     paymentLinkUrl?: StringNullableFilter<"Order"> | string | null
     paymentMethod?: StringNullableFilter<"Order"> | string | null
-    paymentBank?: StringNullableFilter<"Order"> | string | null
     paymentVpa?: StringNullableFilter<"Order"> | string | null
     courierId?: IntNullableFilter<"Order"> | number | null
     shippingId?: StringNullableFilter<"Order"> | string | null
-    shippingOrderId?: StringNullableFilter<"Order"> | string | null
     shippingAmount?: FloatNullableFilter<"Order"> | number | null
     awsCode?: StringNullableFilter<"Order"> | string | null
     shippingInvoiceNumber?: StringNullableFilter<"Order"> | string | null
@@ -23299,9 +23142,6 @@ export namespace Prisma {
     invoiceType?: StringNullableFilter<"Order"> | string | null
     invoiceSequenceNumber?: IntNullableFilter<"Order"> | number | null
     invoiceOfficeId?: StringNullableFilter<"Order"> | string | null
-    deliveryCharge?: FloatNullableFilter<"Order"> | number | null
-    deliveryPartner?: StringNullableFilter<"Order"> | string | null
-    deliveryPartnerName?: StringNullableFilter<"Order"> | string | null
     roundedOffAmount?: FloatNullableFilter<"Order"> | number | null
     invoiceAmount?: FloatNullableFilter<"Order"> | number | null
     refundId?: StringNullableFilter<"Order"> | string | null
@@ -23698,11 +23538,9 @@ export namespace Prisma {
     r_paymentId?: string | null
     paymentLinkUrl?: string | null
     paymentMethod?: string | null
-    paymentBank?: string | null
     paymentVpa?: string | null
     courierId?: number | null
     shippingId?: string | null
-    shippingOrderId?: string | null
     shippingAmount?: number | null
     awsCode?: string | null
     shippingInvoiceNumber?: string | null
@@ -23715,9 +23553,6 @@ export namespace Prisma {
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
     invoiceOfficeId?: string | null
-    deliveryCharge?: number | null
-    deliveryPartner?: string | null
-    deliveryPartnerName?: string | null
     roundedOffAmount?: number | null
     invoiceAmount?: number | null
     refundId?: string | null
@@ -23745,11 +23580,9 @@ export namespace Prisma {
     r_paymentId?: string | null
     paymentLinkUrl?: string | null
     paymentMethod?: string | null
-    paymentBank?: string | null
     paymentVpa?: string | null
     courierId?: number | null
     shippingId?: string | null
-    shippingOrderId?: string | null
     shippingAmount?: number | null
     awsCode?: string | null
     shippingInvoiceNumber?: string | null
@@ -23762,9 +23595,6 @@ export namespace Prisma {
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
     invoiceOfficeId?: string | null
-    deliveryCharge?: number | null
-    deliveryPartner?: string | null
-    deliveryPartnerName?: string | null
     roundedOffAmount?: number | null
     invoiceAmount?: number | null
     refundId?: string | null
@@ -24246,11 +24076,9 @@ export namespace Prisma {
     r_paymentId?: string | null
     paymentLinkUrl?: string | null
     paymentMethod?: string | null
-    paymentBank?: string | null
     paymentVpa?: string | null
     courierId?: number | null
     shippingId?: string | null
-    shippingOrderId?: string | null
     shippingAmount?: number | null
     awsCode?: string | null
     shippingInvoiceNumber?: string | null
@@ -24263,9 +24091,6 @@ export namespace Prisma {
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
     invoiceOfficeId?: string | null
-    deliveryCharge?: number | null
-    deliveryPartner?: string | null
-    deliveryPartnerName?: string | null
     roundedOffAmount?: number | null
     invoiceAmount?: number | null
     refundId?: string | null
@@ -24293,11 +24118,9 @@ export namespace Prisma {
     r_paymentId?: string | null
     paymentLinkUrl?: string | null
     paymentMethod?: string | null
-    paymentBank?: string | null
     paymentVpa?: string | null
     courierId?: number | null
     shippingId?: string | null
-    shippingOrderId?: string | null
     shippingAmount?: number | null
     awsCode?: string | null
     shippingInvoiceNumber?: string | null
@@ -24310,9 +24133,6 @@ export namespace Prisma {
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
     invoiceOfficeId?: string | null
-    deliveryCharge?: number | null
-    deliveryPartner?: string | null
-    deliveryPartnerName?: string | null
     roundedOffAmount?: number | null
     invoiceAmount?: number | null
     refundId?: string | null
@@ -24354,11 +24174,9 @@ export namespace Prisma {
     r_paymentId?: NullableStringFieldUpdateOperationsInput | string | null
     paymentLinkUrl?: NullableStringFieldUpdateOperationsInput | string | null
     paymentMethod?: NullableStringFieldUpdateOperationsInput | string | null
-    paymentBank?: NullableStringFieldUpdateOperationsInput | string | null
     paymentVpa?: NullableStringFieldUpdateOperationsInput | string | null
     courierId?: NullableIntFieldUpdateOperationsInput | number | null
     shippingId?: NullableStringFieldUpdateOperationsInput | string | null
-    shippingOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     shippingAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     awsCode?: NullableStringFieldUpdateOperationsInput | string | null
     shippingInvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
@@ -24371,9 +24189,6 @@ export namespace Prisma {
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
     invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
-    deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
     roundedOffAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     invoiceAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     refundId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -24401,11 +24216,9 @@ export namespace Prisma {
     r_paymentId?: NullableStringFieldUpdateOperationsInput | string | null
     paymentLinkUrl?: NullableStringFieldUpdateOperationsInput | string | null
     paymentMethod?: NullableStringFieldUpdateOperationsInput | string | null
-    paymentBank?: NullableStringFieldUpdateOperationsInput | string | null
     paymentVpa?: NullableStringFieldUpdateOperationsInput | string | null
     courierId?: NullableIntFieldUpdateOperationsInput | number | null
     shippingId?: NullableStringFieldUpdateOperationsInput | string | null
-    shippingOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     shippingAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     awsCode?: NullableStringFieldUpdateOperationsInput | string | null
     shippingInvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
@@ -24418,9 +24231,6 @@ export namespace Prisma {
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
     invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
-    deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
     roundedOffAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     invoiceAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     refundId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -24782,11 +24592,9 @@ export namespace Prisma {
     r_paymentId?: string | null
     paymentLinkUrl?: string | null
     paymentMethod?: string | null
-    paymentBank?: string | null
     paymentVpa?: string | null
     courierId?: number | null
     shippingId?: string | null
-    shippingOrderId?: string | null
     shippingAmount?: number | null
     awsCode?: string | null
     shippingInvoiceNumber?: string | null
@@ -24799,9 +24607,6 @@ export namespace Prisma {
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
     invoiceOfficeId?: string | null
-    deliveryCharge?: number | null
-    deliveryPartner?: string | null
-    deliveryPartnerName?: string | null
     roundedOffAmount?: number | null
     invoiceAmount?: number | null
     refundId?: string | null
@@ -24829,11 +24634,9 @@ export namespace Prisma {
     r_paymentId?: string | null
     paymentLinkUrl?: string | null
     paymentMethod?: string | null
-    paymentBank?: string | null
     paymentVpa?: string | null
     courierId?: number | null
     shippingId?: string | null
-    shippingOrderId?: string | null
     shippingAmount?: number | null
     awsCode?: string | null
     shippingInvoiceNumber?: string | null
@@ -24846,9 +24649,6 @@ export namespace Prisma {
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
     invoiceOfficeId?: string | null
-    deliveryCharge?: number | null
-    deliveryPartner?: string | null
-    deliveryPartnerName?: string | null
     roundedOffAmount?: number | null
     invoiceAmount?: number | null
     refundId?: string | null
@@ -24935,11 +24735,9 @@ export namespace Prisma {
     r_paymentId?: string | null
     paymentLinkUrl?: string | null
     paymentMethod?: string | null
-    paymentBank?: string | null
     paymentVpa?: string | null
     courierId?: number | null
     shippingId?: string | null
-    shippingOrderId?: string | null
     shippingAmount?: number | null
     awsCode?: string | null
     shippingInvoiceNumber?: string | null
@@ -24952,9 +24750,6 @@ export namespace Prisma {
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
     invoiceOfficeId?: string | null
-    deliveryCharge?: number | null
-    deliveryPartner?: string | null
-    deliveryPartnerName?: string | null
     roundedOffAmount?: number | null
     invoiceAmount?: number | null
     refundId?: string | null
@@ -25100,11 +24895,9 @@ export namespace Prisma {
     r_paymentId?: NullableStringFieldUpdateOperationsInput | string | null
     paymentLinkUrl?: NullableStringFieldUpdateOperationsInput | string | null
     paymentMethod?: NullableStringFieldUpdateOperationsInput | string | null
-    paymentBank?: NullableStringFieldUpdateOperationsInput | string | null
     paymentVpa?: NullableStringFieldUpdateOperationsInput | string | null
     courierId?: NullableIntFieldUpdateOperationsInput | number | null
     shippingId?: NullableStringFieldUpdateOperationsInput | string | null
-    shippingOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     shippingAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     awsCode?: NullableStringFieldUpdateOperationsInput | string | null
     shippingInvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25117,9 +24910,6 @@ export namespace Prisma {
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
     invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
-    deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
     roundedOffAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     invoiceAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     refundId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25146,11 +24936,9 @@ export namespace Prisma {
     r_paymentId?: NullableStringFieldUpdateOperationsInput | string | null
     paymentLinkUrl?: NullableStringFieldUpdateOperationsInput | string | null
     paymentMethod?: NullableStringFieldUpdateOperationsInput | string | null
-    paymentBank?: NullableStringFieldUpdateOperationsInput | string | null
     paymentVpa?: NullableStringFieldUpdateOperationsInput | string | null
     courierId?: NullableIntFieldUpdateOperationsInput | number | null
     shippingId?: NullableStringFieldUpdateOperationsInput | string | null
-    shippingOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     shippingAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     awsCode?: NullableStringFieldUpdateOperationsInput | string | null
     shippingInvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25163,9 +24951,6 @@ export namespace Prisma {
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
     invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
-    deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
     roundedOffAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     invoiceAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     refundId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25192,11 +24977,9 @@ export namespace Prisma {
     r_paymentId?: NullableStringFieldUpdateOperationsInput | string | null
     paymentLinkUrl?: NullableStringFieldUpdateOperationsInput | string | null
     paymentMethod?: NullableStringFieldUpdateOperationsInput | string | null
-    paymentBank?: NullableStringFieldUpdateOperationsInput | string | null
     paymentVpa?: NullableStringFieldUpdateOperationsInput | string | null
     courierId?: NullableIntFieldUpdateOperationsInput | number | null
     shippingId?: NullableStringFieldUpdateOperationsInput | string | null
-    shippingOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     shippingAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     awsCode?: NullableStringFieldUpdateOperationsInput | string | null
     shippingInvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25209,9 +24992,6 @@ export namespace Prisma {
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
     invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
-    deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
     roundedOffAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     invoiceAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     refundId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25277,11 +25057,9 @@ export namespace Prisma {
     r_paymentId?: string | null
     paymentLinkUrl?: string | null
     paymentMethod?: string | null
-    paymentBank?: string | null
     paymentVpa?: string | null
     courierId?: number | null
     shippingId?: string | null
-    shippingOrderId?: string | null
     shippingAmount?: number | null
     awsCode?: string | null
     shippingInvoiceNumber?: string | null
@@ -25294,9 +25072,6 @@ export namespace Prisma {
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
     invoiceOfficeId?: string | null
-    deliveryCharge?: number | null
-    deliveryPartner?: string | null
-    deliveryPartnerName?: string | null
     roundedOffAmount?: number | null
     invoiceAmount?: number | null
     refundId?: string | null
@@ -25321,11 +25096,9 @@ export namespace Prisma {
     r_paymentId?: NullableStringFieldUpdateOperationsInput | string | null
     paymentLinkUrl?: NullableStringFieldUpdateOperationsInput | string | null
     paymentMethod?: NullableStringFieldUpdateOperationsInput | string | null
-    paymentBank?: NullableStringFieldUpdateOperationsInput | string | null
     paymentVpa?: NullableStringFieldUpdateOperationsInput | string | null
     courierId?: NullableIntFieldUpdateOperationsInput | number | null
     shippingId?: NullableStringFieldUpdateOperationsInput | string | null
-    shippingOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     shippingAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     awsCode?: NullableStringFieldUpdateOperationsInput | string | null
     shippingInvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25338,9 +25111,6 @@ export namespace Prisma {
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
     invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
-    deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
     roundedOffAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     invoiceAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     refundId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25368,11 +25138,9 @@ export namespace Prisma {
     r_paymentId?: NullableStringFieldUpdateOperationsInput | string | null
     paymentLinkUrl?: NullableStringFieldUpdateOperationsInput | string | null
     paymentMethod?: NullableStringFieldUpdateOperationsInput | string | null
-    paymentBank?: NullableStringFieldUpdateOperationsInput | string | null
     paymentVpa?: NullableStringFieldUpdateOperationsInput | string | null
     courierId?: NullableIntFieldUpdateOperationsInput | number | null
     shippingId?: NullableStringFieldUpdateOperationsInput | string | null
-    shippingOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     shippingAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     awsCode?: NullableStringFieldUpdateOperationsInput | string | null
     shippingInvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25385,9 +25153,6 @@ export namespace Prisma {
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
     invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
-    deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
     roundedOffAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     invoiceAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     refundId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25414,11 +25179,9 @@ export namespace Prisma {
     r_paymentId?: NullableStringFieldUpdateOperationsInput | string | null
     paymentLinkUrl?: NullableStringFieldUpdateOperationsInput | string | null
     paymentMethod?: NullableStringFieldUpdateOperationsInput | string | null
-    paymentBank?: NullableStringFieldUpdateOperationsInput | string | null
     paymentVpa?: NullableStringFieldUpdateOperationsInput | string | null
     courierId?: NullableIntFieldUpdateOperationsInput | number | null
     shippingId?: NullableStringFieldUpdateOperationsInput | string | null
-    shippingOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     shippingAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     awsCode?: NullableStringFieldUpdateOperationsInput | string | null
     shippingInvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25431,9 +25194,6 @@ export namespace Prisma {
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
     invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
-    deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
     roundedOffAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     invoiceAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     refundId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25503,11 +25263,9 @@ export namespace Prisma {
     r_paymentId?: string | null
     paymentLinkUrl?: string | null
     paymentMethod?: string | null
-    paymentBank?: string | null
     paymentVpa?: string | null
     courierId?: number | null
     shippingId?: string | null
-    shippingOrderId?: string | null
     shippingAmount?: number | null
     awsCode?: string | null
     shippingInvoiceNumber?: string | null
@@ -25520,9 +25278,6 @@ export namespace Prisma {
     invoiceType?: string | null
     invoiceSequenceNumber?: number | null
     invoiceOfficeId?: string | null
-    deliveryCharge?: number | null
-    deliveryPartner?: string | null
-    deliveryPartnerName?: string | null
     roundedOffAmount?: number | null
     invoiceAmount?: number | null
     refundId?: string | null
@@ -25547,11 +25302,9 @@ export namespace Prisma {
     r_paymentId?: NullableStringFieldUpdateOperationsInput | string | null
     paymentLinkUrl?: NullableStringFieldUpdateOperationsInput | string | null
     paymentMethod?: NullableStringFieldUpdateOperationsInput | string | null
-    paymentBank?: NullableStringFieldUpdateOperationsInput | string | null
     paymentVpa?: NullableStringFieldUpdateOperationsInput | string | null
     courierId?: NullableIntFieldUpdateOperationsInput | number | null
     shippingId?: NullableStringFieldUpdateOperationsInput | string | null
-    shippingOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     shippingAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     awsCode?: NullableStringFieldUpdateOperationsInput | string | null
     shippingInvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25564,9 +25317,6 @@ export namespace Prisma {
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
     invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
-    deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
     roundedOffAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     invoiceAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     refundId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25594,11 +25344,9 @@ export namespace Prisma {
     r_paymentId?: NullableStringFieldUpdateOperationsInput | string | null
     paymentLinkUrl?: NullableStringFieldUpdateOperationsInput | string | null
     paymentMethod?: NullableStringFieldUpdateOperationsInput | string | null
-    paymentBank?: NullableStringFieldUpdateOperationsInput | string | null
     paymentVpa?: NullableStringFieldUpdateOperationsInput | string | null
     courierId?: NullableIntFieldUpdateOperationsInput | number | null
     shippingId?: NullableStringFieldUpdateOperationsInput | string | null
-    shippingOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     shippingAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     awsCode?: NullableStringFieldUpdateOperationsInput | string | null
     shippingInvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25611,9 +25359,6 @@ export namespace Prisma {
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
     invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
-    deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
     roundedOffAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     invoiceAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     refundId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25640,11 +25385,9 @@ export namespace Prisma {
     r_paymentId?: NullableStringFieldUpdateOperationsInput | string | null
     paymentLinkUrl?: NullableStringFieldUpdateOperationsInput | string | null
     paymentMethod?: NullableStringFieldUpdateOperationsInput | string | null
-    paymentBank?: NullableStringFieldUpdateOperationsInput | string | null
     paymentVpa?: NullableStringFieldUpdateOperationsInput | string | null
     courierId?: NullableIntFieldUpdateOperationsInput | number | null
     shippingId?: NullableStringFieldUpdateOperationsInput | string | null
-    shippingOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     shippingAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     awsCode?: NullableStringFieldUpdateOperationsInput | string | null
     shippingInvoiceNumber?: NullableStringFieldUpdateOperationsInput | string | null
@@ -25657,9 +25400,6 @@ export namespace Prisma {
     invoiceType?: NullableStringFieldUpdateOperationsInput | string | null
     invoiceSequenceNumber?: NullableIntFieldUpdateOperationsInput | number | null
     invoiceOfficeId?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryCharge?: NullableFloatFieldUpdateOperationsInput | number | null
-    deliveryPartner?: NullableStringFieldUpdateOperationsInput | string | null
-    deliveryPartnerName?: NullableStringFieldUpdateOperationsInput | string | null
     roundedOffAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     invoiceAmount?: NullableFloatFieldUpdateOperationsInput | number | null
     refundId?: NullableStringFieldUpdateOperationsInput | string | null

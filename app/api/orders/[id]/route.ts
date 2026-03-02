@@ -170,6 +170,27 @@ export async function PUT(
       orderDate,
       isDifferentSupplier,
       supplierId,
+      // Additional fields
+      packed,
+      refund,
+      customOrder,
+      paidAmount,
+      r_orderId,
+      r_paymentId,
+      paymentLinkUrl,
+      paymentVpa,
+      courierId,
+      shippingId,
+      awsCode,
+      shippingInvoiceNumber,
+      estimatedDeliveryDate,
+      pickupScheduled,
+      deliveredAt,
+      manifestGenerated,
+      refundId,
+      refundReceipt,
+      refundArn,
+      refundCreatedAt,
     } = body;
 
     // Get existing order with customer info
@@ -267,6 +288,83 @@ export async function PUT(
       updateData.supplierId = supplierId || null;
     }
 
+    // Handle additional boolean fields
+    if (packed !== undefined) {
+      updateData.packed = packed === true;
+    }
+    if (refund !== undefined) {
+      updateData.refund = refund === true;
+    }
+    if (customOrder !== undefined) {
+      updateData.customOrder = customOrder === true;
+    }
+    if (manifestGenerated !== undefined) {
+      updateData.manifestGenerated = manifestGenerated === true;
+    }
+
+    // Handle payment fields
+    if (paidAmount !== undefined) {
+      updateData.paidAmount = paidAmount !== null && paidAmount !== "" ? parseFloat(paidAmount) : null;
+    }
+    if (r_orderId !== undefined) {
+      updateData.r_orderId = r_orderId || null;
+    }
+    if (r_paymentId !== undefined) {
+      updateData.r_paymentId = r_paymentId || null;
+    }
+    if (paymentLinkUrl !== undefined) {
+      updateData.paymentLinkUrl = paymentLinkUrl || null;
+    }
+    if (paymentVpa !== undefined) {
+      updateData.paymentVpa = paymentVpa || null;
+    }
+
+    // Handle shipping fields
+    if (courierId !== undefined) {
+      updateData.courierId = courierId !== null && courierId !== "" ? parseInt(courierId) : null;
+    }
+    if (shippingId !== undefined) {
+      updateData.shippingId = shippingId || null;
+    }
+    if (awsCode !== undefined) {
+      updateData.awsCode = awsCode || null;
+    }
+    if (shippingInvoiceNumber !== undefined) {
+      updateData.shippingInvoiceNumber = shippingInvoiceNumber || null;
+    }
+    if (estimatedDeliveryDate !== undefined) {
+      updateData.estimatedDeliveryDate = estimatedDeliveryDate || null;
+    }
+    if (pickupScheduled !== undefined && pickupScheduled !== null && pickupScheduled !== "") {
+      const parsedPickupScheduled = new Date(pickupScheduled);
+      if (!Number.isNaN(parsedPickupScheduled.getTime())) {
+        updateData.pickupScheduled = parsedPickupScheduled;
+      }
+    }
+    if (deliveredAt !== undefined && deliveredAt !== null && deliveredAt !== "") {
+      const parsedDeliveredAt = new Date(deliveredAt);
+      if (!Number.isNaN(parsedDeliveredAt.getTime())) {
+        updateData.deliveredAt = parsedDeliveredAt;
+      }
+    }
+
+    // Handle refund fields
+    if (refundId !== undefined) {
+      updateData.refundId = refundId || null;
+    }
+    if (refundReceipt !== undefined) {
+      updateData.refundReceipt = refundReceipt || null;
+    }
+    if (refundArn !== undefined) {
+      updateData.refundArn = refundArn || null;
+    }
+    if (refundCreatedAt !== undefined && refundCreatedAt !== null && refundCreatedAt !== "") {
+      const parsedRefundCreatedAt = new Date(refundCreatedAt);
+      if (!Number.isNaN(parsedRefundCreatedAt.getTime())) {
+        updateData.refundCreatedAt = parsedRefundCreatedAt;
+      }
+    }
+
     // Handle invoice type update if provided
     if (invoiceType && (invoiceType === "PI" || invoiceType === "TAX_INVOICE")) {
       // Generate new invoice if order doesn't have one OR if invoice type is being changed
@@ -322,6 +420,7 @@ export async function PUT(
         },
         shippingAddress: true,
         orderItems: true,
+        supplier: true,
       },
     });
 
@@ -352,20 +451,21 @@ export async function PUT(
       // Fetch updated order with new items
       const updatedOrder = await userPrisma.order.findUnique({
         where: { id },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true,
-              businessName: true,
-              gstNumber: true,
-            },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            businessName: true,
+            gstNumber: true,
           },
-          shippingAddress: true,
-          orderItems: true,
         },
+        shippingAddress: true,
+        orderItems: true,
+        supplier: true,
+      },
       });
 
       return NextResponse.json({ success: true, data: updatedOrder });

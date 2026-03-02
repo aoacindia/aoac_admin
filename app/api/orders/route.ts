@@ -247,6 +247,7 @@ export async function GET(request: NextRequest) {
         },
         shippingAddress: true,
         orderItems: true,
+        supplier: true,
       },
       orderBy: {
         orderDate: "desc",
@@ -467,6 +468,7 @@ export async function POST(request: NextRequest) {
       include: {
         orderItems: true,
         shippingAddress: true,
+        supplier: true,
         user: {
           select: {
             name: true,

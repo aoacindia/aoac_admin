@@ -716,15 +716,48 @@ export async function generateCustomerPDF(
 
 interface InvoiceOrder {
   id: string;
-  InvoiceNumber: string | null;
-  invoiceType: string | null; // "PI" or "TAX_INVOICE"
+  orderBy: string;
   orderDate: Date;
+  status: string;
   totalAmount: number;
   discountAmount: number | null;
+  paidAmount: number | null;
+  packed: boolean;
+  refund: boolean;
+  customOrder: boolean;
+  // Payment Details
+  r_orderId: string | null;
+  r_paymentId: string | null;
+  paymentLinkUrl: string | null;
+  paymentMethod: string | null;
+  paymentVpa: string | null;
+  // Shipping Details
+  courierId: number | null;
+  shippingId: string | null;
   shippingAmount: number | null;
-  invoiceAmount: number | null;
+  awsCode: string | null;
+  shippingInvoiceNumber: string | null;
+  shippingCourierName: string | null;
+  estimatedDeliveryDate: string | null;
+  pickupScheduled: Date | null;
+  deliveredAt: Date | null;
+  // Documentation
+  manifestGenerated: boolean | null;
+  InvoiceNumber: string | null;
+  invoiceType: string | null; // "PI" or "TAX_INVOICE"
+  invoiceSequenceNumber: number | null;
+  invoiceOfficeId: string | null;
+  // Invoice Amounts
   roundedOffAmount: number | null;
+  invoiceAmount: number | null;
+  // Refund Details
+  refundId: string | null;
+  refundReceipt: string | null;
+  refundArn: string | null;
+  refundCreatedAt: Date | null;
+  // Supplier Details
   isDifferentSupplier: boolean | null;
+  supplierId: string | null;
   user: {
     id: string;
     name: string;
