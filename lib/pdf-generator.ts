@@ -88,11 +88,9 @@ interface Order {
   r_paymentId: string | null;
   paymentLinkUrl: string | null;
   paymentMethod: string | null;
-  paymentBank: string | null;
   paymentVpa: string | null;
   courierId: number | null;
   shippingId: string | null;
-  shippingOrderId: string | null;
   shippingAmount: number | null;
   awsCode: string | null;
   shippingInvoiceNumber: string | null;
