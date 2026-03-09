@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { userPrisma } from "@/lib/user-prisma";
 import { adminPrisma } from "@/lib/admin-prisma";
+import { productPrisma } from "@/lib/product-prisma";
 
 // Helper function to get financial year in format YYYY(YY+1)
 // Financial year in India: April 1 to March 31
@@ -139,7 +140,43 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ success: true, data: order });
+    // Enrich order items with product name and weight (in grams) from product DB
+    const orderItemsEnriched = await Promise.all(
+      order.orderItems.map(async (item: { productId: string; customWeightItem?: boolean; customWeight?: number | null }) => {
+        let productName = "Unknown Product";
+        let weightInGrams: number | null = null;
+        try {
+          const product = await productPrisma.product.findUnique({
+            where: { id: item.productId },
+            select: { name: true, weight: true },
+          });
+          if (product) {
+            productName = product.name;
+            // Weight: use custom weight from order item when set, else product weight (both in grams)
+            if (item.customWeightItem === true && item.customWeight != null) {
+              weightInGrams = item.customWeight;
+            } else if (product.weight != null) {
+              weightInGrams = product.weight;
+            }
+          }
+        } catch (_) {
+          // keep defaults
+        }
+        return {
+          ...item,
+          productName,
+          weightInGrams,
+        };
+      })
+    );
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...order,
+        orderItems: orderItemsEnriched,
+      },
+    });
   } catch (error: any) {
     console.error("Error fetching order:", error);
     return NextResponse.json(

@@ -1198,8 +1198,7 @@ export async function generateInvoicePDF(
         ];
 
     const tailColumns = [
-      { label: 'Discount', percent: 8, align: 'right' as const },
-      { label: 'Line Total', percent: 10, align: 'right' as const }
+      { label: 'Line Total', percent: 18, align: 'right' as const }
     ];
 
     const columns = [...baseColumns, ...taxColumns, ...tailColumns];
@@ -1297,7 +1296,6 @@ export async function generateInvoicePDF(
         wrapText(formatAmount(taxablePerUnit), widths[4] - 6, ctx.font, BODY_FONT_SIZE),
         wrapText(formatAmount(taxableAmount), widths[5] - 6, ctx.font, BODY_FONT_SIZE),
         ...taxCells,
-        wrapText(formatAmount(discount), widths[widths.length - 2] - 6, ctx.font, BODY_FONT_SIZE),
         wrapText(formatAmount(total), widths[widths.length - 1] - 6, ctx.font, BODY_FONT_SIZE)
       ];
       const maxLines = Math.max(...cellLines.map((lines) => lines.length), 1);
@@ -1369,7 +1367,6 @@ export async function generateInvoicePDF(
       { label: 'Subtotal', value: formatAmount(subtotal) },
       ...taxSummaryLines,
       ...deliveryChargesInfoLines,
-      { label: 'Discount', value: formatAmount(totalDiscount) },
       ...courierTaxLines,
       { label: 'Invoice Amount', value: formatAmount(roundedTotal) }
     ];

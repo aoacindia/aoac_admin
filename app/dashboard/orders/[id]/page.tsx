@@ -16,6 +16,7 @@ interface OrderItem {
   tax: number;
   discount: number;
   productName?: string;
+  weightInGrams?: number | null;
 }
 
 interface Address {
@@ -124,30 +125,8 @@ export default function ViewOrderPage() {
 
       if (data.success) {
         const orderData = data.data;
-        
-        // Fetch product names for order items
-        const itemsWithProducts = await Promise.all(
-          orderData.orderItems.map(async (item: OrderItem) => {
-            try {
-              const productResponse = await fetch(`/api/products/${item.productId}`);
-              const productData = await productResponse.json();
-              return {
-                ...item,
-                productName: productData.success ? productData.data.name : "Unknown Product",
-              };
-            } catch (err) {
-              return {
-                ...item,
-                productName: "Unknown Product",
-              };
-            }
-          })
-        );
-
-        setOrder({
-          ...orderData,
-          orderItems: itemsWithProducts,
-        });
+        // Order items already include productName and weightInGrams from API
+        setOrder(orderData);
       } else {
         setError(data.error || "Order not found");
       }
@@ -157,6 +136,15 @@ export default function ViewOrderPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Format weight: show in kg if >= 1000g, else show in grams
+  const formatWeight = (weightInGrams: number | null | undefined): string => {
+    if (weightInGrams == null || weightInGrams === undefined) return "—";
+    if (weightInGrams >= 1000) {
+      return `${(weightInGrams / 1000).toFixed(2)} kg`;
+    }
+    return `${weightInGrams} g`;
   };
 
   const getStatusColor = (status: string) => {
@@ -664,6 +652,9 @@ export default function ViewOrderPage() {
                   Price (per unit)
                 </TableHead>
                 <TableHead className="text-left py-3 px-4 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                  Weight
+                </TableHead>
+                <TableHead className="text-left py-3 px-4 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                   Tax (%)
                 </TableHead>
                 <TableHead className="text-left py-3 px-4 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
@@ -676,6 +667,8 @@ export default function ViewOrderPage() {
             </TableHeader>
             <TableBody>
               {order.orderItems.map((item) => {
+                // price from API is already discounted per unit; original price = price + discount
+                const originalPricePerUnit = item.price + item.discount;
                 const itemTotal = item.price * item.quantity;
                 const itemDiscount = item.discount * item.quantity;
                 const lineTotal = itemTotal - itemDiscount;
@@ -696,7 +689,10 @@ export default function ViewOrderPage() {
                       {item.quantity}
                     </TableCell>
                     <TableCell className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
-                      ₹{item.price.toFixed(2)}
+                      ₹{originalPricePerUnit.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
+                      {formatWeight(item.weightInGrams)}
                     </TableCell>
                     <TableCell className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
                       {item.tax}%
