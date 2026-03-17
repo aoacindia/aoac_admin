@@ -2,7 +2,10 @@ import { redirect } from "next/navigation";
 import DashboardShell from "@/app/components/DashboardShell";
 import { auth } from "@/auth";
 
-const menuItems = [{ label: "Accounts", href: "/dashboard/accounts" }];
+const menuItems = [
+  { label: "Accounts", href: "/dashboard/accounts" },
+  { label: "Credit Summary", href: "/dashboard/accounts/credit-summary" },
+];
 
 export default async function AccountsLayout({
   children,

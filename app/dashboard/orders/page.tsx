@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Modal from "@/app/components/Modal";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pencil } from "lucide-react";
 
 interface OrderItem {
   id: string;
@@ -93,6 +95,8 @@ type TabType = "business" | "personal" | "pending";
 
 export default function OrdersPage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
   const [activeTab, setActiveTab] = useState<TabType>("business");
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
@@ -118,6 +122,20 @@ export default function OrdersPage() {
   const [selectedEmailAccountId, setSelectedEmailAccountId] = useState<string>("");
   const [recipientEmail, setRecipientEmail] = useState<string>("");
   const [sendingPI, setSendingPI] = useState(false);
+  const [showStatusEditModal, setShowStatusEditModal] = useState(false);
+  const [orderForStatusEdit, setOrderForStatusEdit] = useState<Order | null>(null);
+  const [newStatus, setNewStatus] = useState<string>("");
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  const ORDER_STATUS_OPTIONS = [
+    { value: "PENDING", label: "Pending" },
+    { value: "PAID", label: "Paid" },
+    { value: "PROCESSING", label: "Processing" },
+    { value: "SHIPPED", label: "Shipped" },
+    { value: "DELIVERED", label: "Delivered" },
+    { value: "CANCELLED", label: "Cancelled" },
+    { value: "REFUNDED", label: "Refunded" },
+  ];
 
   // Track previous tab to detect tab changes
   const prevTabRef = useRef<TabType>(activeTab);
@@ -237,6 +255,38 @@ export default function OrdersPage() {
         return "bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200";
       default:
         return "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200";
+    }
+  };
+
+  const openStatusEdit = (order: Order) => {
+    setOrderForStatusEdit(order);
+    setNewStatus(order.status);
+    setShowStatusEditModal(true);
+  };
+
+  const handleUpdateStatus = async () => {
+    if (!orderForStatusEdit || !newStatus) return;
+    setUpdatingStatus(true);
+    try {
+      const response = await fetch(`/api/orders/${orderForStatusEdit.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update status");
+      }
+
+      setShowStatusEditModal(false);
+      setOrderForStatusEdit(null);
+      setNewStatus("");
+      fetchOrders(activeTab, currentPage);
+    } catch (error: any) {
+      alert("Error updating status: " + error.message);
+    } finally {
+      setUpdatingStatus(false);
     }
   };
 
@@ -495,13 +545,26 @@ export default function OrdersPage() {
                       {new Date(order.orderDate).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="py-3 px-4">
-                      <span
-                        className={`inline-block px-2 py-1 text-xs rounded ${getStatusColor(
-                          order.status
-                        )}`}
-                      >
-                        {order.status}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`inline-block px-2 py-1 text-xs rounded ${getStatusColor(
+                            order.status
+                          )}`}
+                        >
+                          {order.status}
+                        </span>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => openStatusEdit(order)}
+                            className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors"
+                            title="Change status"
+                            aria-label="Change order status"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
                       {order.orderItems.length} item(s)
@@ -832,6 +895,65 @@ export default function OrdersPage() {
                 className="px-6 py-2 bg-zinc-600 hover:bg-zinc-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Change Order Status Modal */}
+      {showStatusEditModal && orderForStatusEdit && (
+        <Modal
+          title="Change Order Status"
+          disableClose={updatingStatus}
+          onClose={() => {
+            setShowStatusEditModal(false);
+            setOrderForStatusEdit(null);
+            setNewStatus("");
+          }}
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Order <strong>{orderForStatusEdit.id}</strong> — Current status:{" "}
+              <span className={`inline-block px-2 py-0.5 text-xs rounded ${getStatusColor(orderForStatusEdit.status)}`}>
+                {orderForStatusEdit.status}
+              </span>
+            </p>
+            <div>
+              <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                New status
+              </Label>
+              <Select
+                value={newStatus}
+                onChange={(e) => setNewStatus(e.target.value)}
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={updatingStatus}
+              >
+                {ORDER_STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="flex gap-3 justify-end pt-2">
+              <Button
+                onClick={() => {
+                  setShowStatusEditModal(false);
+                  setOrderForStatusEdit(null);
+                  setNewStatus("");
+                }}
+                disabled={updatingStatus}
+                className="px-4 py-2 bg-zinc-600 hover:bg-zinc-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUpdateStatus}
+                disabled={updatingStatus || newStatus === orderForStatusEdit.status}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {updatingStatus ? "Updating..." : "Submit"}
               </Button>
             </div>
           </div>

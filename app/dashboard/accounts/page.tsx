@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import Modal from "@/app/components/Modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -183,12 +184,20 @@ export default function AccountsPage() {
           </h1>
           <p className="text-zinc-600 dark:text-zinc-400">Manage bank account details</p>
         </div>
-        <Button
-          onClick={handleOpenPopup}
-          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-center"
-        >
-          Add Account
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Link
+            href="/dashboard/accounts/credit-summary"
+            className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-center"
+          >
+            Credit Summary
+          </Link>
+          <Button
+            onClick={handleOpenPopup}
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-center"
+          >
+            Add Account
+          </Button>
+        </div>
       </div>
 
       {error && (

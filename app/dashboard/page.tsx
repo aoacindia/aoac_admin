@@ -22,6 +22,10 @@ const sections: Section[] = [
     subsections: [
       { label: "All Products", href: "/dashboard/products" },
       { label: "Create Product", href: "/dashboard/products/create" },
+      { label: "Categories", href: "/dashboard/products/categories" },
+      { label: "Create Category", href: "/dashboard/products/categories/create" },
+      { label: "Category Discounts", href: "/dashboard/products/category-discount" },
+      { label: "Product Discounts", href: "/dashboard/products/product-discount" },
     ],
   },
   {
@@ -38,6 +42,7 @@ const sections: Section[] = [
     subsections: [
       { label: "All Customers", href: "/dashboard/customers" },
       { label: "Create Customer", href: "/dashboard/customers/create" },
+      { label: "Addresses", href: "/dashboard/customers/addresses" },
     ],
   },
   {
@@ -59,6 +64,7 @@ const sections: Section[] = [
     icon: "🏦",
     subsections: [
       { label: "Accounts", href: "/dashboard/accounts" },
+      { label: "Credit Summary", href: "/dashboard/accounts/credit-summary" },
     ],
   },
   {
