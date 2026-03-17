@@ -587,12 +587,14 @@ export default function OrdersPage() {
                         >
                           View
                         </Button>
-                        <Button
-                          onClick={() => router.push(`/dashboard/orders/${order.id}/edit`)}
-                          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                        >
-                          Edit
-                        </Button>
+                        {isAdmin && (
+                          <Button
+                            onClick={() => router.push(`/dashboard/orders/${order.id}/edit`)}
+                            className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                          >
+                            Edit
+                          </Button>
+                        )}
                         <Button
                           onClick={() => {
                             setSelectedOrderId(order.id);
@@ -602,23 +604,27 @@ export default function OrdersPage() {
                         >
                           Download PDF
                         </Button>
-                        <Button
-                          onClick={() => {
-                            setSelectedOrderForPI(order);
-                            setShowSendPIPopup(true);
-                            setSelectedEmailAccountId("");
-                          }}
-                          className="px-3 py-1 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
-                        >
-                          Send PI
-                        </Button>
-                        <Button
-                          onClick={() => handleDeleteOrder(order)}
-                          disabled={deletingOrderId === order.id}
-                          className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {deletingOrderId === order.id ? "Deleting..." : "Delete"}
-                        </Button>
+                        {isAdmin && (
+                          <Button
+                            onClick={() => {
+                              setSelectedOrderForPI(order);
+                              setShowSendPIPopup(true);
+                              setSelectedEmailAccountId("");
+                            }}
+                            className="px-3 py-1 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
+                          >
+                            Send PI
+                          </Button>
+                        )}
+                        {isAdmin && (
+                          <Button
+                            onClick={() => handleDeleteOrder(order)}
+                            disabled={deletingOrderId === order.id}
+                            className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {deletingOrderId === order.id ? "Deleting..." : "Delete"}
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
