@@ -1,9 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { productPrisma } from "@/lib/product-prisma";
+import { auth } from "@/auth";
 
 // GET product weight discounts by productId
 export async function GET(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { success: false, error: "Forbidden" },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const productId = searchParams.get("productId");
 
@@ -55,6 +70,20 @@ export async function GET(request: NextRequest) {
 // POST create/update product weight discounts
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { success: false, error: "Forbidden" },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { productId, weightDiscounts } = body;
 

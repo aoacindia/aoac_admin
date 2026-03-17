@@ -1,9 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { productPrisma } from "@/lib/product-prisma";
+import { auth } from "@/auth";
 
 // GET category discounts by categoryId
 export async function GET(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { success: false, error: "Forbidden" },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const categoryId = searchParams.get("categoryId");
 
@@ -58,6 +73,20 @@ export async function GET(request: NextRequest) {
 // POST create/update category discounts
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { success: false, error: "Forbidden" },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { categoryId, discounts } = body;
 
