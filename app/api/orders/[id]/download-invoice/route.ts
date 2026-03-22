@@ -3,11 +3,19 @@ import { userPrisma } from "@/lib/user-prisma";
 import { adminPrisma } from "@/lib/admin-prisma";
 import { productPrisma } from "@/lib/product-prisma";
 import { generateInvoicePDF } from "@/lib/pdf-generator";
+import { requireAdminApi } from "@/lib/require-admin";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requireAdminApi();
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
   try {
     const { id } = await params;
     let copies: string[] = [];

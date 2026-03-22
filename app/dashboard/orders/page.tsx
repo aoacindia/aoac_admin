@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import Modal from "@/app/components/Modal";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -95,8 +94,6 @@ type TabType = "business" | "personal" | "pending";
 
 export default function OrdersPage() {
   const router = useRouter();
-  const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "ADMIN";
   const [activeTab, setActiveTab] = useState<TabType>("business");
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
@@ -553,17 +550,15 @@ export default function OrdersPage() {
                         >
                           {order.status}
                         </span>
-                        {isAdmin && (
-                          <button
-                            type="button"
-                            onClick={() => openStatusEdit(order)}
-                            className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors"
-                            title="Change status"
-                            aria-label="Change order status"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => openStatusEdit(order)}
+                          className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors"
+                          title="Change status"
+                          aria-label="Change order status"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </TableCell>
                     <TableCell className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
@@ -587,14 +582,12 @@ export default function OrdersPage() {
                         >
                           View
                         </Button>
-                        {isAdmin && (
-                          <Button
-                            onClick={() => router.push(`/dashboard/orders/${order.id}/edit`)}
-                            className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                          >
-                            Edit
-                          </Button>
-                        )}
+                        <Button
+                          onClick={() => router.push(`/dashboard/orders/${order.id}/edit`)}
+                          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                        >
+                          Edit
+                        </Button>
                         <Button
                           onClick={() => {
                             setSelectedOrderId(order.id);
@@ -604,27 +597,23 @@ export default function OrdersPage() {
                         >
                           Download PDF
                         </Button>
-                        {isAdmin && (
-                          <Button
-                            onClick={() => {
-                              setSelectedOrderForPI(order);
-                              setShowSendPIPopup(true);
-                              setSelectedEmailAccountId("");
-                            }}
-                            className="px-3 py-1 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
-                          >
-                            Send PI
-                          </Button>
-                        )}
-                        {isAdmin && (
-                          <Button
-                            onClick={() => handleDeleteOrder(order)}
-                            disabled={deletingOrderId === order.id}
-                            className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {deletingOrderId === order.id ? "Deleting..." : "Delete"}
-                          </Button>
-                        )}
+                        <Button
+                          onClick={() => {
+                            setSelectedOrderForPI(order);
+                            setShowSendPIPopup(true);
+                            setSelectedEmailAccountId("");
+                          }}
+                          className="px-3 py-1 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
+                        >
+                          Send PI
+                        </Button>
+                        <Button
+                          onClick={() => handleDeleteOrder(order)}
+                          disabled={deletingOrderId === order.id}
+                          className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {deletingOrderId === order.id ? "Deleting..." : "Delete"}
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>

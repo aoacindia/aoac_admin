@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { userPrisma } from "@/lib/user-prisma";
 import { adminPrisma } from "@/lib/admin-prisma";
 import { productPrisma } from "@/lib/product-prisma";
-import { auth } from "@/auth";
+import { requireAdminApi } from "@/lib/require-admin";
 
 // Helper function to get financial year in format YYYY(YY+1)
 // Financial year in India: April 1 to March 31
@@ -111,6 +111,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requireAdminApi();
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
   try {
     const { id } = await params;
     
@@ -192,21 +199,14 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requireAdminApi();
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (session.user.role !== "ADMIN") {
-      return NextResponse.json(
-        { success: false, error: "Forbidden" },
-        { status: 403 }
-      );
-    }
-
     const { id } = await params;
     const body = await request.json();
     const {
@@ -538,21 +538,14 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requireAdminApi();
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (session.user.role !== "ADMIN") {
-      return NextResponse.json(
-        { success: false, error: "Forbidden" },
-        { status: 403 }
-      );
-    }
-
     const { id } = await params;
 
     const existingOrder = await userPrisma.order.findUnique({

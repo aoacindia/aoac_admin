@@ -1,16 +1,23 @@
+import { redirect } from "next/navigation";
 import DashboardShell from "@/app/components/DashboardShell";
+import { auth } from "@/auth";
 
-
-const menuItems = [
-  { label: "All Orders", href: "/dashboard/orders" },
-  { label: "Create Order", href: "/dashboard/orders/create" },
-];
-
-export default function OrdersLayout({
+export default async function OrdersLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+  if (!session?.user || session.user.role !== "ADMIN") {
+    redirect("/dashboard");
+  }
+
+  const menuItems = [
+    { label: "All Orders", href: "/dashboard/orders" },
+    { label: "Create Order", href: "/dashboard/orders/create" },
+    { label: "Order summary", href: "/dashboard/orders/summary" },
+  ];
+
   return (
     <DashboardShell sectionName="Orders" menuItems={menuItems}>
       {children}

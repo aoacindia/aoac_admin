@@ -97,7 +97,12 @@ export default function DashboardPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
-  const adminOnlySections = new Set(["Users", "Our Own Data", "Accounts"]);
+  const adminOnlySections = new Set([
+    "Users",
+    "Our Own Data",
+    "Accounts",
+    "Orders",
+  ]);
 
   const visibleSections = isAdmin
     ? sections

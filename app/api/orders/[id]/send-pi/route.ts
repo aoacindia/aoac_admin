@@ -3,7 +3,7 @@ import { userPrisma } from "@/lib/user-prisma";
 import { adminPrisma } from "@/lib/admin-prisma";
 import { productPrisma } from "@/lib/product-prisma";
 import { sendEmail } from "@/lib/email";
-import { auth } from "@/auth";
+import { requireAdminApi } from "@/lib/require-admin";
 
 function formatWeightLabel(weightGrams?: number | null): string | null {
   if (weightGrams === null || weightGrams === undefined) {
@@ -448,21 +448,14 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requireAdminApi();
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (session.user.role !== "ADMIN") {
-      return NextResponse.json(
-        { success: false, error: "Forbidden" },
-        { status: 403 }
-      );
-    }
-
     const { id } = await params;
     const body = await request.json();
     const { emailAccountId, recipientEmail } = body;

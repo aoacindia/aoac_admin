@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { userPrisma } from "@/lib/user-prisma";
 import { adminPrisma } from "@/lib/admin-prisma";
+import { requireAdminApi } from "@/lib/require-admin";
 
 // Helper function to get financial year in format YYYY(YY+1)
 // Financial year in India: April 1 to March 31
@@ -170,6 +171,13 @@ async function generateOrderId(): Promise<string> {
 
 // GET all orders
 export async function GET(request: NextRequest) {
+  const authResult = await requireAdminApi();
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
@@ -277,6 +285,13 @@ export async function GET(request: NextRequest) {
 
 // POST create new order
 export async function POST(request: NextRequest) {
+  const authResult = await requireAdminApi();
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
   try {
     const body = await request.json();
     const {
