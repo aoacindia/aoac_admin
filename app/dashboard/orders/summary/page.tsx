@@ -36,6 +36,16 @@ interface PersonalRow {
   taxableAmount: number;
 }
 
+interface HsnRow {
+  hsnCode: string;
+  quantity: number;
+  taxPercent: number;
+  taxableAmount: number;
+  igst: number;
+  cgst: number;
+  sgst: number;
+}
+
 function formatInr(n: number) {
   return `₹${n.toLocaleString("en-IN", {
     minimumFractionDigits: 2,
@@ -74,12 +84,16 @@ function buildYearOptions() {
   return out;
 }
 
+type SummaryTab = "b2b" | "b2c" | "hsn-b2b" | "hsn-b2c";
+
 export default function OrderSummaryPage() {
   const now = new Date();
+  const [activeTab, setActiveTab] = useState<SummaryTab>("b2b");
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [business, setBusiness] = useState<BusinessRow[]>([]);
   const [personal, setPersonal] = useState<PersonalRow[]>([]);
+  const [hsnSummary, setHsnSummary] = useState<HsnRow[]>([]);
   const [meta, setMeta] = useState<{
     month: number;
     year: number;
@@ -89,22 +103,29 @@ export default function OrderSummaryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function load(monthOverride?: number, yearOverride?: number) {
+  async function load(
+    monthOverride?: number,
+    yearOverride?: number,
+    tabOverride?: SummaryTab
+  ) {
     const m = monthOverride !== undefined ? monthOverride : month;
     const y = yearOverride !== undefined ? yearOverride : year;
+    const tab = tabOverride !== undefined ? tabOverride : activeTab;
     try {
       setLoading(true);
       setError(null);
       const params = new URLSearchParams();
       params.set("month", String(m));
       params.set("year", String(y));
+      params.set("segment", tab);
       const res = await fetch(`/api/orders/summary?${params.toString()}`);
       const data = await res.json();
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to load summary");
       }
-      setBusiness(data.data.business);
-      setPersonal(data.data.personal);
+      setBusiness(data.data.business ?? []);
+      setPersonal(data.data.personal ?? []);
+      setHsnSummary(data.data.hsnSummary ?? []);
       setMeta(data.data.meta);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load summary");
@@ -114,9 +135,9 @@ export default function OrderSummaryPage() {
   }
 
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load only; month/year via Load summary
-  }, []);
+    void load(undefined, undefined, activeTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- month/year applied via Load summary / This month
+  }, [activeTab]);
 
   return (
     <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
@@ -191,10 +212,69 @@ export default function OrderSummaryPage() {
         {meta && (
           <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
             {MONTHS.find((m) => m.value === meta.month)?.label} {meta.year}:{" "}
-            {meta.businessOrderCount} business orders · {meta.personalOrderCount}{" "}
-            personal orders
+            {activeTab === "b2b" || activeTab === "hsn-b2b" ? (
+              <>
+                {meta.businessOrderCount} business order
+                {meta.businessOrderCount === 1 ? "" : "s"}
+              </>
+            ) : (
+              <>
+                {meta.personalOrderCount} personal order
+                {meta.personalOrderCount === 1 ? "" : "s"}
+              </>
+            )}
           </p>
         )}
+      </div>
+
+      {/* B2B / B2C */}
+      <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md border border-zinc-200 dark:border-zinc-800 mb-6 overflow-hidden">
+        <div className="flex flex-wrap border-b border-zinc-200 dark:border-zinc-700">
+          <button
+            type="button"
+            onClick={() => setActiveTab("b2b")}
+            className={`px-4 sm:px-6 py-3 font-medium text-sm transition-colors ${
+              activeTab === "b2b"
+                ? "border-b-2 border-blue-600 text-blue-600 dark:text-blue-400"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+            }`}
+          >
+            B2B
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("b2c")}
+            className={`px-4 sm:px-6 py-3 font-medium text-sm transition-colors ${
+              activeTab === "b2c"
+                ? "border-b-2 border-blue-600 text-blue-600 dark:text-blue-400"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+            }`}
+          >
+            B2C
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("hsn-b2b")}
+            className={`px-4 sm:px-6 py-3 font-medium text-sm transition-colors ${
+              activeTab === "hsn-b2b"
+                ? "border-b-2 border-blue-600 text-blue-600 dark:text-blue-400"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+            }`}
+          >
+            HSN (B2B)
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("hsn-b2c")}
+            className={`px-4 sm:px-6 py-3 font-medium text-sm transition-colors ${
+              activeTab === "hsn-b2c"
+                ? "border-b-2 border-blue-600 text-blue-600 dark:text-blue-400"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+            }`}
+          >
+            HSN (B2C)
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -203,8 +283,9 @@ export default function OrderSummaryPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        {/* Business */}
+      <div>
+        {/* Business — B2B tab */}
+        {activeTab === "b2b" && (
         <section className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
           <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
@@ -216,7 +297,7 @@ export default function OrderSummaryPage() {
             </p>
           </div>
           <div className="p-4 max-h-[70vh] overflow-auto">
-            {loading && !business.length ? (
+            {loading ? (
               <p className="text-sm text-zinc-500">Loading…</p>
             ) : business.length === 0 ? (
               <p className="text-sm text-zinc-500">No business orders in this month.</p>
@@ -312,8 +393,10 @@ export default function OrderSummaryPage() {
             )}
           </div>
         </section>
+        )}
 
-        {/* Personal */}
+        {/* Personal — B2C tab */}
+        {activeTab === "b2c" && (
         <section className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
           <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
@@ -325,7 +408,7 @@ export default function OrderSummaryPage() {
             </p>
           </div>
           <div className="p-4 max-h-[70vh] overflow-auto">
-            {loading && !personal.length ? (
+            {loading ? (
               <p className="text-sm text-zinc-500">Loading…</p>
             ) : personal.length === 0 ? (
               <p className="text-sm text-zinc-500">No personal orders in this month.</p>
@@ -353,6 +436,133 @@ export default function OrderSummaryPage() {
             )}
           </div>
         </section>
+        )}
+
+        {/* HSN — business */}
+        {activeTab === "hsn-b2b" && (
+          <section className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                HSN summary — business orders
+              </h2>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                HSN from each product; taxable = gross ÷ (1 + GST% ÷ 100). Delivery
+                charges are included under the HSN of the highest line total in each
+                order (same as invoices). IGST vs CGST/SGST follows invoice office
+                state vs place of supply. Qty is the sum of line quantities sold for
+                that HSN (delivery charges do not add quantity).
+              </p>
+            </div>
+            <div className="p-4 max-h-[70vh] overflow-auto">
+              {loading ? (
+                <p className="text-sm text-zinc-500">Loading…</p>
+              ) : hsnSummary.length === 0 ? (
+                <p className="text-sm text-zinc-500">
+                  No business orders with line items in this month.
+                </p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>HSN</TableHead>
+                      <TableHead className="text-right">Qty</TableHead>
+                      <TableHead className="text-right">GST %</TableHead>
+                      <TableHead className="text-right">Taxable</TableHead>
+                      <TableHead className="text-right">IGST</TableHead>
+                      <TableHead className="text-right">CGST</TableHead>
+                      <TableHead className="text-right">SGST</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {hsnSummary.map((r) => (
+                      <TableRow key={`${r.hsnCode}-${r.taxPercent}`}>
+                        <TableCell className="font-medium">{r.hsnCode}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {r.quantity.toLocaleString("en-IN")}
+                        </TableCell>
+                        <TableCell className="text-right">{r.taxPercent}%</TableCell>
+                        <TableCell className="text-right">
+                          {formatInr(r.taxableAmount)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatInr(r.igst)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatInr(r.cgst)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatInr(r.sgst)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* HSN — personal */}
+        {activeTab === "hsn-b2c" && (
+          <section className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                HSN summary — personal orders
+              </h2>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                Same rules as business HSN: product HSN from catalog, delivery on the
+                highest-value line per order, GST split by supply type. Qty sums line
+                units per HSN for the month.
+              </p>
+            </div>
+            <div className="p-4 max-h-[70vh] overflow-auto">
+              {loading ? (
+                <p className="text-sm text-zinc-500">Loading…</p>
+              ) : hsnSummary.length === 0 ? (
+                <p className="text-sm text-zinc-500">
+                  No personal orders with line items in this month.
+                </p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>HSN</TableHead>
+                      <TableHead className="text-right">Qty</TableHead>
+                      <TableHead className="text-right">GST %</TableHead>
+                      <TableHead className="text-right">Taxable</TableHead>
+                      <TableHead className="text-right">IGST</TableHead>
+                      <TableHead className="text-right">CGST</TableHead>
+                      <TableHead className="text-right">SGST</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {hsnSummary.map((r) => (
+                      <TableRow key={`${r.hsnCode}-${r.taxPercent}`}>
+                        <TableCell className="font-medium">{r.hsnCode}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {r.quantity.toLocaleString("en-IN")}
+                        </TableCell>
+                        <TableCell className="text-right">{r.taxPercent}%</TableCell>
+                        <TableCell className="text-right">
+                          {formatInr(r.taxableAmount)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatInr(r.igst)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatInr(r.cgst)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatInr(r.sgst)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );
