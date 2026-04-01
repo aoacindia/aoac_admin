@@ -7,14 +7,15 @@ import {
   parseImportedOrdersFile,
 } from "@/lib/imported-orders-parse";
 
-/** Allow long imports on hosts that honor this (e.g. Vercel); local Node ignores it. */
-export const maxDuration = 600;
+/** Vercel Hobby max is 300s; keep within platform limit. */
+export const maxDuration = 300;
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 
 /** Default interactive transaction timeout is 5s; large CSV imports exceed that on remote DBs (P2028). */
 const IMPORT_TX_MAX_WAIT_MS = 60_000;
-const IMPORT_TX_TIMEOUT_MS = 10 * 60_000;
+// Keep below serverless maxDuration to avoid mid-transaction abort.
+const IMPORT_TX_TIMEOUT_MS = 270_000;
 
 export async function GET(request: NextRequest) {
   const gate = await requireAdminApi();
