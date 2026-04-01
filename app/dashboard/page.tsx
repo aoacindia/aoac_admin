@@ -110,7 +110,6 @@ export default function DashboardPage() {
     "Our Own Data",
     "Accounts",
     "Orders",
-    "All orders",
   ]);
 
   const visibleSections = isAdmin
@@ -171,7 +170,13 @@ export default function DashboardPage() {
           panelClassName="p-8 mx-4"
         >
           <div className="space-y-4">
-            {selectedSection.subsections.map((subsection) => (
+            {selectedSection.subsections
+              .filter((subsection) => {
+                if (selectedSection.name !== "All orders") return true;
+                if (subsection.href !== "/dashboard/all-orders/upload") return true;
+                return isAdmin;
+              })
+              .map((subsection) => (
               <div
                 key={subsection.href}
                 onClick={() => handleSubsectionClick(subsection.href)}

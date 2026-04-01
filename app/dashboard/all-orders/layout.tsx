@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import DashboardShell from "@/app/components/DashboardShell";
 import { auth } from "@/auth";
 
@@ -8,17 +7,17 @@ export default async function AllOrdersLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
-    redirect("/dashboard");
+  const isAdmin = session?.user?.role === "ADMIN";
+
+  const menuItems = [{ label: "All orders", href: "/dashboard/all-orders" }];
+  if (isAdmin) {
+    menuItems.push({ label: "Upload file", href: "/dashboard/all-orders/upload" });
   }
 
   return (
     <DashboardShell
       sectionName="All orders"
-      menuItems={[
-        { label: "All orders", href: "/dashboard/all-orders" },
-        { label: "Upload file", href: "/dashboard/all-orders/upload" },
-      ]}
+      menuItems={menuItems}
     >
       {children}
     </DashboardShell>
