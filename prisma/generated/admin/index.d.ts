@@ -38,6 +38,16 @@ export type Account = $Result.DefaultSelection<Prisma.$AccountPayload>
  * 
  */
 export type EmailAccount = $Result.DefaultSelection<Prisma.$EmailAccountPayload>
+/**
+ * Model ImportedOrder
+ * Orders imported from CSV/Excel (admin bulk upload). One row per order; line items in ImportedOrderItem.
+ */
+export type ImportedOrder = $Result.DefaultSelection<Prisma.$ImportedOrderPayload>
+/**
+ * Model ImportedOrderItem
+ * 
+ */
+export type ImportedOrderItem = $Result.DefaultSelection<Prisma.$ImportedOrderItemPayload>
 
 /**
  * Enums
@@ -224,6 +234,26 @@ export class PrismaClient<
     * ```
     */
   get emailAccount(): Prisma.EmailAccountDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.importedOrder`: Exposes CRUD operations for the **ImportedOrder** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more ImportedOrders
+    * const importedOrders = await prisma.importedOrder.findMany()
+    * ```
+    */
+  get importedOrder(): Prisma.ImportedOrderDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.importedOrderItem`: Exposes CRUD operations for the **ImportedOrderItem** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more ImportedOrderItems
+    * const importedOrderItems = await prisma.importedOrderItem.findMany()
+    * ```
+    */
+  get importedOrderItem(): Prisma.ImportedOrderItemDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -669,7 +699,9 @@ export namespace Prisma {
     OtpVerification: 'OtpVerification',
     Office: 'Office',
     Account: 'Account',
-    EmailAccount: 'EmailAccount'
+    EmailAccount: 'EmailAccount',
+    ImportedOrder: 'ImportedOrder',
+    ImportedOrderItem: 'ImportedOrderItem'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -688,7 +720,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "otpVerification" | "office" | "account" | "emailAccount"
+      modelProps: "user" | "otpVerification" | "office" | "account" | "emailAccount" | "importedOrder" | "importedOrderItem"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1022,6 +1054,138 @@ export namespace Prisma {
           }
         }
       }
+      ImportedOrder: {
+        payload: Prisma.$ImportedOrderPayload<ExtArgs>
+        fields: Prisma.ImportedOrderFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.ImportedOrderFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImportedOrderPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.ImportedOrderFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImportedOrderPayload>
+          }
+          findFirst: {
+            args: Prisma.ImportedOrderFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImportedOrderPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.ImportedOrderFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImportedOrderPayload>
+          }
+          findMany: {
+            args: Prisma.ImportedOrderFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImportedOrderPayload>[]
+          }
+          create: {
+            args: Prisma.ImportedOrderCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImportedOrderPayload>
+          }
+          createMany: {
+            args: Prisma.ImportedOrderCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          delete: {
+            args: Prisma.ImportedOrderDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImportedOrderPayload>
+          }
+          update: {
+            args: Prisma.ImportedOrderUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImportedOrderPayload>
+          }
+          deleteMany: {
+            args: Prisma.ImportedOrderDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.ImportedOrderUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.ImportedOrderUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImportedOrderPayload>
+          }
+          aggregate: {
+            args: Prisma.ImportedOrderAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateImportedOrder>
+          }
+          groupBy: {
+            args: Prisma.ImportedOrderGroupByArgs<ExtArgs>
+            result: $Utils.Optional<ImportedOrderGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.ImportedOrderCountArgs<ExtArgs>
+            result: $Utils.Optional<ImportedOrderCountAggregateOutputType> | number
+          }
+        }
+      }
+      ImportedOrderItem: {
+        payload: Prisma.$ImportedOrderItemPayload<ExtArgs>
+        fields: Prisma.ImportedOrderItemFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.ImportedOrderItemFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImportedOrderItemPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.ImportedOrderItemFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImportedOrderItemPayload>
+          }
+          findFirst: {
+            args: Prisma.ImportedOrderItemFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImportedOrderItemPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.ImportedOrderItemFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImportedOrderItemPayload>
+          }
+          findMany: {
+            args: Prisma.ImportedOrderItemFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImportedOrderItemPayload>[]
+          }
+          create: {
+            args: Prisma.ImportedOrderItemCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImportedOrderItemPayload>
+          }
+          createMany: {
+            args: Prisma.ImportedOrderItemCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          delete: {
+            args: Prisma.ImportedOrderItemDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImportedOrderItemPayload>
+          }
+          update: {
+            args: Prisma.ImportedOrderItemUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImportedOrderItemPayload>
+          }
+          deleteMany: {
+            args: Prisma.ImportedOrderItemDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.ImportedOrderItemUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.ImportedOrderItemUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ImportedOrderItemPayload>
+          }
+          aggregate: {
+            args: Prisma.ImportedOrderItemAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateImportedOrderItem>
+          }
+          groupBy: {
+            args: Prisma.ImportedOrderItemGroupByArgs<ExtArgs>
+            result: $Utils.Optional<ImportedOrderItemGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.ImportedOrderItemCountArgs<ExtArgs>
+            result: $Utils.Optional<ImportedOrderItemCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -1123,6 +1287,8 @@ export namespace Prisma {
     office?: OfficeOmit
     account?: AccountOmit
     emailAccount?: EmailAccountOmit
+    importedOrder?: ImportedOrderOmit
+    importedOrderItem?: ImportedOrderItemOmit
   }
 
   /* Types for Logging */
@@ -1197,6 +1363,36 @@ export namespace Prisma {
    * Count Types
    */
 
+
+  /**
+   * Count Type ImportedOrderCountOutputType
+   */
+
+  export type ImportedOrderCountOutputType = {
+    items: number
+  }
+
+  export type ImportedOrderCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    items?: boolean | ImportedOrderCountOutputTypeCountItemsArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * ImportedOrderCountOutputType without action
+   */
+  export type ImportedOrderCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrderCountOutputType
+     */
+    select?: ImportedOrderCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * ImportedOrderCountOutputType without action
+   */
+  export type ImportedOrderCountOutputTypeCountItemsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ImportedOrderItemWhereInput
+  }
 
 
   /**
@@ -5913,6 +6109,1988 @@ export namespace Prisma {
 
 
   /**
+   * Model ImportedOrder
+   */
+
+  export type AggregateImportedOrder = {
+    _count: ImportedOrderCountAggregateOutputType | null
+    _avg: ImportedOrderAvgAggregateOutputType | null
+    _sum: ImportedOrderSumAggregateOutputType | null
+    _min: ImportedOrderMinAggregateOutputType | null
+    _max: ImportedOrderMaxAggregateOutputType | null
+  }
+
+  export type ImportedOrderAvgAggregateOutputType = {
+    deliveryCharges: Decimal | null
+    orderTotal: Decimal | null
+  }
+
+  export type ImportedOrderSumAggregateOutputType = {
+    deliveryCharges: Decimal | null
+    orderTotal: Decimal | null
+  }
+
+  export type ImportedOrderMinAggregateOutputType = {
+    id: string | null
+    orderDate: Date | null
+    orderName: string | null
+    deliveryCharges: Decimal | null
+    orderTotal: Decimal | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type ImportedOrderMaxAggregateOutputType = {
+    id: string | null
+    orderDate: Date | null
+    orderName: string | null
+    deliveryCharges: Decimal | null
+    orderTotal: Decimal | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type ImportedOrderCountAggregateOutputType = {
+    id: number
+    orderDate: number
+    orderName: number
+    deliveryCharges: number
+    orderTotal: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type ImportedOrderAvgAggregateInputType = {
+    deliveryCharges?: true
+    orderTotal?: true
+  }
+
+  export type ImportedOrderSumAggregateInputType = {
+    deliveryCharges?: true
+    orderTotal?: true
+  }
+
+  export type ImportedOrderMinAggregateInputType = {
+    id?: true
+    orderDate?: true
+    orderName?: true
+    deliveryCharges?: true
+    orderTotal?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type ImportedOrderMaxAggregateInputType = {
+    id?: true
+    orderDate?: true
+    orderName?: true
+    deliveryCharges?: true
+    orderTotal?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type ImportedOrderCountAggregateInputType = {
+    id?: true
+    orderDate?: true
+    orderName?: true
+    deliveryCharges?: true
+    orderTotal?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type ImportedOrderAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ImportedOrder to aggregate.
+     */
+    where?: ImportedOrderWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ImportedOrders to fetch.
+     */
+    orderBy?: ImportedOrderOrderByWithRelationInput | ImportedOrderOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: ImportedOrderWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ImportedOrders from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ImportedOrders.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned ImportedOrders
+    **/
+    _count?: true | ImportedOrderCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: ImportedOrderAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: ImportedOrderSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: ImportedOrderMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: ImportedOrderMaxAggregateInputType
+  }
+
+  export type GetImportedOrderAggregateType<T extends ImportedOrderAggregateArgs> = {
+        [P in keyof T & keyof AggregateImportedOrder]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateImportedOrder[P]>
+      : GetScalarType<T[P], AggregateImportedOrder[P]>
+  }
+
+
+
+
+  export type ImportedOrderGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ImportedOrderWhereInput
+    orderBy?: ImportedOrderOrderByWithAggregationInput | ImportedOrderOrderByWithAggregationInput[]
+    by: ImportedOrderScalarFieldEnum[] | ImportedOrderScalarFieldEnum
+    having?: ImportedOrderScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: ImportedOrderCountAggregateInputType | true
+    _avg?: ImportedOrderAvgAggregateInputType
+    _sum?: ImportedOrderSumAggregateInputType
+    _min?: ImportedOrderMinAggregateInputType
+    _max?: ImportedOrderMaxAggregateInputType
+  }
+
+  export type ImportedOrderGroupByOutputType = {
+    id: string
+    orderDate: Date
+    orderName: string
+    deliveryCharges: Decimal
+    orderTotal: Decimal
+    createdAt: Date
+    updatedAt: Date
+    _count: ImportedOrderCountAggregateOutputType | null
+    _avg: ImportedOrderAvgAggregateOutputType | null
+    _sum: ImportedOrderSumAggregateOutputType | null
+    _min: ImportedOrderMinAggregateOutputType | null
+    _max: ImportedOrderMaxAggregateOutputType | null
+  }
+
+  type GetImportedOrderGroupByPayload<T extends ImportedOrderGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<ImportedOrderGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof ImportedOrderGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], ImportedOrderGroupByOutputType[P]>
+            : GetScalarType<T[P], ImportedOrderGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type ImportedOrderSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    orderDate?: boolean
+    orderName?: boolean
+    deliveryCharges?: boolean
+    orderTotal?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    items?: boolean | ImportedOrder$itemsArgs<ExtArgs>
+    _count?: boolean | ImportedOrderCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["importedOrder"]>
+
+
+
+  export type ImportedOrderSelectScalar = {
+    id?: boolean
+    orderDate?: boolean
+    orderName?: boolean
+    deliveryCharges?: boolean
+    orderTotal?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type ImportedOrderOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "orderDate" | "orderName" | "deliveryCharges" | "orderTotal" | "createdAt" | "updatedAt", ExtArgs["result"]["importedOrder"]>
+  export type ImportedOrderInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    items?: boolean | ImportedOrder$itemsArgs<ExtArgs>
+    _count?: boolean | ImportedOrderCountOutputTypeDefaultArgs<ExtArgs>
+  }
+
+  export type $ImportedOrderPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "ImportedOrder"
+    objects: {
+      items: Prisma.$ImportedOrderItemPayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      orderDate: Date
+      orderName: string
+      deliveryCharges: Prisma.Decimal
+      orderTotal: Prisma.Decimal
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["importedOrder"]>
+    composites: {}
+  }
+
+  type ImportedOrderGetPayload<S extends boolean | null | undefined | ImportedOrderDefaultArgs> = $Result.GetResult<Prisma.$ImportedOrderPayload, S>
+
+  type ImportedOrderCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<ImportedOrderFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: ImportedOrderCountAggregateInputType | true
+    }
+
+  export interface ImportedOrderDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['ImportedOrder'], meta: { name: 'ImportedOrder' } }
+    /**
+     * Find zero or one ImportedOrder that matches the filter.
+     * @param {ImportedOrderFindUniqueArgs} args - Arguments to find a ImportedOrder
+     * @example
+     * // Get one ImportedOrder
+     * const importedOrder = await prisma.importedOrder.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends ImportedOrderFindUniqueArgs>(args: SelectSubset<T, ImportedOrderFindUniqueArgs<ExtArgs>>): Prisma__ImportedOrderClient<$Result.GetResult<Prisma.$ImportedOrderPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one ImportedOrder that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {ImportedOrderFindUniqueOrThrowArgs} args - Arguments to find a ImportedOrder
+     * @example
+     * // Get one ImportedOrder
+     * const importedOrder = await prisma.importedOrder.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends ImportedOrderFindUniqueOrThrowArgs>(args: SelectSubset<T, ImportedOrderFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ImportedOrderClient<$Result.GetResult<Prisma.$ImportedOrderPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first ImportedOrder that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImportedOrderFindFirstArgs} args - Arguments to find a ImportedOrder
+     * @example
+     * // Get one ImportedOrder
+     * const importedOrder = await prisma.importedOrder.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends ImportedOrderFindFirstArgs>(args?: SelectSubset<T, ImportedOrderFindFirstArgs<ExtArgs>>): Prisma__ImportedOrderClient<$Result.GetResult<Prisma.$ImportedOrderPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first ImportedOrder that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImportedOrderFindFirstOrThrowArgs} args - Arguments to find a ImportedOrder
+     * @example
+     * // Get one ImportedOrder
+     * const importedOrder = await prisma.importedOrder.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends ImportedOrderFindFirstOrThrowArgs>(args?: SelectSubset<T, ImportedOrderFindFirstOrThrowArgs<ExtArgs>>): Prisma__ImportedOrderClient<$Result.GetResult<Prisma.$ImportedOrderPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more ImportedOrders that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImportedOrderFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all ImportedOrders
+     * const importedOrders = await prisma.importedOrder.findMany()
+     * 
+     * // Get first 10 ImportedOrders
+     * const importedOrders = await prisma.importedOrder.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const importedOrderWithIdOnly = await prisma.importedOrder.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends ImportedOrderFindManyArgs>(args?: SelectSubset<T, ImportedOrderFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ImportedOrderPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a ImportedOrder.
+     * @param {ImportedOrderCreateArgs} args - Arguments to create a ImportedOrder.
+     * @example
+     * // Create one ImportedOrder
+     * const ImportedOrder = await prisma.importedOrder.create({
+     *   data: {
+     *     // ... data to create a ImportedOrder
+     *   }
+     * })
+     * 
+     */
+    create<T extends ImportedOrderCreateArgs>(args: SelectSubset<T, ImportedOrderCreateArgs<ExtArgs>>): Prisma__ImportedOrderClient<$Result.GetResult<Prisma.$ImportedOrderPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many ImportedOrders.
+     * @param {ImportedOrderCreateManyArgs} args - Arguments to create many ImportedOrders.
+     * @example
+     * // Create many ImportedOrders
+     * const importedOrder = await prisma.importedOrder.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends ImportedOrderCreateManyArgs>(args?: SelectSubset<T, ImportedOrderCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Delete a ImportedOrder.
+     * @param {ImportedOrderDeleteArgs} args - Arguments to delete one ImportedOrder.
+     * @example
+     * // Delete one ImportedOrder
+     * const ImportedOrder = await prisma.importedOrder.delete({
+     *   where: {
+     *     // ... filter to delete one ImportedOrder
+     *   }
+     * })
+     * 
+     */
+    delete<T extends ImportedOrderDeleteArgs>(args: SelectSubset<T, ImportedOrderDeleteArgs<ExtArgs>>): Prisma__ImportedOrderClient<$Result.GetResult<Prisma.$ImportedOrderPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one ImportedOrder.
+     * @param {ImportedOrderUpdateArgs} args - Arguments to update one ImportedOrder.
+     * @example
+     * // Update one ImportedOrder
+     * const importedOrder = await prisma.importedOrder.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends ImportedOrderUpdateArgs>(args: SelectSubset<T, ImportedOrderUpdateArgs<ExtArgs>>): Prisma__ImportedOrderClient<$Result.GetResult<Prisma.$ImportedOrderPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more ImportedOrders.
+     * @param {ImportedOrderDeleteManyArgs} args - Arguments to filter ImportedOrders to delete.
+     * @example
+     * // Delete a few ImportedOrders
+     * const { count } = await prisma.importedOrder.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends ImportedOrderDeleteManyArgs>(args?: SelectSubset<T, ImportedOrderDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more ImportedOrders.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImportedOrderUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many ImportedOrders
+     * const importedOrder = await prisma.importedOrder.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends ImportedOrderUpdateManyArgs>(args: SelectSubset<T, ImportedOrderUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one ImportedOrder.
+     * @param {ImportedOrderUpsertArgs} args - Arguments to update or create a ImportedOrder.
+     * @example
+     * // Update or create a ImportedOrder
+     * const importedOrder = await prisma.importedOrder.upsert({
+     *   create: {
+     *     // ... data to create a ImportedOrder
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the ImportedOrder we want to update
+     *   }
+     * })
+     */
+    upsert<T extends ImportedOrderUpsertArgs>(args: SelectSubset<T, ImportedOrderUpsertArgs<ExtArgs>>): Prisma__ImportedOrderClient<$Result.GetResult<Prisma.$ImportedOrderPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of ImportedOrders.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImportedOrderCountArgs} args - Arguments to filter ImportedOrders to count.
+     * @example
+     * // Count the number of ImportedOrders
+     * const count = await prisma.importedOrder.count({
+     *   where: {
+     *     // ... the filter for the ImportedOrders we want to count
+     *   }
+     * })
+    **/
+    count<T extends ImportedOrderCountArgs>(
+      args?: Subset<T, ImportedOrderCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], ImportedOrderCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a ImportedOrder.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImportedOrderAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends ImportedOrderAggregateArgs>(args: Subset<T, ImportedOrderAggregateArgs>): Prisma.PrismaPromise<GetImportedOrderAggregateType<T>>
+
+    /**
+     * Group by ImportedOrder.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImportedOrderGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends ImportedOrderGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: ImportedOrderGroupByArgs['orderBy'] }
+        : { orderBy?: ImportedOrderGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, ImportedOrderGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetImportedOrderGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the ImportedOrder model
+   */
+  readonly fields: ImportedOrderFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for ImportedOrder.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__ImportedOrderClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    items<T extends ImportedOrder$itemsArgs<ExtArgs> = {}>(args?: Subset<T, ImportedOrder$itemsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ImportedOrderItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the ImportedOrder model
+   */
+  interface ImportedOrderFieldRefs {
+    readonly id: FieldRef<"ImportedOrder", 'String'>
+    readonly orderDate: FieldRef<"ImportedOrder", 'DateTime'>
+    readonly orderName: FieldRef<"ImportedOrder", 'String'>
+    readonly deliveryCharges: FieldRef<"ImportedOrder", 'Decimal'>
+    readonly orderTotal: FieldRef<"ImportedOrder", 'Decimal'>
+    readonly createdAt: FieldRef<"ImportedOrder", 'DateTime'>
+    readonly updatedAt: FieldRef<"ImportedOrder", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * ImportedOrder findUnique
+   */
+  export type ImportedOrderFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrder
+     */
+    select?: ImportedOrderSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrder
+     */
+    omit?: ImportedOrderOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderInclude<ExtArgs> | null
+    /**
+     * Filter, which ImportedOrder to fetch.
+     */
+    where: ImportedOrderWhereUniqueInput
+  }
+
+  /**
+   * ImportedOrder findUniqueOrThrow
+   */
+  export type ImportedOrderFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrder
+     */
+    select?: ImportedOrderSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrder
+     */
+    omit?: ImportedOrderOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderInclude<ExtArgs> | null
+    /**
+     * Filter, which ImportedOrder to fetch.
+     */
+    where: ImportedOrderWhereUniqueInput
+  }
+
+  /**
+   * ImportedOrder findFirst
+   */
+  export type ImportedOrderFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrder
+     */
+    select?: ImportedOrderSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrder
+     */
+    omit?: ImportedOrderOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderInclude<ExtArgs> | null
+    /**
+     * Filter, which ImportedOrder to fetch.
+     */
+    where?: ImportedOrderWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ImportedOrders to fetch.
+     */
+    orderBy?: ImportedOrderOrderByWithRelationInput | ImportedOrderOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ImportedOrders.
+     */
+    cursor?: ImportedOrderWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ImportedOrders from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ImportedOrders.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ImportedOrders.
+     */
+    distinct?: ImportedOrderScalarFieldEnum | ImportedOrderScalarFieldEnum[]
+  }
+
+  /**
+   * ImportedOrder findFirstOrThrow
+   */
+  export type ImportedOrderFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrder
+     */
+    select?: ImportedOrderSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrder
+     */
+    omit?: ImportedOrderOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderInclude<ExtArgs> | null
+    /**
+     * Filter, which ImportedOrder to fetch.
+     */
+    where?: ImportedOrderWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ImportedOrders to fetch.
+     */
+    orderBy?: ImportedOrderOrderByWithRelationInput | ImportedOrderOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ImportedOrders.
+     */
+    cursor?: ImportedOrderWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ImportedOrders from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ImportedOrders.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ImportedOrders.
+     */
+    distinct?: ImportedOrderScalarFieldEnum | ImportedOrderScalarFieldEnum[]
+  }
+
+  /**
+   * ImportedOrder findMany
+   */
+  export type ImportedOrderFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrder
+     */
+    select?: ImportedOrderSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrder
+     */
+    omit?: ImportedOrderOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderInclude<ExtArgs> | null
+    /**
+     * Filter, which ImportedOrders to fetch.
+     */
+    where?: ImportedOrderWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ImportedOrders to fetch.
+     */
+    orderBy?: ImportedOrderOrderByWithRelationInput | ImportedOrderOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing ImportedOrders.
+     */
+    cursor?: ImportedOrderWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ImportedOrders from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ImportedOrders.
+     */
+    skip?: number
+    distinct?: ImportedOrderScalarFieldEnum | ImportedOrderScalarFieldEnum[]
+  }
+
+  /**
+   * ImportedOrder create
+   */
+  export type ImportedOrderCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrder
+     */
+    select?: ImportedOrderSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrder
+     */
+    omit?: ImportedOrderOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderInclude<ExtArgs> | null
+    /**
+     * The data needed to create a ImportedOrder.
+     */
+    data: XOR<ImportedOrderCreateInput, ImportedOrderUncheckedCreateInput>
+  }
+
+  /**
+   * ImportedOrder createMany
+   */
+  export type ImportedOrderCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many ImportedOrders.
+     */
+    data: ImportedOrderCreateManyInput | ImportedOrderCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * ImportedOrder update
+   */
+  export type ImportedOrderUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrder
+     */
+    select?: ImportedOrderSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrder
+     */
+    omit?: ImportedOrderOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderInclude<ExtArgs> | null
+    /**
+     * The data needed to update a ImportedOrder.
+     */
+    data: XOR<ImportedOrderUpdateInput, ImportedOrderUncheckedUpdateInput>
+    /**
+     * Choose, which ImportedOrder to update.
+     */
+    where: ImportedOrderWhereUniqueInput
+  }
+
+  /**
+   * ImportedOrder updateMany
+   */
+  export type ImportedOrderUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update ImportedOrders.
+     */
+    data: XOR<ImportedOrderUpdateManyMutationInput, ImportedOrderUncheckedUpdateManyInput>
+    /**
+     * Filter which ImportedOrders to update
+     */
+    where?: ImportedOrderWhereInput
+    /**
+     * Limit how many ImportedOrders to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * ImportedOrder upsert
+   */
+  export type ImportedOrderUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrder
+     */
+    select?: ImportedOrderSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrder
+     */
+    omit?: ImportedOrderOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderInclude<ExtArgs> | null
+    /**
+     * The filter to search for the ImportedOrder to update in case it exists.
+     */
+    where: ImportedOrderWhereUniqueInput
+    /**
+     * In case the ImportedOrder found by the `where` argument doesn't exist, create a new ImportedOrder with this data.
+     */
+    create: XOR<ImportedOrderCreateInput, ImportedOrderUncheckedCreateInput>
+    /**
+     * In case the ImportedOrder was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<ImportedOrderUpdateInput, ImportedOrderUncheckedUpdateInput>
+  }
+
+  /**
+   * ImportedOrder delete
+   */
+  export type ImportedOrderDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrder
+     */
+    select?: ImportedOrderSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrder
+     */
+    omit?: ImportedOrderOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderInclude<ExtArgs> | null
+    /**
+     * Filter which ImportedOrder to delete.
+     */
+    where: ImportedOrderWhereUniqueInput
+  }
+
+  /**
+   * ImportedOrder deleteMany
+   */
+  export type ImportedOrderDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ImportedOrders to delete
+     */
+    where?: ImportedOrderWhereInput
+    /**
+     * Limit how many ImportedOrders to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * ImportedOrder.items
+   */
+  export type ImportedOrder$itemsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrderItem
+     */
+    select?: ImportedOrderItemSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrderItem
+     */
+    omit?: ImportedOrderItemOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderItemInclude<ExtArgs> | null
+    where?: ImportedOrderItemWhereInput
+    orderBy?: ImportedOrderItemOrderByWithRelationInput | ImportedOrderItemOrderByWithRelationInput[]
+    cursor?: ImportedOrderItemWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: ImportedOrderItemScalarFieldEnum | ImportedOrderItemScalarFieldEnum[]
+  }
+
+  /**
+   * ImportedOrder without action
+   */
+  export type ImportedOrderDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrder
+     */
+    select?: ImportedOrderSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrder
+     */
+    omit?: ImportedOrderOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model ImportedOrderItem
+   */
+
+  export type AggregateImportedOrderItem = {
+    _count: ImportedOrderItemCountAggregateOutputType | null
+    _avg: ImportedOrderItemAvgAggregateOutputType | null
+    _sum: ImportedOrderItemSumAggregateOutputType | null
+    _min: ImportedOrderItemMinAggregateOutputType | null
+    _max: ImportedOrderItemMaxAggregateOutputType | null
+  }
+
+  export type ImportedOrderItemAvgAggregateOutputType = {
+    lineIndex: number | null
+    amount: Decimal | null
+  }
+
+  export type ImportedOrderItemSumAggregateOutputType = {
+    lineIndex: number | null
+    amount: Decimal | null
+  }
+
+  export type ImportedOrderItemMinAggregateOutputType = {
+    id: string | null
+    orderId: string | null
+    lineIndex: number | null
+    itemName: string | null
+    amount: Decimal | null
+  }
+
+  export type ImportedOrderItemMaxAggregateOutputType = {
+    id: string | null
+    orderId: string | null
+    lineIndex: number | null
+    itemName: string | null
+    amount: Decimal | null
+  }
+
+  export type ImportedOrderItemCountAggregateOutputType = {
+    id: number
+    orderId: number
+    lineIndex: number
+    itemName: number
+    amount: number
+    _all: number
+  }
+
+
+  export type ImportedOrderItemAvgAggregateInputType = {
+    lineIndex?: true
+    amount?: true
+  }
+
+  export type ImportedOrderItemSumAggregateInputType = {
+    lineIndex?: true
+    amount?: true
+  }
+
+  export type ImportedOrderItemMinAggregateInputType = {
+    id?: true
+    orderId?: true
+    lineIndex?: true
+    itemName?: true
+    amount?: true
+  }
+
+  export type ImportedOrderItemMaxAggregateInputType = {
+    id?: true
+    orderId?: true
+    lineIndex?: true
+    itemName?: true
+    amount?: true
+  }
+
+  export type ImportedOrderItemCountAggregateInputType = {
+    id?: true
+    orderId?: true
+    lineIndex?: true
+    itemName?: true
+    amount?: true
+    _all?: true
+  }
+
+  export type ImportedOrderItemAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ImportedOrderItem to aggregate.
+     */
+    where?: ImportedOrderItemWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ImportedOrderItems to fetch.
+     */
+    orderBy?: ImportedOrderItemOrderByWithRelationInput | ImportedOrderItemOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: ImportedOrderItemWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ImportedOrderItems from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ImportedOrderItems.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned ImportedOrderItems
+    **/
+    _count?: true | ImportedOrderItemCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: ImportedOrderItemAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: ImportedOrderItemSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: ImportedOrderItemMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: ImportedOrderItemMaxAggregateInputType
+  }
+
+  export type GetImportedOrderItemAggregateType<T extends ImportedOrderItemAggregateArgs> = {
+        [P in keyof T & keyof AggregateImportedOrderItem]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateImportedOrderItem[P]>
+      : GetScalarType<T[P], AggregateImportedOrderItem[P]>
+  }
+
+
+
+
+  export type ImportedOrderItemGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ImportedOrderItemWhereInput
+    orderBy?: ImportedOrderItemOrderByWithAggregationInput | ImportedOrderItemOrderByWithAggregationInput[]
+    by: ImportedOrderItemScalarFieldEnum[] | ImportedOrderItemScalarFieldEnum
+    having?: ImportedOrderItemScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: ImportedOrderItemCountAggregateInputType | true
+    _avg?: ImportedOrderItemAvgAggregateInputType
+    _sum?: ImportedOrderItemSumAggregateInputType
+    _min?: ImportedOrderItemMinAggregateInputType
+    _max?: ImportedOrderItemMaxAggregateInputType
+  }
+
+  export type ImportedOrderItemGroupByOutputType = {
+    id: string
+    orderId: string
+    lineIndex: number
+    itemName: string
+    amount: Decimal
+    _count: ImportedOrderItemCountAggregateOutputType | null
+    _avg: ImportedOrderItemAvgAggregateOutputType | null
+    _sum: ImportedOrderItemSumAggregateOutputType | null
+    _min: ImportedOrderItemMinAggregateOutputType | null
+    _max: ImportedOrderItemMaxAggregateOutputType | null
+  }
+
+  type GetImportedOrderItemGroupByPayload<T extends ImportedOrderItemGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<ImportedOrderItemGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof ImportedOrderItemGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], ImportedOrderItemGroupByOutputType[P]>
+            : GetScalarType<T[P], ImportedOrderItemGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type ImportedOrderItemSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    orderId?: boolean
+    lineIndex?: boolean
+    itemName?: boolean
+    amount?: boolean
+    order?: boolean | ImportedOrderDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["importedOrderItem"]>
+
+
+
+  export type ImportedOrderItemSelectScalar = {
+    id?: boolean
+    orderId?: boolean
+    lineIndex?: boolean
+    itemName?: boolean
+    amount?: boolean
+  }
+
+  export type ImportedOrderItemOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "orderId" | "lineIndex" | "itemName" | "amount", ExtArgs["result"]["importedOrderItem"]>
+  export type ImportedOrderItemInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    order?: boolean | ImportedOrderDefaultArgs<ExtArgs>
+  }
+
+  export type $ImportedOrderItemPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "ImportedOrderItem"
+    objects: {
+      order: Prisma.$ImportedOrderPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      orderId: string
+      lineIndex: number
+      itemName: string
+      amount: Prisma.Decimal
+    }, ExtArgs["result"]["importedOrderItem"]>
+    composites: {}
+  }
+
+  type ImportedOrderItemGetPayload<S extends boolean | null | undefined | ImportedOrderItemDefaultArgs> = $Result.GetResult<Prisma.$ImportedOrderItemPayload, S>
+
+  type ImportedOrderItemCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<ImportedOrderItemFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: ImportedOrderItemCountAggregateInputType | true
+    }
+
+  export interface ImportedOrderItemDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['ImportedOrderItem'], meta: { name: 'ImportedOrderItem' } }
+    /**
+     * Find zero or one ImportedOrderItem that matches the filter.
+     * @param {ImportedOrderItemFindUniqueArgs} args - Arguments to find a ImportedOrderItem
+     * @example
+     * // Get one ImportedOrderItem
+     * const importedOrderItem = await prisma.importedOrderItem.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends ImportedOrderItemFindUniqueArgs>(args: SelectSubset<T, ImportedOrderItemFindUniqueArgs<ExtArgs>>): Prisma__ImportedOrderItemClient<$Result.GetResult<Prisma.$ImportedOrderItemPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one ImportedOrderItem that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {ImportedOrderItemFindUniqueOrThrowArgs} args - Arguments to find a ImportedOrderItem
+     * @example
+     * // Get one ImportedOrderItem
+     * const importedOrderItem = await prisma.importedOrderItem.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends ImportedOrderItemFindUniqueOrThrowArgs>(args: SelectSubset<T, ImportedOrderItemFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ImportedOrderItemClient<$Result.GetResult<Prisma.$ImportedOrderItemPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first ImportedOrderItem that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImportedOrderItemFindFirstArgs} args - Arguments to find a ImportedOrderItem
+     * @example
+     * // Get one ImportedOrderItem
+     * const importedOrderItem = await prisma.importedOrderItem.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends ImportedOrderItemFindFirstArgs>(args?: SelectSubset<T, ImportedOrderItemFindFirstArgs<ExtArgs>>): Prisma__ImportedOrderItemClient<$Result.GetResult<Prisma.$ImportedOrderItemPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first ImportedOrderItem that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImportedOrderItemFindFirstOrThrowArgs} args - Arguments to find a ImportedOrderItem
+     * @example
+     * // Get one ImportedOrderItem
+     * const importedOrderItem = await prisma.importedOrderItem.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends ImportedOrderItemFindFirstOrThrowArgs>(args?: SelectSubset<T, ImportedOrderItemFindFirstOrThrowArgs<ExtArgs>>): Prisma__ImportedOrderItemClient<$Result.GetResult<Prisma.$ImportedOrderItemPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more ImportedOrderItems that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImportedOrderItemFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all ImportedOrderItems
+     * const importedOrderItems = await prisma.importedOrderItem.findMany()
+     * 
+     * // Get first 10 ImportedOrderItems
+     * const importedOrderItems = await prisma.importedOrderItem.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const importedOrderItemWithIdOnly = await prisma.importedOrderItem.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends ImportedOrderItemFindManyArgs>(args?: SelectSubset<T, ImportedOrderItemFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ImportedOrderItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a ImportedOrderItem.
+     * @param {ImportedOrderItemCreateArgs} args - Arguments to create a ImportedOrderItem.
+     * @example
+     * // Create one ImportedOrderItem
+     * const ImportedOrderItem = await prisma.importedOrderItem.create({
+     *   data: {
+     *     // ... data to create a ImportedOrderItem
+     *   }
+     * })
+     * 
+     */
+    create<T extends ImportedOrderItemCreateArgs>(args: SelectSubset<T, ImportedOrderItemCreateArgs<ExtArgs>>): Prisma__ImportedOrderItemClient<$Result.GetResult<Prisma.$ImportedOrderItemPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many ImportedOrderItems.
+     * @param {ImportedOrderItemCreateManyArgs} args - Arguments to create many ImportedOrderItems.
+     * @example
+     * // Create many ImportedOrderItems
+     * const importedOrderItem = await prisma.importedOrderItem.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends ImportedOrderItemCreateManyArgs>(args?: SelectSubset<T, ImportedOrderItemCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Delete a ImportedOrderItem.
+     * @param {ImportedOrderItemDeleteArgs} args - Arguments to delete one ImportedOrderItem.
+     * @example
+     * // Delete one ImportedOrderItem
+     * const ImportedOrderItem = await prisma.importedOrderItem.delete({
+     *   where: {
+     *     // ... filter to delete one ImportedOrderItem
+     *   }
+     * })
+     * 
+     */
+    delete<T extends ImportedOrderItemDeleteArgs>(args: SelectSubset<T, ImportedOrderItemDeleteArgs<ExtArgs>>): Prisma__ImportedOrderItemClient<$Result.GetResult<Prisma.$ImportedOrderItemPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one ImportedOrderItem.
+     * @param {ImportedOrderItemUpdateArgs} args - Arguments to update one ImportedOrderItem.
+     * @example
+     * // Update one ImportedOrderItem
+     * const importedOrderItem = await prisma.importedOrderItem.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends ImportedOrderItemUpdateArgs>(args: SelectSubset<T, ImportedOrderItemUpdateArgs<ExtArgs>>): Prisma__ImportedOrderItemClient<$Result.GetResult<Prisma.$ImportedOrderItemPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more ImportedOrderItems.
+     * @param {ImportedOrderItemDeleteManyArgs} args - Arguments to filter ImportedOrderItems to delete.
+     * @example
+     * // Delete a few ImportedOrderItems
+     * const { count } = await prisma.importedOrderItem.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends ImportedOrderItemDeleteManyArgs>(args?: SelectSubset<T, ImportedOrderItemDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more ImportedOrderItems.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImportedOrderItemUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many ImportedOrderItems
+     * const importedOrderItem = await prisma.importedOrderItem.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends ImportedOrderItemUpdateManyArgs>(args: SelectSubset<T, ImportedOrderItemUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one ImportedOrderItem.
+     * @param {ImportedOrderItemUpsertArgs} args - Arguments to update or create a ImportedOrderItem.
+     * @example
+     * // Update or create a ImportedOrderItem
+     * const importedOrderItem = await prisma.importedOrderItem.upsert({
+     *   create: {
+     *     // ... data to create a ImportedOrderItem
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the ImportedOrderItem we want to update
+     *   }
+     * })
+     */
+    upsert<T extends ImportedOrderItemUpsertArgs>(args: SelectSubset<T, ImportedOrderItemUpsertArgs<ExtArgs>>): Prisma__ImportedOrderItemClient<$Result.GetResult<Prisma.$ImportedOrderItemPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of ImportedOrderItems.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImportedOrderItemCountArgs} args - Arguments to filter ImportedOrderItems to count.
+     * @example
+     * // Count the number of ImportedOrderItems
+     * const count = await prisma.importedOrderItem.count({
+     *   where: {
+     *     // ... the filter for the ImportedOrderItems we want to count
+     *   }
+     * })
+    **/
+    count<T extends ImportedOrderItemCountArgs>(
+      args?: Subset<T, ImportedOrderItemCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], ImportedOrderItemCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a ImportedOrderItem.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImportedOrderItemAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends ImportedOrderItemAggregateArgs>(args: Subset<T, ImportedOrderItemAggregateArgs>): Prisma.PrismaPromise<GetImportedOrderItemAggregateType<T>>
+
+    /**
+     * Group by ImportedOrderItem.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ImportedOrderItemGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends ImportedOrderItemGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: ImportedOrderItemGroupByArgs['orderBy'] }
+        : { orderBy?: ImportedOrderItemGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, ImportedOrderItemGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetImportedOrderItemGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the ImportedOrderItem model
+   */
+  readonly fields: ImportedOrderItemFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for ImportedOrderItem.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__ImportedOrderItemClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    order<T extends ImportedOrderDefaultArgs<ExtArgs> = {}>(args?: Subset<T, ImportedOrderDefaultArgs<ExtArgs>>): Prisma__ImportedOrderClient<$Result.GetResult<Prisma.$ImportedOrderPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the ImportedOrderItem model
+   */
+  interface ImportedOrderItemFieldRefs {
+    readonly id: FieldRef<"ImportedOrderItem", 'String'>
+    readonly orderId: FieldRef<"ImportedOrderItem", 'String'>
+    readonly lineIndex: FieldRef<"ImportedOrderItem", 'Int'>
+    readonly itemName: FieldRef<"ImportedOrderItem", 'String'>
+    readonly amount: FieldRef<"ImportedOrderItem", 'Decimal'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * ImportedOrderItem findUnique
+   */
+  export type ImportedOrderItemFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrderItem
+     */
+    select?: ImportedOrderItemSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrderItem
+     */
+    omit?: ImportedOrderItemOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderItemInclude<ExtArgs> | null
+    /**
+     * Filter, which ImportedOrderItem to fetch.
+     */
+    where: ImportedOrderItemWhereUniqueInput
+  }
+
+  /**
+   * ImportedOrderItem findUniqueOrThrow
+   */
+  export type ImportedOrderItemFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrderItem
+     */
+    select?: ImportedOrderItemSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrderItem
+     */
+    omit?: ImportedOrderItemOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderItemInclude<ExtArgs> | null
+    /**
+     * Filter, which ImportedOrderItem to fetch.
+     */
+    where: ImportedOrderItemWhereUniqueInput
+  }
+
+  /**
+   * ImportedOrderItem findFirst
+   */
+  export type ImportedOrderItemFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrderItem
+     */
+    select?: ImportedOrderItemSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrderItem
+     */
+    omit?: ImportedOrderItemOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderItemInclude<ExtArgs> | null
+    /**
+     * Filter, which ImportedOrderItem to fetch.
+     */
+    where?: ImportedOrderItemWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ImportedOrderItems to fetch.
+     */
+    orderBy?: ImportedOrderItemOrderByWithRelationInput | ImportedOrderItemOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ImportedOrderItems.
+     */
+    cursor?: ImportedOrderItemWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ImportedOrderItems from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ImportedOrderItems.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ImportedOrderItems.
+     */
+    distinct?: ImportedOrderItemScalarFieldEnum | ImportedOrderItemScalarFieldEnum[]
+  }
+
+  /**
+   * ImportedOrderItem findFirstOrThrow
+   */
+  export type ImportedOrderItemFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrderItem
+     */
+    select?: ImportedOrderItemSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrderItem
+     */
+    omit?: ImportedOrderItemOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderItemInclude<ExtArgs> | null
+    /**
+     * Filter, which ImportedOrderItem to fetch.
+     */
+    where?: ImportedOrderItemWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ImportedOrderItems to fetch.
+     */
+    orderBy?: ImportedOrderItemOrderByWithRelationInput | ImportedOrderItemOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for ImportedOrderItems.
+     */
+    cursor?: ImportedOrderItemWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ImportedOrderItems from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ImportedOrderItems.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ImportedOrderItems.
+     */
+    distinct?: ImportedOrderItemScalarFieldEnum | ImportedOrderItemScalarFieldEnum[]
+  }
+
+  /**
+   * ImportedOrderItem findMany
+   */
+  export type ImportedOrderItemFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrderItem
+     */
+    select?: ImportedOrderItemSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrderItem
+     */
+    omit?: ImportedOrderItemOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderItemInclude<ExtArgs> | null
+    /**
+     * Filter, which ImportedOrderItems to fetch.
+     */
+    where?: ImportedOrderItemWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of ImportedOrderItems to fetch.
+     */
+    orderBy?: ImportedOrderItemOrderByWithRelationInput | ImportedOrderItemOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing ImportedOrderItems.
+     */
+    cursor?: ImportedOrderItemWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` ImportedOrderItems from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` ImportedOrderItems.
+     */
+    skip?: number
+    distinct?: ImportedOrderItemScalarFieldEnum | ImportedOrderItemScalarFieldEnum[]
+  }
+
+  /**
+   * ImportedOrderItem create
+   */
+  export type ImportedOrderItemCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrderItem
+     */
+    select?: ImportedOrderItemSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrderItem
+     */
+    omit?: ImportedOrderItemOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderItemInclude<ExtArgs> | null
+    /**
+     * The data needed to create a ImportedOrderItem.
+     */
+    data: XOR<ImportedOrderItemCreateInput, ImportedOrderItemUncheckedCreateInput>
+  }
+
+  /**
+   * ImportedOrderItem createMany
+   */
+  export type ImportedOrderItemCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many ImportedOrderItems.
+     */
+    data: ImportedOrderItemCreateManyInput | ImportedOrderItemCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * ImportedOrderItem update
+   */
+  export type ImportedOrderItemUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrderItem
+     */
+    select?: ImportedOrderItemSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrderItem
+     */
+    omit?: ImportedOrderItemOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderItemInclude<ExtArgs> | null
+    /**
+     * The data needed to update a ImportedOrderItem.
+     */
+    data: XOR<ImportedOrderItemUpdateInput, ImportedOrderItemUncheckedUpdateInput>
+    /**
+     * Choose, which ImportedOrderItem to update.
+     */
+    where: ImportedOrderItemWhereUniqueInput
+  }
+
+  /**
+   * ImportedOrderItem updateMany
+   */
+  export type ImportedOrderItemUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update ImportedOrderItems.
+     */
+    data: XOR<ImportedOrderItemUpdateManyMutationInput, ImportedOrderItemUncheckedUpdateManyInput>
+    /**
+     * Filter which ImportedOrderItems to update
+     */
+    where?: ImportedOrderItemWhereInput
+    /**
+     * Limit how many ImportedOrderItems to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * ImportedOrderItem upsert
+   */
+  export type ImportedOrderItemUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrderItem
+     */
+    select?: ImportedOrderItemSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrderItem
+     */
+    omit?: ImportedOrderItemOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderItemInclude<ExtArgs> | null
+    /**
+     * The filter to search for the ImportedOrderItem to update in case it exists.
+     */
+    where: ImportedOrderItemWhereUniqueInput
+    /**
+     * In case the ImportedOrderItem found by the `where` argument doesn't exist, create a new ImportedOrderItem with this data.
+     */
+    create: XOR<ImportedOrderItemCreateInput, ImportedOrderItemUncheckedCreateInput>
+    /**
+     * In case the ImportedOrderItem was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<ImportedOrderItemUpdateInput, ImportedOrderItemUncheckedUpdateInput>
+  }
+
+  /**
+   * ImportedOrderItem delete
+   */
+  export type ImportedOrderItemDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrderItem
+     */
+    select?: ImportedOrderItemSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrderItem
+     */
+    omit?: ImportedOrderItemOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderItemInclude<ExtArgs> | null
+    /**
+     * Filter which ImportedOrderItem to delete.
+     */
+    where: ImportedOrderItemWhereUniqueInput
+  }
+
+  /**
+   * ImportedOrderItem deleteMany
+   */
+  export type ImportedOrderItemDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which ImportedOrderItems to delete
+     */
+    where?: ImportedOrderItemWhereInput
+    /**
+     * Limit how many ImportedOrderItems to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * ImportedOrderItem without action
+   */
+  export type ImportedOrderItemDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the ImportedOrderItem
+     */
+    select?: ImportedOrderItemSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the ImportedOrderItem
+     */
+    omit?: ImportedOrderItemOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ImportedOrderItemInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -6002,6 +8180,30 @@ export namespace Prisma {
   export type EmailAccountScalarFieldEnum = (typeof EmailAccountScalarFieldEnum)[keyof typeof EmailAccountScalarFieldEnum]
 
 
+  export const ImportedOrderScalarFieldEnum: {
+    id: 'id',
+    orderDate: 'orderDate',
+    orderName: 'orderName',
+    deliveryCharges: 'deliveryCharges',
+    orderTotal: 'orderTotal',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type ImportedOrderScalarFieldEnum = (typeof ImportedOrderScalarFieldEnum)[keyof typeof ImportedOrderScalarFieldEnum]
+
+
+  export const ImportedOrderItemScalarFieldEnum: {
+    id: 'id',
+    orderId: 'orderId',
+    lineIndex: 'lineIndex',
+    itemName: 'itemName',
+    amount: 'amount'
+  };
+
+  export type ImportedOrderItemScalarFieldEnum = (typeof ImportedOrderItemScalarFieldEnum)[keyof typeof ImportedOrderItemScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -6076,6 +8278,23 @@ export namespace Prisma {
   export type EmailAccountOrderByRelevanceFieldEnum = (typeof EmailAccountOrderByRelevanceFieldEnum)[keyof typeof EmailAccountOrderByRelevanceFieldEnum]
 
 
+  export const ImportedOrderOrderByRelevanceFieldEnum: {
+    id: 'id',
+    orderName: 'orderName'
+  };
+
+  export type ImportedOrderOrderByRelevanceFieldEnum = (typeof ImportedOrderOrderByRelevanceFieldEnum)[keyof typeof ImportedOrderOrderByRelevanceFieldEnum]
+
+
+  export const ImportedOrderItemOrderByRelevanceFieldEnum: {
+    id: 'id',
+    orderId: 'orderId',
+    itemName: 'itemName'
+  };
+
+  export type ImportedOrderItemOrderByRelevanceFieldEnum = (typeof ImportedOrderItemOrderByRelevanceFieldEnum)[keyof typeof ImportedOrderItemOrderByRelevanceFieldEnum]
+
+
   /**
    * Field references
    */
@@ -6113,6 +8332,13 @@ export namespace Prisma {
    * Reference to a field of type 'DateTime'
    */
   export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime'>
+    
+
+
+  /**
+   * Reference to a field of type 'Decimal'
+   */
+  export type DecimalFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Decimal'>
     
 
 
@@ -6498,6 +8724,132 @@ export namespace Prisma {
     isActive?: BoolWithAggregatesFilter<"EmailAccount"> | boolean
     createdAt?: DateTimeWithAggregatesFilter<"EmailAccount"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"EmailAccount"> | Date | string
+  }
+
+  export type ImportedOrderWhereInput = {
+    AND?: ImportedOrderWhereInput | ImportedOrderWhereInput[]
+    OR?: ImportedOrderWhereInput[]
+    NOT?: ImportedOrderWhereInput | ImportedOrderWhereInput[]
+    id?: StringFilter<"ImportedOrder"> | string
+    orderDate?: DateTimeFilter<"ImportedOrder"> | Date | string
+    orderName?: StringFilter<"ImportedOrder"> | string
+    deliveryCharges?: DecimalFilter<"ImportedOrder"> | Decimal | DecimalJsLike | number | string
+    orderTotal?: DecimalFilter<"ImportedOrder"> | Decimal | DecimalJsLike | number | string
+    createdAt?: DateTimeFilter<"ImportedOrder"> | Date | string
+    updatedAt?: DateTimeFilter<"ImportedOrder"> | Date | string
+    items?: ImportedOrderItemListRelationFilter
+  }
+
+  export type ImportedOrderOrderByWithRelationInput = {
+    id?: SortOrder
+    orderDate?: SortOrder
+    orderName?: SortOrder
+    deliveryCharges?: SortOrder
+    orderTotal?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    items?: ImportedOrderItemOrderByRelationAggregateInput
+    _relevance?: ImportedOrderOrderByRelevanceInput
+  }
+
+  export type ImportedOrderWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: ImportedOrderWhereInput | ImportedOrderWhereInput[]
+    OR?: ImportedOrderWhereInput[]
+    NOT?: ImportedOrderWhereInput | ImportedOrderWhereInput[]
+    orderDate?: DateTimeFilter<"ImportedOrder"> | Date | string
+    orderName?: StringFilter<"ImportedOrder"> | string
+    deliveryCharges?: DecimalFilter<"ImportedOrder"> | Decimal | DecimalJsLike | number | string
+    orderTotal?: DecimalFilter<"ImportedOrder"> | Decimal | DecimalJsLike | number | string
+    createdAt?: DateTimeFilter<"ImportedOrder"> | Date | string
+    updatedAt?: DateTimeFilter<"ImportedOrder"> | Date | string
+    items?: ImportedOrderItemListRelationFilter
+  }, "id">
+
+  export type ImportedOrderOrderByWithAggregationInput = {
+    id?: SortOrder
+    orderDate?: SortOrder
+    orderName?: SortOrder
+    deliveryCharges?: SortOrder
+    orderTotal?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: ImportedOrderCountOrderByAggregateInput
+    _avg?: ImportedOrderAvgOrderByAggregateInput
+    _max?: ImportedOrderMaxOrderByAggregateInput
+    _min?: ImportedOrderMinOrderByAggregateInput
+    _sum?: ImportedOrderSumOrderByAggregateInput
+  }
+
+  export type ImportedOrderScalarWhereWithAggregatesInput = {
+    AND?: ImportedOrderScalarWhereWithAggregatesInput | ImportedOrderScalarWhereWithAggregatesInput[]
+    OR?: ImportedOrderScalarWhereWithAggregatesInput[]
+    NOT?: ImportedOrderScalarWhereWithAggregatesInput | ImportedOrderScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"ImportedOrder"> | string
+    orderDate?: DateTimeWithAggregatesFilter<"ImportedOrder"> | Date | string
+    orderName?: StringWithAggregatesFilter<"ImportedOrder"> | string
+    deliveryCharges?: DecimalWithAggregatesFilter<"ImportedOrder"> | Decimal | DecimalJsLike | number | string
+    orderTotal?: DecimalWithAggregatesFilter<"ImportedOrder"> | Decimal | DecimalJsLike | number | string
+    createdAt?: DateTimeWithAggregatesFilter<"ImportedOrder"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"ImportedOrder"> | Date | string
+  }
+
+  export type ImportedOrderItemWhereInput = {
+    AND?: ImportedOrderItemWhereInput | ImportedOrderItemWhereInput[]
+    OR?: ImportedOrderItemWhereInput[]
+    NOT?: ImportedOrderItemWhereInput | ImportedOrderItemWhereInput[]
+    id?: StringFilter<"ImportedOrderItem"> | string
+    orderId?: StringFilter<"ImportedOrderItem"> | string
+    lineIndex?: IntFilter<"ImportedOrderItem"> | number
+    itemName?: StringFilter<"ImportedOrderItem"> | string
+    amount?: DecimalFilter<"ImportedOrderItem"> | Decimal | DecimalJsLike | number | string
+    order?: XOR<ImportedOrderScalarRelationFilter, ImportedOrderWhereInput>
+  }
+
+  export type ImportedOrderItemOrderByWithRelationInput = {
+    id?: SortOrder
+    orderId?: SortOrder
+    lineIndex?: SortOrder
+    itemName?: SortOrder
+    amount?: SortOrder
+    order?: ImportedOrderOrderByWithRelationInput
+    _relevance?: ImportedOrderItemOrderByRelevanceInput
+  }
+
+  export type ImportedOrderItemWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: ImportedOrderItemWhereInput | ImportedOrderItemWhereInput[]
+    OR?: ImportedOrderItemWhereInput[]
+    NOT?: ImportedOrderItemWhereInput | ImportedOrderItemWhereInput[]
+    orderId?: StringFilter<"ImportedOrderItem"> | string
+    lineIndex?: IntFilter<"ImportedOrderItem"> | number
+    itemName?: StringFilter<"ImportedOrderItem"> | string
+    amount?: DecimalFilter<"ImportedOrderItem"> | Decimal | DecimalJsLike | number | string
+    order?: XOR<ImportedOrderScalarRelationFilter, ImportedOrderWhereInput>
+  }, "id">
+
+  export type ImportedOrderItemOrderByWithAggregationInput = {
+    id?: SortOrder
+    orderId?: SortOrder
+    lineIndex?: SortOrder
+    itemName?: SortOrder
+    amount?: SortOrder
+    _count?: ImportedOrderItemCountOrderByAggregateInput
+    _avg?: ImportedOrderItemAvgOrderByAggregateInput
+    _max?: ImportedOrderItemMaxOrderByAggregateInput
+    _min?: ImportedOrderItemMinOrderByAggregateInput
+    _sum?: ImportedOrderItemSumOrderByAggregateInput
+  }
+
+  export type ImportedOrderItemScalarWhereWithAggregatesInput = {
+    AND?: ImportedOrderItemScalarWhereWithAggregatesInput | ImportedOrderItemScalarWhereWithAggregatesInput[]
+    OR?: ImportedOrderItemScalarWhereWithAggregatesInput[]
+    NOT?: ImportedOrderItemScalarWhereWithAggregatesInput | ImportedOrderItemScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"ImportedOrderItem"> | string
+    orderId?: StringWithAggregatesFilter<"ImportedOrderItem"> | string
+    lineIndex?: IntWithAggregatesFilter<"ImportedOrderItem"> | number
+    itemName?: StringWithAggregatesFilter<"ImportedOrderItem"> | string
+    amount?: DecimalWithAggregatesFilter<"ImportedOrderItem"> | Decimal | DecimalJsLike | number | string
   }
 
   export type UserCreateInput = {
@@ -6927,6 +9279,135 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type ImportedOrderCreateInput = {
+    id?: string
+    orderDate: Date | string
+    orderName: string
+    deliveryCharges: Decimal | DecimalJsLike | number | string
+    orderTotal: Decimal | DecimalJsLike | number | string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    items?: ImportedOrderItemCreateNestedManyWithoutOrderInput
+  }
+
+  export type ImportedOrderUncheckedCreateInput = {
+    id?: string
+    orderDate: Date | string
+    orderName: string
+    deliveryCharges: Decimal | DecimalJsLike | number | string
+    orderTotal: Decimal | DecimalJsLike | number | string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    items?: ImportedOrderItemUncheckedCreateNestedManyWithoutOrderInput
+  }
+
+  export type ImportedOrderUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    orderDate?: DateTimeFieldUpdateOperationsInput | Date | string
+    orderName?: StringFieldUpdateOperationsInput | string
+    deliveryCharges?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    orderTotal?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    items?: ImportedOrderItemUpdateManyWithoutOrderNestedInput
+  }
+
+  export type ImportedOrderUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    orderDate?: DateTimeFieldUpdateOperationsInput | Date | string
+    orderName?: StringFieldUpdateOperationsInput | string
+    deliveryCharges?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    orderTotal?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    items?: ImportedOrderItemUncheckedUpdateManyWithoutOrderNestedInput
+  }
+
+  export type ImportedOrderCreateManyInput = {
+    id?: string
+    orderDate: Date | string
+    orderName: string
+    deliveryCharges: Decimal | DecimalJsLike | number | string
+    orderTotal: Decimal | DecimalJsLike | number | string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ImportedOrderUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    orderDate?: DateTimeFieldUpdateOperationsInput | Date | string
+    orderName?: StringFieldUpdateOperationsInput | string
+    deliveryCharges?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    orderTotal?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ImportedOrderUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    orderDate?: DateTimeFieldUpdateOperationsInput | Date | string
+    orderName?: StringFieldUpdateOperationsInput | string
+    deliveryCharges?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    orderTotal?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ImportedOrderItemCreateInput = {
+    id?: string
+    lineIndex: number
+    itemName: string
+    amount: Decimal | DecimalJsLike | number | string
+    order: ImportedOrderCreateNestedOneWithoutItemsInput
+  }
+
+  export type ImportedOrderItemUncheckedCreateInput = {
+    id?: string
+    orderId: string
+    lineIndex: number
+    itemName: string
+    amount: Decimal | DecimalJsLike | number | string
+  }
+
+  export type ImportedOrderItemUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    lineIndex?: IntFieldUpdateOperationsInput | number
+    itemName?: StringFieldUpdateOperationsInput | string
+    amount?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    order?: ImportedOrderUpdateOneRequiredWithoutItemsNestedInput
+  }
+
+  export type ImportedOrderItemUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    orderId?: StringFieldUpdateOperationsInput | string
+    lineIndex?: IntFieldUpdateOperationsInput | number
+    itemName?: StringFieldUpdateOperationsInput | string
+    amount?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+  }
+
+  export type ImportedOrderItemCreateManyInput = {
+    id?: string
+    orderId: string
+    lineIndex: number
+    itemName: string
+    amount: Decimal | DecimalJsLike | number | string
+  }
+
+  export type ImportedOrderItemUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    lineIndex?: IntFieldUpdateOperationsInput | number
+    itemName?: StringFieldUpdateOperationsInput | string
+    amount?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+  }
+
+  export type ImportedOrderItemUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    orderId?: StringFieldUpdateOperationsInput | string
+    lineIndex?: IntFieldUpdateOperationsInput | number
+    itemName?: StringFieldUpdateOperationsInput | string
+    amount?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[]
@@ -7309,6 +9790,134 @@ export namespace Prisma {
     smtpPort?: SortOrder
   }
 
+  export type DecimalFilter<$PrismaModel = never> = {
+    equals?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    in?: Decimal[] | DecimalJsLike[] | number[] | string[]
+    notIn?: Decimal[] | DecimalJsLike[] | number[] | string[]
+    lt?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    lte?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    gt?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    gte?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    not?: NestedDecimalFilter<$PrismaModel> | Decimal | DecimalJsLike | number | string
+  }
+
+  export type ImportedOrderItemListRelationFilter = {
+    every?: ImportedOrderItemWhereInput
+    some?: ImportedOrderItemWhereInput
+    none?: ImportedOrderItemWhereInput
+  }
+
+  export type ImportedOrderItemOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type ImportedOrderOrderByRelevanceInput = {
+    fields: ImportedOrderOrderByRelevanceFieldEnum | ImportedOrderOrderByRelevanceFieldEnum[]
+    sort: SortOrder
+    search: string
+  }
+
+  export type ImportedOrderCountOrderByAggregateInput = {
+    id?: SortOrder
+    orderDate?: SortOrder
+    orderName?: SortOrder
+    deliveryCharges?: SortOrder
+    orderTotal?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ImportedOrderAvgOrderByAggregateInput = {
+    deliveryCharges?: SortOrder
+    orderTotal?: SortOrder
+  }
+
+  export type ImportedOrderMaxOrderByAggregateInput = {
+    id?: SortOrder
+    orderDate?: SortOrder
+    orderName?: SortOrder
+    deliveryCharges?: SortOrder
+    orderTotal?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ImportedOrderMinOrderByAggregateInput = {
+    id?: SortOrder
+    orderDate?: SortOrder
+    orderName?: SortOrder
+    deliveryCharges?: SortOrder
+    orderTotal?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ImportedOrderSumOrderByAggregateInput = {
+    deliveryCharges?: SortOrder
+    orderTotal?: SortOrder
+  }
+
+  export type DecimalWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    in?: Decimal[] | DecimalJsLike[] | number[] | string[]
+    notIn?: Decimal[] | DecimalJsLike[] | number[] | string[]
+    lt?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    lte?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    gt?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    gte?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    not?: NestedDecimalWithAggregatesFilter<$PrismaModel> | Decimal | DecimalJsLike | number | string
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedDecimalFilter<$PrismaModel>
+    _sum?: NestedDecimalFilter<$PrismaModel>
+    _min?: NestedDecimalFilter<$PrismaModel>
+    _max?: NestedDecimalFilter<$PrismaModel>
+  }
+
+  export type ImportedOrderScalarRelationFilter = {
+    is?: ImportedOrderWhereInput
+    isNot?: ImportedOrderWhereInput
+  }
+
+  export type ImportedOrderItemOrderByRelevanceInput = {
+    fields: ImportedOrderItemOrderByRelevanceFieldEnum | ImportedOrderItemOrderByRelevanceFieldEnum[]
+    sort: SortOrder
+    search: string
+  }
+
+  export type ImportedOrderItemCountOrderByAggregateInput = {
+    id?: SortOrder
+    orderId?: SortOrder
+    lineIndex?: SortOrder
+    itemName?: SortOrder
+    amount?: SortOrder
+  }
+
+  export type ImportedOrderItemAvgOrderByAggregateInput = {
+    lineIndex?: SortOrder
+    amount?: SortOrder
+  }
+
+  export type ImportedOrderItemMaxOrderByAggregateInput = {
+    id?: SortOrder
+    orderId?: SortOrder
+    lineIndex?: SortOrder
+    itemName?: SortOrder
+    amount?: SortOrder
+  }
+
+  export type ImportedOrderItemMinOrderByAggregateInput = {
+    id?: SortOrder
+    orderId?: SortOrder
+    lineIndex?: SortOrder
+    itemName?: SortOrder
+    amount?: SortOrder
+  }
+
+  export type ImportedOrderItemSumOrderByAggregateInput = {
+    lineIndex?: SortOrder
+    amount?: SortOrder
+  }
+
   export type StringFieldUpdateOperationsInput = {
     set?: string
   }
@@ -7335,6 +9944,70 @@ export namespace Prisma {
 
   export type NullableStringFieldUpdateOperationsInput = {
     set?: string | null
+  }
+
+  export type ImportedOrderItemCreateNestedManyWithoutOrderInput = {
+    create?: XOR<ImportedOrderItemCreateWithoutOrderInput, ImportedOrderItemUncheckedCreateWithoutOrderInput> | ImportedOrderItemCreateWithoutOrderInput[] | ImportedOrderItemUncheckedCreateWithoutOrderInput[]
+    connectOrCreate?: ImportedOrderItemCreateOrConnectWithoutOrderInput | ImportedOrderItemCreateOrConnectWithoutOrderInput[]
+    createMany?: ImportedOrderItemCreateManyOrderInputEnvelope
+    connect?: ImportedOrderItemWhereUniqueInput | ImportedOrderItemWhereUniqueInput[]
+  }
+
+  export type ImportedOrderItemUncheckedCreateNestedManyWithoutOrderInput = {
+    create?: XOR<ImportedOrderItemCreateWithoutOrderInput, ImportedOrderItemUncheckedCreateWithoutOrderInput> | ImportedOrderItemCreateWithoutOrderInput[] | ImportedOrderItemUncheckedCreateWithoutOrderInput[]
+    connectOrCreate?: ImportedOrderItemCreateOrConnectWithoutOrderInput | ImportedOrderItemCreateOrConnectWithoutOrderInput[]
+    createMany?: ImportedOrderItemCreateManyOrderInputEnvelope
+    connect?: ImportedOrderItemWhereUniqueInput | ImportedOrderItemWhereUniqueInput[]
+  }
+
+  export type DecimalFieldUpdateOperationsInput = {
+    set?: Decimal | DecimalJsLike | number | string
+    increment?: Decimal | DecimalJsLike | number | string
+    decrement?: Decimal | DecimalJsLike | number | string
+    multiply?: Decimal | DecimalJsLike | number | string
+    divide?: Decimal | DecimalJsLike | number | string
+  }
+
+  export type ImportedOrderItemUpdateManyWithoutOrderNestedInput = {
+    create?: XOR<ImportedOrderItemCreateWithoutOrderInput, ImportedOrderItemUncheckedCreateWithoutOrderInput> | ImportedOrderItemCreateWithoutOrderInput[] | ImportedOrderItemUncheckedCreateWithoutOrderInput[]
+    connectOrCreate?: ImportedOrderItemCreateOrConnectWithoutOrderInput | ImportedOrderItemCreateOrConnectWithoutOrderInput[]
+    upsert?: ImportedOrderItemUpsertWithWhereUniqueWithoutOrderInput | ImportedOrderItemUpsertWithWhereUniqueWithoutOrderInput[]
+    createMany?: ImportedOrderItemCreateManyOrderInputEnvelope
+    set?: ImportedOrderItemWhereUniqueInput | ImportedOrderItemWhereUniqueInput[]
+    disconnect?: ImportedOrderItemWhereUniqueInput | ImportedOrderItemWhereUniqueInput[]
+    delete?: ImportedOrderItemWhereUniqueInput | ImportedOrderItemWhereUniqueInput[]
+    connect?: ImportedOrderItemWhereUniqueInput | ImportedOrderItemWhereUniqueInput[]
+    update?: ImportedOrderItemUpdateWithWhereUniqueWithoutOrderInput | ImportedOrderItemUpdateWithWhereUniqueWithoutOrderInput[]
+    updateMany?: ImportedOrderItemUpdateManyWithWhereWithoutOrderInput | ImportedOrderItemUpdateManyWithWhereWithoutOrderInput[]
+    deleteMany?: ImportedOrderItemScalarWhereInput | ImportedOrderItemScalarWhereInput[]
+  }
+
+  export type ImportedOrderItemUncheckedUpdateManyWithoutOrderNestedInput = {
+    create?: XOR<ImportedOrderItemCreateWithoutOrderInput, ImportedOrderItemUncheckedCreateWithoutOrderInput> | ImportedOrderItemCreateWithoutOrderInput[] | ImportedOrderItemUncheckedCreateWithoutOrderInput[]
+    connectOrCreate?: ImportedOrderItemCreateOrConnectWithoutOrderInput | ImportedOrderItemCreateOrConnectWithoutOrderInput[]
+    upsert?: ImportedOrderItemUpsertWithWhereUniqueWithoutOrderInput | ImportedOrderItemUpsertWithWhereUniqueWithoutOrderInput[]
+    createMany?: ImportedOrderItemCreateManyOrderInputEnvelope
+    set?: ImportedOrderItemWhereUniqueInput | ImportedOrderItemWhereUniqueInput[]
+    disconnect?: ImportedOrderItemWhereUniqueInput | ImportedOrderItemWhereUniqueInput[]
+    delete?: ImportedOrderItemWhereUniqueInput | ImportedOrderItemWhereUniqueInput[]
+    connect?: ImportedOrderItemWhereUniqueInput | ImportedOrderItemWhereUniqueInput[]
+    update?: ImportedOrderItemUpdateWithWhereUniqueWithoutOrderInput | ImportedOrderItemUpdateWithWhereUniqueWithoutOrderInput[]
+    updateMany?: ImportedOrderItemUpdateManyWithWhereWithoutOrderInput | ImportedOrderItemUpdateManyWithWhereWithoutOrderInput[]
+    deleteMany?: ImportedOrderItemScalarWhereInput | ImportedOrderItemScalarWhereInput[]
+  }
+
+  export type ImportedOrderCreateNestedOneWithoutItemsInput = {
+    create?: XOR<ImportedOrderCreateWithoutItemsInput, ImportedOrderUncheckedCreateWithoutItemsInput>
+    connectOrCreate?: ImportedOrderCreateOrConnectWithoutItemsInput
+    connect?: ImportedOrderWhereUniqueInput
+  }
+
+  export type ImportedOrderUpdateOneRequiredWithoutItemsNestedInput = {
+    create?: XOR<ImportedOrderCreateWithoutItemsInput, ImportedOrderUncheckedCreateWithoutItemsInput>
+    connectOrCreate?: ImportedOrderCreateOrConnectWithoutItemsInput
+    upsert?: ImportedOrderUpsertWithoutItemsInput
+    connect?: ImportedOrderWhereUniqueInput
+    update?: XOR<XOR<ImportedOrderUpdateToOneWithWhereWithoutItemsInput, ImportedOrderUpdateWithoutItemsInput>, ImportedOrderUncheckedUpdateWithoutItemsInput>
   }
 
   export type NestedStringFilter<$PrismaModel = never> = {
@@ -7505,6 +10178,168 @@ export namespace Prisma {
     gt?: number | IntFieldRefInput<$PrismaModel>
     gte?: number | IntFieldRefInput<$PrismaModel>
     not?: NestedIntNullableFilter<$PrismaModel> | number | null
+  }
+
+  export type NestedDecimalFilter<$PrismaModel = never> = {
+    equals?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    in?: Decimal[] | DecimalJsLike[] | number[] | string[]
+    notIn?: Decimal[] | DecimalJsLike[] | number[] | string[]
+    lt?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    lte?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    gt?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    gte?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    not?: NestedDecimalFilter<$PrismaModel> | Decimal | DecimalJsLike | number | string
+  }
+
+  export type NestedDecimalWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    in?: Decimal[] | DecimalJsLike[] | number[] | string[]
+    notIn?: Decimal[] | DecimalJsLike[] | number[] | string[]
+    lt?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    lte?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    gt?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    gte?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
+    not?: NestedDecimalWithAggregatesFilter<$PrismaModel> | Decimal | DecimalJsLike | number | string
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedDecimalFilter<$PrismaModel>
+    _sum?: NestedDecimalFilter<$PrismaModel>
+    _min?: NestedDecimalFilter<$PrismaModel>
+    _max?: NestedDecimalFilter<$PrismaModel>
+  }
+
+  export type ImportedOrderItemCreateWithoutOrderInput = {
+    id?: string
+    lineIndex: number
+    itemName: string
+    amount: Decimal | DecimalJsLike | number | string
+  }
+
+  export type ImportedOrderItemUncheckedCreateWithoutOrderInput = {
+    id?: string
+    lineIndex: number
+    itemName: string
+    amount: Decimal | DecimalJsLike | number | string
+  }
+
+  export type ImportedOrderItemCreateOrConnectWithoutOrderInput = {
+    where: ImportedOrderItemWhereUniqueInput
+    create: XOR<ImportedOrderItemCreateWithoutOrderInput, ImportedOrderItemUncheckedCreateWithoutOrderInput>
+  }
+
+  export type ImportedOrderItemCreateManyOrderInputEnvelope = {
+    data: ImportedOrderItemCreateManyOrderInput | ImportedOrderItemCreateManyOrderInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type ImportedOrderItemUpsertWithWhereUniqueWithoutOrderInput = {
+    where: ImportedOrderItemWhereUniqueInput
+    update: XOR<ImportedOrderItemUpdateWithoutOrderInput, ImportedOrderItemUncheckedUpdateWithoutOrderInput>
+    create: XOR<ImportedOrderItemCreateWithoutOrderInput, ImportedOrderItemUncheckedCreateWithoutOrderInput>
+  }
+
+  export type ImportedOrderItemUpdateWithWhereUniqueWithoutOrderInput = {
+    where: ImportedOrderItemWhereUniqueInput
+    data: XOR<ImportedOrderItemUpdateWithoutOrderInput, ImportedOrderItemUncheckedUpdateWithoutOrderInput>
+  }
+
+  export type ImportedOrderItemUpdateManyWithWhereWithoutOrderInput = {
+    where: ImportedOrderItemScalarWhereInput
+    data: XOR<ImportedOrderItemUpdateManyMutationInput, ImportedOrderItemUncheckedUpdateManyWithoutOrderInput>
+  }
+
+  export type ImportedOrderItemScalarWhereInput = {
+    AND?: ImportedOrderItemScalarWhereInput | ImportedOrderItemScalarWhereInput[]
+    OR?: ImportedOrderItemScalarWhereInput[]
+    NOT?: ImportedOrderItemScalarWhereInput | ImportedOrderItemScalarWhereInput[]
+    id?: StringFilter<"ImportedOrderItem"> | string
+    orderId?: StringFilter<"ImportedOrderItem"> | string
+    lineIndex?: IntFilter<"ImportedOrderItem"> | number
+    itemName?: StringFilter<"ImportedOrderItem"> | string
+    amount?: DecimalFilter<"ImportedOrderItem"> | Decimal | DecimalJsLike | number | string
+  }
+
+  export type ImportedOrderCreateWithoutItemsInput = {
+    id?: string
+    orderDate: Date | string
+    orderName: string
+    deliveryCharges: Decimal | DecimalJsLike | number | string
+    orderTotal: Decimal | DecimalJsLike | number | string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ImportedOrderUncheckedCreateWithoutItemsInput = {
+    id?: string
+    orderDate: Date | string
+    orderName: string
+    deliveryCharges: Decimal | DecimalJsLike | number | string
+    orderTotal: Decimal | DecimalJsLike | number | string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ImportedOrderCreateOrConnectWithoutItemsInput = {
+    where: ImportedOrderWhereUniqueInput
+    create: XOR<ImportedOrderCreateWithoutItemsInput, ImportedOrderUncheckedCreateWithoutItemsInput>
+  }
+
+  export type ImportedOrderUpsertWithoutItemsInput = {
+    update: XOR<ImportedOrderUpdateWithoutItemsInput, ImportedOrderUncheckedUpdateWithoutItemsInput>
+    create: XOR<ImportedOrderCreateWithoutItemsInput, ImportedOrderUncheckedCreateWithoutItemsInput>
+    where?: ImportedOrderWhereInput
+  }
+
+  export type ImportedOrderUpdateToOneWithWhereWithoutItemsInput = {
+    where?: ImportedOrderWhereInput
+    data: XOR<ImportedOrderUpdateWithoutItemsInput, ImportedOrderUncheckedUpdateWithoutItemsInput>
+  }
+
+  export type ImportedOrderUpdateWithoutItemsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    orderDate?: DateTimeFieldUpdateOperationsInput | Date | string
+    orderName?: StringFieldUpdateOperationsInput | string
+    deliveryCharges?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    orderTotal?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ImportedOrderUncheckedUpdateWithoutItemsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    orderDate?: DateTimeFieldUpdateOperationsInput | Date | string
+    orderName?: StringFieldUpdateOperationsInput | string
+    deliveryCharges?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    orderTotal?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ImportedOrderItemCreateManyOrderInput = {
+    id?: string
+    lineIndex: number
+    itemName: string
+    amount: Decimal | DecimalJsLike | number | string
+  }
+
+  export type ImportedOrderItemUpdateWithoutOrderInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    lineIndex?: IntFieldUpdateOperationsInput | number
+    itemName?: StringFieldUpdateOperationsInput | string
+    amount?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+  }
+
+  export type ImportedOrderItemUncheckedUpdateWithoutOrderInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    lineIndex?: IntFieldUpdateOperationsInput | number
+    itemName?: StringFieldUpdateOperationsInput | string
+    amount?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+  }
+
+  export type ImportedOrderItemUncheckedUpdateManyWithoutOrderInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    lineIndex?: IntFieldUpdateOperationsInput | number
+    itemName?: StringFieldUpdateOperationsInput | string
+    amount?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
   }
 
 

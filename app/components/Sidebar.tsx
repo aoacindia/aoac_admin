@@ -74,7 +74,10 @@ export default function Sidebar({ menuItems, sectionName }: SidebarProps) {
             </Link>
           </Button>
           {menuItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              pathname === item.href ||
+              (item.href.length > 1 &&
+                pathname.startsWith(`${item.href}/`));
             return (
               <Button
                 key={item.href}

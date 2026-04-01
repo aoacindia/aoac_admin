@@ -81,4 +81,30 @@ model EmailAccount {
   @@index([isActive])
 }
 
+/// Orders imported from CSV/Excel (admin bulk upload). One row per order; line items in ImportedOrderItem.
+model ImportedOrder {
+  id               String   @id @default(cuid())
+  orderDate        DateTime @map("order_date")
+  orderName        String   @map("order_name")
+  deliveryCharges  Decimal  @map("delivery_charges") @db.Decimal(14, 2)
+  orderTotal       Decimal  @map("order_total") @db.Decimal(14, 2)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  items            ImportedOrderItem[]
+
+  @@index([orderDate])
+  @@index([orderName])
+}
+
+model ImportedOrderItem {
+  id        String        @id @default(cuid())
+  orderId   String        @map("order_id")
+  order     ImportedOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  lineIndex Int           @map("line_index")
+  itemName  String        @map("item_name")
+  amount    Decimal       @db.Decimal(14, 2)
+
+  @@index([orderId])
+}
+
 

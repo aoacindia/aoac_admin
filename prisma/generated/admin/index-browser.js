@@ -182,6 +182,24 @@ exports.Prisma.EmailAccountScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.ImportedOrderScalarFieldEnum = {
+  id: 'id',
+  orderDate: 'orderDate',
+  orderName: 'orderName',
+  deliveryCharges: 'deliveryCharges',
+  orderTotal: 'orderTotal',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.ImportedOrderItemScalarFieldEnum = {
+  id: 'id',
+  orderId: 'orderId',
+  lineIndex: 'lineIndex',
+  itemName: 'itemName',
+  amount: 'amount'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -234,6 +252,17 @@ exports.Prisma.EmailAccountOrderByRelevanceFieldEnum = {
   smtpUser: 'smtpUser',
   smtpPassword: 'smtpPassword'
 };
+
+exports.Prisma.ImportedOrderOrderByRelevanceFieldEnum = {
+  id: 'id',
+  orderName: 'orderName'
+};
+
+exports.Prisma.ImportedOrderItemOrderByRelevanceFieldEnum = {
+  id: 'id',
+  orderId: 'orderId',
+  itemName: 'itemName'
+};
 exports.AdminRole = exports.$Enums.AdminRole = {
   ADMIN: 'ADMIN',
   MANAGER: 'MANAGER',
@@ -245,7 +274,9 @@ exports.Prisma.ModelName = {
   OtpVerification: 'OtpVerification',
   Office: 'Office',
   Account: 'Account',
-  EmailAccount: 'EmailAccount'
+  EmailAccount: 'EmailAccount',
+  ImportedOrder: 'ImportedOrder',
+  ImportedOrderItem: 'ImportedOrderItem'
 };
 
 /**

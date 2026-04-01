@@ -1,0 +1,4 @@
+order_date,order_name,item_name,item_amount,delivery_charges,order_total
+2026-01-15,ORD-SAMPLE-001,Product Alpha,250.00,50.00,550.00
+2026-01-15,ORD-SAMPLE-001,Product Beta,250.00,50.00,550.00
+2026-01-20,ORD-SAMPLE-002,Single line item,1200.00,0,1200.00
