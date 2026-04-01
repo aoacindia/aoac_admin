@@ -7,7 +7,14 @@ import {
   parseImportedOrdersFile,
 } from "@/lib/imported-orders-parse";
 
+/** Allow long imports on hosts that honor this (e.g. Vercel); local Node ignores it. */
+export const maxDuration = 600;
+
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
+
+/** Default interactive transaction timeout is 5s; large CSV imports exceed that on remote DBs (P2028). */
+const IMPORT_TX_MAX_WAIT_MS = 60_000;
+const IMPORT_TX_TIMEOUT_MS = 10 * 60_000;
 
 export async function GET(request: NextRequest) {
   const gate = await requireAdminApi();
@@ -38,7 +45,15 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const [total, orders, aggRow, monthlyRows] = await Promise.all([
+  const monthNum = month ? Number.parseInt(month, 10) : 0;
+  const hasMonthFilter =
+    year != null &&
+    year !== "" &&
+    Number.isFinite(Number.parseInt(year, 10)) &&
+    monthNum >= 1 &&
+    monthNum <= 12;
+
+  const [total, orders, periodAgg] = await Promise.all([
     adminPrisma.importedOrder.count({ where }),
     adminPrisma.importedOrder.findMany({
       where,
@@ -49,29 +64,26 @@ export async function GET(request: NextRequest) {
         items: { orderBy: { lineIndex: "asc" } },
       },
     }),
-    adminPrisma.importedOrder.aggregate({
-      where: {},
-      _count: { _all: true },
-      _sum: { orderTotal: true },
-    }),
-    adminPrisma.$queryRaw<
-      Array<{ y: number; m: number; cnt: bigint; total: Prisma.Decimal | null }>
-    >`
-      SELECT YEAR(order_date) AS y, MONTH(order_date) AS m,
-             COUNT(*) AS cnt, SUM(order_total) AS total
-      FROM ImportedOrder
-      GROUP BY YEAR(order_date), MONTH(order_date)
-      ORDER BY y DESC, m DESC
-      LIMIT 48
-    `,
+    hasMonthFilter
+      ? adminPrisma.importedOrder.aggregate({
+          where,
+          _count: { _all: true },
+          _sum: { orderTotal: true },
+        })
+      : Promise.resolve(null),
   ]);
 
-  const monthlySummary = monthlyRows.map((r) => ({
-    year: r.y,
-    month: r.m,
-    orderCount: Number(r.cnt),
-    totalAmount: r.total ? Number(r.total) : 0,
-  }));
+  const periodSummary =
+    hasMonthFilter && periodAgg && year
+      ? {
+          year: Number.parseInt(year, 10),
+          month: monthNum,
+          orderCount: periodAgg._count._all,
+          totalAmount: periodAgg._sum.orderTotal
+            ? Number(periodAgg._sum.orderTotal)
+            : 0,
+        }
+      : null;
 
   return NextResponse.json({
     success: true,
@@ -96,13 +108,7 @@ export async function GET(request: NextRequest) {
         total,
         totalPages: Math.ceil(total / pageSize) || 1,
       },
-      totals: {
-        allTimeOrderCount: aggRow._count._all,
-        allTimeAmount: aggRow._sum.orderTotal
-          ? Number(aggRow._sum.orderTotal)
-          : 0,
-      },
-      monthlySummary,
+      periodSummary,
     },
   });
 }
@@ -168,26 +174,32 @@ export async function POST(request: NextRequest) {
   }
 
   let created = 0;
-  await adminPrisma.$transaction(async (tx) => {
-    for (const g of grouped.orders) {
-      await tx.importedOrder.create({
-        data: {
-          orderDate: g.orderDate,
-          orderName: g.orderName,
-          deliveryCharges: new Prisma.Decimal(g.deliveryCharges),
-          orderTotal: new Prisma.Decimal(g.orderTotal),
-          items: {
-            create: g.items.map((it, idx) => ({
-              lineIndex: idx,
-              itemName: it.itemName,
-              amount: new Prisma.Decimal(it.amount),
-            })),
+  await adminPrisma.$transaction(
+    async (tx) => {
+      for (const g of grouped.orders) {
+        await tx.importedOrder.create({
+          data: {
+            orderDate: g.orderDate,
+            orderName: g.orderName,
+            deliveryCharges: new Prisma.Decimal(g.deliveryCharges),
+            orderTotal: new Prisma.Decimal(g.orderTotal),
+            items: {
+              create: g.items.map((it, idx) => ({
+                lineIndex: idx,
+                itemName: it.itemName,
+                amount: new Prisma.Decimal(it.amount),
+              })),
+            },
           },
-        },
-      });
-      created += 1;
+        });
+        created += 1;
+      }
+    },
+    {
+      maxWait: IMPORT_TX_MAX_WAIT_MS,
+      timeout: IMPORT_TX_TIMEOUT_MS,
     }
-  });
+  );
 
   return NextResponse.json({
     success: true,

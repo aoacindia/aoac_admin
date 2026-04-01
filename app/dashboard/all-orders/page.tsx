@@ -30,13 +30,6 @@ interface OrderRow {
   items: OrderItem[];
 }
 
-interface MonthlyRow {
-  year: number;
-  month: number;
-  orderCount: number;
-  totalAmount: number;
-}
-
 function formatInr(n: number) {
   return `₹${n.toLocaleString("en-IN", {
     minimumFractionDigits: 2,
@@ -71,14 +64,15 @@ function buildYearOptions() {
 
 export default function AllOrdersListPage() {
   const now = new Date();
-  const [month, setMonth] = useState(0);
+  const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [page, setPage] = useState(1);
   const [orders, setOrders] = useState<OrderRow[]>([]);
-  const [monthlySummary, setMonthlySummary] = useState<MonthlyRow[]>([]);
-  const [totals, setTotals] = useState<{
-    allTimeOrderCount: number;
-    allTimeAmount: number;
+  const [periodSummary, setPeriodSummary] = useState<{
+    year: number;
+    month: number;
+    orderCount: number;
+    totalAmount: number;
   } | null>(null);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -110,8 +104,7 @@ export default function AllOrdersListPage() {
         }
         if (cancelled) return;
         setOrders(data.data.orders);
-        setMonthlySummary(data.data.monthlySummary ?? []);
-        setTotals(data.data.totals);
+        setPeriodSummary(data.data.periodSummary ?? null);
         setPagination(data.data.pagination);
       } catch (e: unknown) {
         if (!cancelled) {
@@ -134,60 +127,10 @@ export default function AllOrdersListPage() {
           All orders
         </h1>
         <p className="text-zinc-600 dark:text-zinc-400 text-sm">
-          Orders imported from CSV or Excel. Use filters to narrow the list.
+          Orders imported from CSV or Excel. Pick year and month to see totals for that
+          month; use &quot;All months&quot; to list every order.
         </p>
       </div>
-
-      {totals && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-sm">
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">Total orders (all time)</p>
-            <p className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-              {totals.allTimeOrderCount.toLocaleString("en-IN")}
-            </p>
-          </div>
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-sm">
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">Total amount (all time)</p>
-            <p className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-              {formatInr(totals.allTimeAmount)}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {monthlySummary.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-3">
-            Month-wise summary
-          </h2>
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-900">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Month</TableHead>
-                  <TableHead className="text-right">Orders</TableHead>
-                  <TableHead className="text-right">Total amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {monthlySummary.map((row) => (
-                  <TableRow key={`${row.year}-${row.month}`}>
-                    <TableCell>
-                      {MONTHS[row.month]?.label ?? row.month} {row.year}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {row.orderCount.toLocaleString("en-IN")}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatInr(row.totalAmount)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-      )}
 
       <div className="mb-6 flex flex-wrap gap-4 items-end">
         <div className="space-y-2">
@@ -238,6 +181,34 @@ export default function AllOrdersListPage() {
           Clear month filter
         </Button>
       </div>
+
+      {periodSummary && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+          <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-sm">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              Orders in {MONTHS[periodSummary.month]?.label ?? ""} {periodSummary.year}
+            </p>
+            <p className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
+              {periodSummary.orderCount.toLocaleString("en-IN")}
+            </p>
+          </div>
+          <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-sm">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              Total amount ({MONTHS[periodSummary.month]?.label ?? ""}{" "}
+              {periodSummary.year})
+            </p>
+            <p className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
+              {formatInr(periodSummary.totalAmount)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {month === 0 && (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-8">
+          Select a month to see order count and total amount for that period.
+        </p>
+      )}
 
       {error && (
         <p className="text-sm text-red-600 dark:text-red-400 mb-4">{error}</p>
