@@ -10,3 +10,12 @@ export async function requireAdminApi() {
   }
   return { session };
 }
+
+/** Any signed-in dashboard user (ADMIN / MANAGER / STAFF). */
+export async function requireSessionApi() {
+  const session = await auth();
+  if (!session?.user) {
+    return { error: "Unauthorized", status: 401 as const };
+  }
+  return { session };
+}

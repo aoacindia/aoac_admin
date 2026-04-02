@@ -127,7 +127,7 @@ export default function AllOrdersListPage() {
           All orders
         </h1>
         <p className="text-zinc-600 dark:text-zinc-400 text-sm">
-          Orders imported from CSV or Excel. Pick year and month to see totals for that
+          Pick year and month to see totals for that
           month; use &quot;All months&quot; to list every order.
         </p>
       </div>
@@ -218,7 +218,7 @@ export default function AllOrdersListPage() {
         {loading ? (
           <p className="p-6 text-zinc-500">Loading…</p>
         ) : orders.length === 0 ? (
-          <p className="p-6 text-zinc-500">No imported orders yet.</p>
+          <p className="p-6 text-zinc-500">No orders yet.</p>
         ) : (
           <Table>
             <TableHeader>

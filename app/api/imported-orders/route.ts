@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@/prisma/generated/admin";
 import { adminPrisma } from "@/lib/admin-prisma";
-import { requireAdminApi } from "@/lib/require-admin";
+import { requireAdminApi, requireSessionApi } from "@/lib/require-admin";
+import { utcCalendarMonthRange } from "@/lib/imported-orders-dates";
 import {
   groupImportedRows,
   parseImportedOrdersFile,
@@ -18,7 +19,7 @@ const IMPORT_TX_MAX_WAIT_MS = 60_000;
 const IMPORT_TX_TIMEOUT_MS = 270_000;
 
 export async function GET(request: NextRequest) {
-  const gate = await requireAdminApi();
+  const gate = await requireSessionApi();
   if ("error" in gate) {
     return NextResponse.json(
       { success: false, error: gate.error },
@@ -40,8 +41,7 @@ export async function GET(request: NextRequest) {
     const y = Number.parseInt(year, 10);
     const m = Number.parseInt(month, 10);
     if (Number.isFinite(y) && m >= 1 && m <= 12) {
-      const start = new Date(y, m - 1, 1);
-      const end = new Date(y, m, 0, 23, 59, 59, 999);
+      const { start, end } = utcCalendarMonthRange(y, m);
       where.orderDate = { gte: start, lte: end };
     }
   }
