@@ -1,9 +1,13 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { FileDown, Pencil, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import Modal from "@/app/components/Modal";
 import {
   Table,
   TableBody,
@@ -12,6 +16,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  emptyPdfExportOptions,
+  pdfExportHasSelection,
+  type PdfExportOptions,
+} from "@/lib/pdf-export-options";
 
 interface OrderItem {
   id: string;
@@ -62,7 +71,18 @@ function buildYearOptions() {
   return out;
 }
 
+type EditFormState = {
+  orderDate: string;
+  orderName: string;
+  deliveryCharges: string;
+  orderTotal: string;
+  items: Array<{ itemName: string; amount: string }>;
+};
+
 export default function AllOrdersListPage() {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
+
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -83,6 +103,17 @@ export default function AllOrdersListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [pdfOptions, setPdfOptions] = useState<PdfExportOptions>(() =>
+    emptyPdfExportOptions()
+  );
+  const [pdfModalError, setPdfModalError] = useState<string | null>(null);
+  const [listRefreshKey, setListRefreshKey] = useState(0);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<EditFormState | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,7 +149,164 @@ export default function AllOrdersListPage() {
     return () => {
       cancelled = true;
     };
-  }, [page, month, year]);
+  }, [page, month, year, listRefreshKey]);
+
+  const openEdit = (o: OrderRow) => {
+    setEditId(o.id);
+    setEditError(null);
+    setEditForm({
+      orderDate: o.orderDate.slice(0, 10),
+      orderName: o.orderName,
+      deliveryCharges: String(o.deliveryCharges),
+      orderTotal: String(o.orderTotal),
+      items: o.items.map((it) => ({
+        itemName: it.itemName,
+        amount: String(it.amount),
+      })),
+    });
+  };
+
+  const closeEdit = () => {
+    setEditId(null);
+    setEditForm(null);
+    setEditError(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editId || !editForm) return;
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const items = editForm.items.map((it) => ({
+        itemName: it.itemName.trim(),
+        amount: Number(it.amount),
+      }));
+      const res = await fetch(`/api/imported-orders/${editId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderDate: editForm.orderDate,
+          orderName: editForm.orderName.trim(),
+          deliveryCharges: Number(editForm.deliveryCharges),
+          orderTotal: Number(editForm.orderTotal),
+          items,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(typeof data.error === "string" ? data.error : "Save failed");
+      }
+      closeEdit();
+      setListRefreshKey((k) => k + 1);
+    } catch (e: unknown) {
+      setEditError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const openPdfModal = () => {
+    if (month < 1 || month > 12) return;
+    setPdfModalError(null);
+    setPdfOptions(emptyPdfExportOptions());
+    setPdfModalOpen(true);
+  };
+
+  const closePdfModal = () => {
+    setPdfModalOpen(false);
+    setPdfModalError(null);
+  };
+
+  const setPdfOpt = <K extends keyof PdfExportOptions>(
+    key: K,
+    value: PdfExportOptions[K]
+  ) => {
+    setPdfOptions((o) => ({ ...o, [key]: value }));
+  };
+
+  const requestMonthPdfBlob = async (
+    options: PdfExportOptions
+  ): Promise<Blob> => {
+    const res = await fetch("/api/imported-orders/pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        year,
+        month,
+        options,
+      }),
+    });
+    if (!res.ok) {
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(
+        typeof j.error === "string" ? j.error : "Could not create PDF."
+      );
+    }
+    return res.blob();
+  };
+
+  const handlePdfModalDownload = async () => {
+    if (!pdfExportHasSelection(pdfOptions)) {
+      setPdfModalError("Select at least one option to include.");
+      return;
+    }
+    setPdfModalError(null);
+    setPdfLoading(true);
+    try {
+      const blob = await requestMonthPdfBlob(pdfOptions);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `all-orders-${year}-${String(month).padStart(2, "0")}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      closePdfModal();
+    } catch (e: unknown) {
+      setPdfModalError(
+        e instanceof Error ? e.message : "Could not download PDF."
+      );
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const handlePdfModalPrint = async () => {
+    if (!pdfExportHasSelection(pdfOptions)) {
+      setPdfModalError("Select at least one option to include.");
+      return;
+    }
+    setPdfModalError(null);
+    setPdfLoading(true);
+    try {
+      const blob = await requestMonthPdfBlob(pdfOptions);
+      const url = URL.createObjectURL(blob);
+      const w = window.open(url, "_blank");
+      if (w) {
+        window.setTimeout(() => {
+          try {
+            w.focus();
+            w.print();
+          } catch {
+            /* ignore */
+          }
+        }, 800);
+        window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
+      } else {
+        URL.revokeObjectURL(url);
+        setPdfModalError(
+          "Pop-up blocked. Allow pop-ups for this site, or use Download."
+        );
+        return;
+      }
+      closePdfModal();
+    } catch (e: unknown) {
+      setPdfModalError(
+        e instanceof Error ? e.message : "Could not open PDF for printing."
+      );
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   return (
     <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
@@ -182,6 +370,171 @@ export default function AllOrdersListPage() {
         </Button>
       </div>
 
+      {month >= 1 && month <= 12 && (
+        <div className="mb-6 flex flex-wrap gap-3 items-center">
+          <Button
+            type="button"
+            variant="default"
+            disabled={pdfLoading}
+            onClick={openPdfModal}
+          >
+            <FileDown className="mr-2 h-4 w-4" />
+            Download summary
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={pdfLoading}
+            onClick={openPdfModal}
+          >
+            <Printer className="mr-2 h-4 w-4" />
+            Print
+          </Button>
+          {pdfLoading && (
+            <span className="text-sm text-zinc-500">Preparing PDF…</span>
+          )}
+        </div>
+      )}
+
+      {pdfModalOpen && (
+        <Modal
+          title="PDF summary — choose content"
+          onClose={closePdfModal}
+          maxWidthClassName="max-w-lg"
+          panelClassName="max-h-[85vh] overflow-y-auto"
+        >
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+            Select what to include for{" "}
+            <span className="font-medium text-foreground">
+              {MONTHS[month]?.label} {year}
+            </span>
+            . Nothing is selected until you tick the boxes.
+          </p>
+
+          <div className="space-y-4 text-sm">
+            <div>
+              <p className="font-medium text-foreground mb-2">Summary</p>
+              <div className="space-y-2 pl-1">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={pdfOptions.includeDocumentTitle}
+                    onChange={(e) =>
+                      setPdfOpt("includeDocumentTitle", e.target.checked)
+                    }
+                    disabled={pdfLoading}
+                  />
+                  <span>Document title (month and year)</span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={pdfOptions.includeSummaryOrderCount}
+                    onChange={(e) =>
+                      setPdfOpt("includeSummaryOrderCount", e.target.checked)
+                    }
+                    disabled={pdfLoading}
+                  />
+                  <span>Number of orders in the period</span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={pdfOptions.includeSummaryTotalAmount}
+                    onChange={(e) =>
+                      setPdfOpt("includeSummaryTotalAmount", e.target.checked)
+                    }
+                    disabled={pdfLoading}
+                  />
+                  <span>Total amount for the period</span>
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <p className="font-medium text-foreground mb-2">
+                Each order (one line per order)
+              </p>
+              <div className="space-y-2 pl-1">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={pdfOptions.orderRowName}
+                    onChange={(e) =>
+                      setPdfOpt("orderRowName", e.target.checked)
+                    }
+                    disabled={pdfLoading}
+                  />
+                  <span>Order name</span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={pdfOptions.orderRowDelivery}
+                    onChange={(e) =>
+                      setPdfOpt("orderRowDelivery", e.target.checked)
+                    }
+                    disabled={pdfLoading}
+                  />
+                  <span>Delivery charges</span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={pdfOptions.orderRowTotal}
+                    onChange={(e) =>
+                      setPdfOpt("orderRowTotal", e.target.checked)
+                    }
+                    disabled={pdfLoading}
+                  />
+                  <span>Order total</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {pdfModalError && (
+            <p className="text-sm text-red-600 dark:text-red-400 mt-4">
+              {pdfModalError}
+            </p>
+          )}
+
+          <div className="flex flex-wrap gap-2 justify-end mt-6 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={closePdfModal}
+              disabled={pdfLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={pdfLoading}
+              onClick={() => void handlePdfModalPrint()}
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              Print
+            </Button>
+            <Button
+              type="button"
+              disabled={pdfLoading}
+              onClick={() => void handlePdfModalDownload()}
+            >
+              <FileDown className="mr-2 h-4 w-4" />
+              Download
+            </Button>
+          </div>
+        </Modal>
+      )}
+
       {periodSummary && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
           <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-sm">
@@ -224,6 +577,9 @@ export default function AllOrdersListPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10" />
+                {isAdmin && (
+                  <TableHead className="w-[88px] text-center">Edit</TableHead>
+                )}
                 <TableHead>Date</TableHead>
                 <TableHead>Order name</TableHead>
                 <TableHead className="text-right">Delivery</TableHead>
@@ -246,6 +602,20 @@ export default function AllOrdersListPage() {
                         {expandedId === o.id ? "−" : "+"}
                       </button>
                     </TableCell>
+                    {isAdmin && (
+                      <TableCell className="text-center">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          aria-label="Edit order"
+                          onClick={() => openEdit(o)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
                     <TableCell>
                       {new Date(o.orderDate).toLocaleDateString("en-IN", {
                         day: "2-digit",
@@ -263,7 +633,10 @@ export default function AllOrdersListPage() {
                   </TableRow>
                   {expandedId === o.id && (
                     <TableRow>
-                      <TableCell colSpan={5} className="bg-zinc-50 dark:bg-zinc-950/50 p-0">
+                      <TableCell
+                        colSpan={isAdmin ? 6 : 5}
+                        className="bg-zinc-50 dark:bg-zinc-950/50 p-0"
+                      >
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -321,6 +694,199 @@ export default function AllOrdersListPage() {
             </Button>
           </div>
         </div>
+      )}
+
+      {editForm && editId && (
+        <Modal
+          title="Edit order"
+          onClose={closeEdit}
+          maxWidthClassName="max-w-2xl"
+          panelClassName="max-h-[90vh] overflow-y-auto"
+        >
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-order-date">Order date</Label>
+                <Input
+                  id="edit-order-date"
+                  type="date"
+                  value={editForm.orderDate}
+                  onChange={(e) =>
+                    setEditForm((f) =>
+                      f ? { ...f, orderDate: e.target.value } : f
+                    )
+                  }
+                  disabled={editSaving}
+                />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="edit-order-name">Order name</Label>
+                <Input
+                  id="edit-order-name"
+                  value={editForm.orderName}
+                  onChange={(e) =>
+                    setEditForm((f) =>
+                      f ? { ...f, orderName: e.target.value } : f
+                    )
+                  }
+                  disabled={editSaving}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-delivery">Delivery charges</Label>
+                <Input
+                  id="edit-delivery"
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={editForm.deliveryCharges}
+                  onChange={(e) =>
+                    setEditForm((f) =>
+                      f ? { ...f, deliveryCharges: e.target.value } : f
+                    )
+                  }
+                  disabled={editSaving}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-total">Order total</Label>
+                <Input
+                  id="edit-total"
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={editForm.orderTotal}
+                  onChange={(e) =>
+                    setEditForm((f) =>
+                      f ? { ...f, orderTotal: e.target.value } : f
+                    )
+                  }
+                  disabled={editSaving}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label>Line items</Label>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={editSaving}
+                  onClick={() =>
+                    setEditForm((f) =>
+                      f
+                        ? {
+                            ...f,
+                            items: [
+                              ...f.items,
+                              { itemName: "", amount: "0" },
+                            ],
+                          }
+                        : f
+                    )
+                  }
+                >
+                  Add line
+                </Button>
+              </div>
+              <div className="space-y-2 rounded-md border border-zinc-200 dark:border-zinc-800 p-3">
+                {editForm.items.map((it, idx) => (
+                  <div
+                    key={idx}
+                    className="flex flex-col sm:flex-row gap-2 sm:items-end"
+                  >
+                    <div className="flex-1 space-y-1">
+                      <span className="text-xs text-zinc-500">Item</span>
+                      <Input
+                        value={it.itemName}
+                        onChange={(e) =>
+                          setEditForm((f) => {
+                            if (!f) return f;
+                            const next = [...f.items];
+                            next[idx] = {
+                              ...next[idx],
+                              itemName: e.target.value,
+                            };
+                            return { ...f, items: next };
+                          })
+                        }
+                        disabled={editSaving}
+                        placeholder="Description"
+                      />
+                    </div>
+                    <div className="w-full sm:w-32 space-y-1">
+                      <span className="text-xs text-zinc-500">Amount</span>
+                      <Input
+                        type="number"
+                        step="any"
+                        min="0"
+                        value={it.amount}
+                        onChange={(e) =>
+                          setEditForm((f) => {
+                            if (!f) return f;
+                            const next = [...f.items];
+                            next[idx] = {
+                              ...next[idx],
+                              amount: e.target.value,
+                            };
+                            return { ...f, items: next };
+                          })
+                        }
+                        disabled={editSaving}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 shrink-0"
+                      disabled={editSaving || editForm.items.length <= 1}
+                      onClick={() =>
+                        setEditForm((f) => {
+                          if (!f || f.items.length <= 1) return f;
+                          return {
+                            ...f,
+                            items: f.items.filter((_, i) => i !== idx),
+                          };
+                        })
+                      }
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-zinc-500 mt-2">
+                Sum of line amounts plus delivery must equal order total (within
+                0.02).
+              </p>
+            </div>
+
+            {editError && (
+              <p className="text-sm text-red-600 dark:text-red-400">{editError}</p>
+            )}
+
+            <div className="flex flex-wrap gap-2 justify-end pt-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={closeEdit}
+                disabled={editSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void handleSaveEdit()}
+                disabled={editSaving}
+              >
+                {editSaving ? "Saving…" : "Save"}
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );
