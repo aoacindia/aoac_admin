@@ -17,9 +17,11 @@ function parsePdfOptions(raw: unknown): PdfExportOptions | null {
     includeDocumentTitle: p.includeDocumentTitle === true,
     includeSummaryOrderCount: p.includeSummaryOrderCount === true,
     includeSummaryTotalAmount: p.includeSummaryTotalAmount === true,
+    orderRowDate: p.orderRowDate === true,
     orderRowName: p.orderRowName === true,
     orderRowDelivery: p.orderRowDelivery === true,
     orderRowTotal: p.orderRowTotal === true,
+    orderRowItems: p.orderRowItems === true,
   };
 }
 
@@ -76,6 +78,9 @@ export async function POST(request: NextRequest) {
     adminPrisma.importedOrder.findMany({
       where: { orderDate: { gte: start, lte: end } },
       orderBy: [{ orderDate: "asc" }, { orderName: "asc" }],
+      include: {
+        items: { orderBy: { lineIndex: "asc" } },
+      },
     }),
     adminPrisma.importedOrder.aggregate({
       where: { orderDate: { gte: start, lte: end } },
@@ -90,9 +95,15 @@ export async function POST(request: NextRequest) {
     orderCount: agg._count._all,
     totalAmount: agg._sum.orderTotal ? Number(agg._sum.orderTotal) : 0,
     orders: orders.map((o) => ({
+      orderDate: o.orderDate,
       orderName: o.orderName,
       deliveryCharges: Number(o.deliveryCharges),
       orderTotal: Number(o.orderTotal),
+      items: o.items.map((it) => ({
+        lineIndex: it.lineIndex,
+        itemName: it.itemName,
+        amount: Number(it.amount),
+      })),
     })),
     options,
   });

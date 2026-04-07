@@ -455,10 +455,24 @@ export default function AllOrdersListPage() {
             </div>
 
             <div>
-              <p className="font-medium text-foreground mb-2">
-                Each order (one line per order)
+              <p className="font-medium text-foreground mb-2">Per order</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+                Selected main fields appear on one line. Line items are listed
+                under that order when chosen.
               </p>
               <div className="space-y-2 pl-1">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={pdfOptions.orderRowDate}
+                    onChange={(e) =>
+                      setPdfOpt("orderRowDate", e.target.checked)
+                    }
+                    disabled={pdfLoading}
+                  />
+                  <span>Order date</span>
+                </label>
                 <label className="flex items-start gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -494,6 +508,18 @@ export default function AllOrdersListPage() {
                     disabled={pdfLoading}
                   />
                   <span>Order total</span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={pdfOptions.orderRowItems}
+                    onChange={(e) =>
+                      setPdfOpt("orderRowItems", e.target.checked)
+                    }
+                    disabled={pdfLoading}
+                  />
+                  <span>Order line items (name and amount per line)</span>
                 </label>
               </div>
             </div>

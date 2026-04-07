@@ -21,10 +21,18 @@ const MONTH_NAMES = [
   "December",
 ];
 
+export type PdfOrderItem = {
+  lineIndex: number;
+  itemName: string;
+  amount: number;
+};
+
 export type PdfOrder = {
+  orderDate: Date;
   orderName: string;
   deliveryCharges: number;
   orderTotal: number;
+  items: PdfOrderItem[];
 };
 
 export type { PdfExportOptions };
@@ -33,6 +41,14 @@ function formatInr(n: number): string {
   return n.toLocaleString("en-IN", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
+  });
+}
+
+function formatOrderDate(d: Date): string {
+  return d.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
   });
 }
 
@@ -171,23 +187,59 @@ export async function buildAllOrdersMonthPdf(input: {
     y -= 8;
     draw("—".repeat(72), { size: smallSize });
     y -= 4;
-  } else if (orderCols && !summaryBlock) {
-    /* orders only: no extra gap before list */
   }
 
   if (orderCols) {
     for (const order of input.orders) {
-      const parts: string[] = [];
-      if (opts.orderRowName) parts.push(order.orderName);
+      const mainParts: string[] = [];
+      if (opts.orderRowDate) {
+        mainParts.push(`Date: ${formatOrderDate(order.orderDate)}`);
+      }
+      if (opts.orderRowName) {
+        mainParts.push(order.orderName);
+      }
       if (opts.orderRowDelivery) {
-        parts.push(`Delivery: Rs. ${formatInr(order.deliveryCharges)}`);
+        mainParts.push(`Delivery: Rs. ${formatInr(order.deliveryCharges)}`);
       }
       if (opts.orderRowTotal) {
-        parts.push(`Total: Rs. ${formatInr(order.orderTotal)}`);
+        mainParts.push(`Total: Rs. ${formatInr(order.orderTotal)}`);
       }
-      if (parts.length === 0) continue;
-      ensureSpace(24);
-      draw(parts.join("  |  "), { bold: true });
+
+      const hasMain = mainParts.length > 0;
+      const showItems =
+        opts.orderRowItems &&
+        Array.isArray(order.items) &&
+        order.items.length > 0;
+
+      if (!hasMain && !showItems) {
+        if (opts.orderRowItems && order.items.length === 0) {
+          ensureSpace(20);
+          draw(`${order.orderName} — (no line items)`, {
+            size: smallSize,
+            bold: true,
+          });
+          y -= lhSmall;
+        }
+        continue;
+      }
+
+      if (hasMain) {
+        ensureSpace(24);
+        draw(mainParts.join("  |  "), { bold: true });
+      } else if (showItems) {
+        ensureSpace(24);
+        draw(order.orderName, { bold: true });
+      }
+
+      if (showItems) {
+        for (const it of order.items) {
+          draw(
+            `${it.lineIndex + 1}. ${it.itemName} — Rs. ${formatInr(it.amount)}`,
+            { size: smallSize, indent: 12 }
+          );
+        }
+      }
+
       y -= lhSmall;
     }
   }
