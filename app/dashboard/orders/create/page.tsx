@@ -72,6 +72,26 @@ interface Office {
   stateCode: string;
 }
 
+type LastOrderItem = {
+  productId: string;
+  quantity: number;
+  price: number;
+  tax: number;
+  discount: number;
+  customWeightItem: boolean;
+  customWeight: number | null;
+};
+
+type LastOrder = {
+  id: string;
+  orderDate: string;
+  status: string;
+  paymentMethod: string | null;
+  shippingAmount: number | null;
+  shippingCourierName: string | null;
+  orderItems: LastOrderItem[];
+} | null;
+
 export default function CreateOrderPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -117,6 +137,8 @@ export default function CreateOrderPage() {
   const [deliveryPartnerName, setDeliveryPartnerName] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [status, setStatus] = useState<string>("PENDING");
+  const [lastOrder, setLastOrder] = useState<LastOrder>(null);
+  const [loadingLastOrder, setLoadingLastOrder] = useState(false);
 
   // Fetch customers on mount
   useEffect(() => {
@@ -135,6 +157,16 @@ export default function CreateOrderPage() {
       setSelectedAddressId("");
     }
   }, [selectedCustomerId]);
+
+  // Fetch last order when both customer and address are selected
+  useEffect(() => {
+    if (!selectedCustomerId || !selectedAddressId) {
+      setLastOrder(null);
+      return;
+    }
+    fetchLastOrder(selectedCustomerId, selectedAddressId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCustomerId, selectedAddressId]);
 
   const fetchCustomers = async (search?: string) => {
     try {
@@ -220,6 +252,28 @@ export default function CreateOrderPage() {
     }
   };
 
+  const fetchLastOrder = async (customerId: string, addressId: string) => {
+    try {
+      setLoadingLastOrder(true);
+      const response = await fetch(
+        `/api/orders/last-by-customer-address?customerId=${encodeURIComponent(customerId)}&addressId=${encodeURIComponent(
+          addressId
+        )}`
+      );
+      const data = await response.json();
+      if (data.success) {
+        setLastOrder(data.data);
+      } else {
+        setLastOrder(null);
+      }
+    } catch (error: any) {
+      console.error("Error fetching last order:", error);
+      setLastOrder(null);
+    } finally {
+      setLoadingLastOrder(false);
+    }
+  };
+
   const handleAddItem = () => {
     setItems([
       ...items,
@@ -271,6 +325,84 @@ export default function CreateOrderPage() {
       return null;
     }
     return Math.round(kg * 1000);
+  };
+
+  const buildItemFromLastOrder = (raw: LastOrderItem, index: number): OrderItem => {
+    const product = products.find((p) => p.id === raw.productId);
+    const productWeightGrams = typeof product?.weight === "number" ? product.weight : null;
+
+    const next: OrderItem = {
+      id: `${Date.now()}-${index}`,
+      productId: raw.productId,
+      productName: product?.name || "",
+      quantity: raw.quantity || 1,
+      price: typeof raw.price === "number" ? raw.price : 0,
+      tax: typeof raw.tax === "number" ? raw.tax : product?.tax || 0,
+      taxableAmount: 0,
+      taxAmount: 0,
+      discount: typeof raw.discount === "number" ? raw.discount : 0,
+      lineTotal: 0,
+      totalDiscount: 0,
+      weightKg: gramsToKg(productWeightGrams),
+      originalWeightGrams: productWeightGrams,
+      customWeightItem: false,
+      customWeightGrams: null,
+    };
+
+    if (raw.customWeightItem === true && typeof raw.customWeight === "number") {
+      next.customWeightItem = true;
+      next.customWeightGrams = raw.customWeight;
+      next.weightKg = gramsToKg(raw.customWeight);
+    }
+
+    const { taxableAmount, taxAmount } = calculateTaxDetails(next.price, next.tax);
+    next.taxableAmount = taxableAmount;
+    next.taxAmount = taxAmount;
+    next.totalDiscount = next.discount * next.quantity;
+    next.lineTotal = next.price * next.quantity - next.totalDiscount;
+    return next;
+  };
+
+  const applyDeliveryPartnerFromLastOrder = (o: LastOrder) => {
+    if (!o) return;
+    const courierName = (o.shippingCourierName || "").trim();
+
+    if (!courierName) {
+      setDeliveryPartner("");
+      setDeliveryPartnerName("");
+      return;
+    }
+
+    const normalized = courierName.toLowerCase();
+    if (normalized.includes("blue dart")) {
+      setDeliveryPartner("BLUE_DART");
+      setDeliveryPartnerName("");
+    } else if (normalized.includes("delhivery")) {
+      setDeliveryPartner("DELHIVERY");
+      setDeliveryPartnerName("");
+    } else {
+      setDeliveryPartner("OTHER");
+      setDeliveryPartnerName(courierName);
+    }
+  };
+
+  const handleCopyFromLastOrder = () => {
+    if (!lastOrder) return;
+
+    const nextItems = (lastOrder.orderItems || [])
+      .filter((it) => it.productId)
+      .map((it, idx) => buildItemFromLastOrder(it, idx));
+
+    if (nextItems.length === 0) {
+      alert("Last order has no items to copy.");
+      return;
+    }
+
+    setItems(nextItems);
+    const shippingAmount = typeof lastOrder.shippingAmount === "number" ? lastOrder.shippingAmount : 0;
+    setDeliveryCharge(shippingAmount > 0 ? String(shippingAmount) : "");
+    setPaymentMethod(lastOrder.paymentMethod || "");
+    applyDeliveryPartnerFromLastOrder(lastOrder);
   };
 
   const applyCustomWeight = (updatedItem: OrderItem, nextWeightKg: number) => {
@@ -700,6 +832,34 @@ export default function CreateOrderPage() {
               Items
             </h2>
           </div>
+
+          {(loadingLastOrder || lastOrder) && (
+            <div className="mb-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-4">
+              {loadingLastOrder ? (
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading last order for this address...</p>
+              ) : lastOrder ? (
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div className="text-sm text-zinc-700 dark:text-zinc-300">
+                    <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                      Last order: {lastOrder.id}
+                    </div>
+                    <div className="text-xs text-zinc-600 dark:text-zinc-400">
+                      Date: {new Date(lastOrder.orderDate).toLocaleString()} • Items: {lastOrder.orderItems?.length || 0} •
+                      Delivery: ₹{Number(lastOrder.shippingAmount || 0).toFixed(2)} • Payment: {lastOrder.paymentMethod || "—"}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleCopyFromLastOrder}
+                    disabled={loadingProducts}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Copy data
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          )}
 
           <div className="space-y-4">
             {items.map((item, index) => (
