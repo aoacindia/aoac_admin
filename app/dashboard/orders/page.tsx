@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Modal from "@/app/components/Modal";
 import Link from "next/link";
@@ -108,6 +108,8 @@ export default function OrdersPage() {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [invoiceCopies, setInvoiceCopies] = useState({
     original: true,
     duplicate: false,
@@ -151,6 +153,11 @@ export default function OrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, currentPage]);
 
+  // Clear selections when the visible dataset changes (tab / page / filters / search).
+  useEffect(() => {
+    setSelectedOrderIds(new Set());
+  }, [activeTab, currentPage, searchTerm, filterStatus]);
+
   useEffect(() => {
     if (showSendPIPopup) {
       fetchEmailAccounts();
@@ -181,6 +188,8 @@ export default function OrdersPage() {
       params.append("orderType", tabType);
       params.append("page", page.toString());
       params.append("limit", "10");
+      // Always fetch orders excluding DELIVERED for this page
+      params.append("excludeStatus", "DELIVERED");
       if (searchTerm) params.append("search", searchTerm);
       if (filterStatus) params.append("status", filterStatus);
 
@@ -324,6 +333,129 @@ export default function OrdersPage() {
     }
   };
 
+  const visibleOrders = useMemo(() => {
+    // Always hide delivered orders on this page
+    return orders.filter((o) => o.status !== "DELIVERED");
+  }, [orders]);
+
+  const pendingOrdersOnPage = useMemo(() => {
+    return visibleOrders.filter((o) => o.status === "PENDING");
+  }, [visibleOrders]);
+
+  const selectedOrders = useMemo(() => {
+    if (selectedOrderIds.size === 0) return [];
+    return visibleOrders.filter((o) => selectedOrderIds.has(o.id));
+  }, [visibleOrders, selectedOrderIds]);
+
+  const allPendingSelected =
+    pendingOrdersOnPage.length > 0 &&
+    pendingOrdersOnPage.every((o) => selectedOrderIds.has(o.id));
+  const somePendingSelected =
+    pendingOrdersOnPage.some((o) => selectedOrderIds.has(o.id)) && !allPendingSelected;
+
+  const toggleOrderSelection = (order: Order, checked: boolean) => {
+    if (order.status !== "PENDING") return;
+    setSelectedOrderIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(order.id);
+      else next.delete(order.id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllPendingOnPage = (checked: boolean) => {
+    setSelectedOrderIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        for (const o of pendingOrdersOnPage) next.add(o.id);
+      } else {
+        for (const o of pendingOrdersOnPage) next.delete(o.id);
+      }
+      return next;
+    });
+  };
+
+  const handleBulkDeleteSelected = async () => {
+    if (selectedOrderIds.size === 0) return;
+
+    const nonPendingSelected = selectedOrders.filter((o) => o.status !== "PENDING");
+    if (nonPendingSelected.length > 0) {
+      alert("Only PENDING orders can be deleted. Please unselect non-pending orders.");
+      setSelectedOrderIds((prev) => {
+        const next = new Set(prev);
+        for (const o of nonPendingSelected) next.delete(o.id);
+        return next;
+      });
+      return;
+    }
+
+    const taxInvoiceOrders = selectedOrders.filter(
+      (o) => (o.invoiceType || "").toUpperCase() === "TAX_INVOICE"
+    );
+
+    const baseDetails = selectedOrders
+      .map((o) => {
+        const inv = o.InvoiceNumber ? ` (${o.InvoiceNumber})` : "";
+        return `- ${o.id}${inv} — ₹${(o.invoiceAmount ?? o.totalAmount ?? 0).toFixed(2)}`;
+      })
+      .join("\n");
+
+    const confirmed = window.confirm(
+      `Delete ${selectedOrders.length} selected PENDING order(s)?\n\n${baseDetails}`
+    );
+    if (!confirmed) return;
+
+    if (taxInvoiceOrders.length > 0) {
+      const taxDetails = taxInvoiceOrders
+        .map((o) => {
+          const inv = o.InvoiceNumber ? ` (${o.InvoiceNumber})` : "";
+          return `- ${o.id}${inv}`;
+        })
+        .join("\n");
+      const confirmedTax = window.confirm(
+        `Some selected orders are TAX_INVOICE.\nAre you sure you want to delete these TAX_INVOICE order(s)?\n\n${taxDetails}`
+      );
+      if (!confirmedTax) return;
+    }
+
+    setBulkDeleting(true);
+    try {
+      const idsToDelete = selectedOrders.map((o) => o.id);
+      const failed: Array<{ id: string; error: string }> = [];
+
+      for (const id of idsToDelete) {
+        try {
+          const response = await fetch(`/api/orders/${id}`, { method: "DELETE" });
+          if (!response.ok) {
+            let msg = "Failed to delete";
+            try {
+              const err = await response.json();
+              msg = err.error || msg;
+            } catch {
+              // ignore
+            }
+            failed.push({ id, error: msg });
+          }
+        } catch (e: any) {
+          failed.push({ id, error: e?.message || "Failed to delete" });
+        }
+      }
+
+      if (failed.length > 0) {
+        alert(
+          `Some orders could not be deleted:\n\n${failed
+            .map((f) => `- ${f.id}: ${f.error}`)
+            .join("\n")}`
+        );
+      }
+
+      setSelectedOrderIds(new Set());
+      fetchOrders(activeTab, currentPage);
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   return (
     <div className="p-4 md:p-8">
       <div className="mb-6">
@@ -455,15 +587,29 @@ export default function OrdersPage() {
             {activeTab === "pending" && "Pending Orders"}
             {totalOrders > 0 && ` (${totalOrders})`}
           </h2>
-          {loading && (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading...</p>
-          )}
+          <div className="flex items-center gap-3">
+            {selectedOrderIds.size > 0 && (
+              <div className="text-sm text-zinc-600 dark:text-zinc-400">
+                Selected: {selectedOrderIds.size}
+              </div>
+            )}
+            <Button
+              onClick={handleBulkDeleteSelected}
+              disabled={selectedOrderIds.size === 0 || bulkDeleting || loading}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {bulkDeleting ? "Deleting..." : "Delete Selected"}
+            </Button>
+            {loading && (
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading...</p>
+            )}
+          </div>
         </div>
-        {loading && orders.length === 0 ? (
+        {loading && visibleOrders.length === 0 ? (
           <div className="flex items-center justify-center min-h-[400px]">
             <p className="text-zinc-600 dark:text-zinc-400">Loading orders...</p>
           </div>
-        ) : orders.length === 0 ? (
+        ) : visibleOrders.length === 0 ? (
           <p className="text-zinc-600 dark:text-zinc-400">
             No orders found.
           </p>
@@ -472,6 +618,23 @@ export default function OrdersPage() {
             <Table className="w-full">
               <TableHeader>
                 <TableRow className="border-b border-zinc-200 dark:border-zinc-700">
+                  <TableHead className="text-left py-3 px-4 text-sm font-semibold text-zinc-700 dark:text-zinc-300 w-[52px]">
+                    <input
+                      type="checkbox"
+                      checked={allPendingSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = somePendingSelected;
+                      }}
+                      onChange={(e) => toggleSelectAllPendingOnPage(e.target.checked)}
+                      disabled={pendingOrdersOnPage.length === 0 || bulkDeleting}
+                      aria-label="Select all pending orders on this page"
+                      title={
+                        pendingOrdersOnPage.length === 0
+                          ? "No PENDING orders on this page"
+                          : "Select all PENDING orders on this page"
+                      }
+                    />
+                  </TableHead>
                   <TableHead className="text-left py-3 px-4 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                     Order ID
                   </TableHead>
@@ -499,11 +662,29 @@ export default function OrdersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {orders.map((order) => (
+                {visibleOrders.map((order) => (
                   <TableRow
                     key={order.id}
                     className="border-b border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800"
                   >
+                    <TableCell className="py-3 px-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedOrderIds.has(order.id)}
+                        onChange={(e) => toggleOrderSelection(order, e.target.checked)}
+                        disabled={order.status !== "PENDING" || bulkDeleting}
+                        aria-label={
+                          order.status === "PENDING"
+                            ? `Select order ${order.id}`
+                            : `Only PENDING orders can be selected`
+                        }
+                        title={
+                          order.status === "PENDING"
+                            ? "Select order"
+                            : "Only PENDING orders can be selected"
+                        }
+                      />
+                    </TableCell>
                     <TableCell className="py-3 px-4">
                       <div className="font-medium text-zinc-900 dark:text-zinc-100">
                         {order.id}
@@ -624,7 +805,7 @@ export default function OrdersPage() {
         )}
 
         {/* Pagination */}
-        {orders.length > 0 && (
+        {visibleOrders.length > 0 && (
           <div className="flex items-center justify-between mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-700">
             <div className="text-sm text-zinc-600 dark:text-zinc-400">
               Page {currentPage} of {totalPages} ({totalOrders} total orders)

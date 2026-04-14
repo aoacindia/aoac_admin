@@ -182,6 +182,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const status = searchParams.get("status");
+    const excludeStatus = searchParams.get("excludeStatus");
     const orderType = searchParams.get("orderType"); // "business", "personal", or "pending"
     const page = Number(searchParams.get("page") || "1");
     const limit = Number(searchParams.get("limit") || "10");
@@ -206,6 +207,12 @@ export async function GET(request: NextRequest) {
       where.status = status;
     } else if (orderType === "pending") {
       where.status = "PENDING";
+    }
+
+    // Exclude status filter (ex: excludeStatus=DELIVERED)
+    // Only apply if we're NOT already filtering to a specific status.
+    if (!where.status && excludeStatus) {
+      where.status = { not: excludeStatus };
     }
 
     // Search filter
