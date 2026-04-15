@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { userPrisma } from "@/lib/user-prisma";
 import { adminPrisma } from "@/lib/admin-prisma";
 import { requireAdminApi } from "@/lib/require-admin";
+import {
+  buildOrdersListWhere,
+  parseMonthYearParams,
+} from "@/lib/build-orders-list-where";
 
 // Helper function to get financial year in format YYYY(YY+1)
 // Financial year in India: April 1 to March 31
@@ -182,66 +186,22 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const status = searchParams.get("status");
-    const excludeStatus = searchParams.get("excludeStatus");
+    const monthParam = searchParams.get("month"); // 1–12
+    const yearParam = searchParams.get("year"); // e.g. 2026
     const orderType = searchParams.get("orderType"); // "business", "personal", or "pending"
     const page = Number(searchParams.get("page") || "1");
     const limit = Number(searchParams.get("limit") || "10");
     const safePage = Number.isFinite(page) && page > 0 ? page : 1;
     const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 10;
 
-    const where: any = {};
-
-    // Build user filter for order type
-    const userConditions: any = {};
-    if (orderType === "business") {
-      userConditions.isBusinessAccount = true;
-    } else if (orderType === "personal") {
-      userConditions.OR = [
-        { isBusinessAccount: false },
-        { isBusinessAccount: null },
-      ];
-    }
-
-    // Status filter
-    if (status) {
-      where.status = status;
-    } else if (orderType === "pending") {
-      where.status = "PENDING";
-    }
-
-    // Exclude status filter (ex: excludeStatus=DELIVERED)
-    // Only apply if we're NOT already filtering to a specific status.
-    if (!where.status && excludeStatus) {
-      where.status = { not: excludeStatus };
-    }
-
-    // Search filter
-    if (search) {
-      const searchConditions: any[] = [
-        { id: { contains: search } },
-        { InvoiceNumber: { contains: search } },
-      ];
-
-      // Build user search conditions
-      const userSearchConditions: any = {
-        OR: [
-          { name: { contains: search } },
-          { email: { contains: search } },
-          { businessName: { contains: search } },
-        ],
-      };
-
-      // Combine user type filter with search if needed
-      if (Object.keys(userConditions).length > 0) {
-        userSearchConditions.AND = [userConditions];
-      }
-
-      searchConditions.push({ user: userSearchConditions });
-      where.OR = searchConditions;
-    } else if (Object.keys(userConditions).length > 0) {
-      // Only order type filter, no search
-      where.user = userConditions;
-    }
+    const { month, year } = parseMonthYearParams(monthParam, yearParam);
+    const where = buildOrdersListWhere({
+      orderType,
+      status,
+      search,
+      month,
+      year,
+    });
 
     // Get total count for pagination
     const total = await userPrisma.order.count({ where });

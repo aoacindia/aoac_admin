@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Modal from "@/app/components/Modal";
 import Link from "next/link";
@@ -126,6 +126,44 @@ export default function OrdersPage() {
   const [newStatus, setNewStatus] = useState<string>("");
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
+  const initialCalendar = useMemo(() => {
+    const d = new Date();
+    return { month: d.getMonth() + 1, year: d.getFullYear() };
+  }, []);
+  const [selectedMonth, setSelectedMonth] = useState(initialCalendar.month);
+  const [selectedYear, setSelectedYear] = useState(initialCalendar.year);
+
+  const [monthSummary, setMonthSummary] = useState<{
+    orderCount: number;
+    totalRounded: number;
+    totalDiscount: number;
+    totalShipping: number;
+    byStatus: { status: string; count: number }[];
+  } | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+
+  const MONTH_LABELS = [
+    { value: 1, label: "January" },
+    { value: 2, label: "February" },
+    { value: 3, label: "March" },
+    { value: 4, label: "April" },
+    { value: 5, label: "May" },
+    { value: 6, label: "June" },
+    { value: 7, label: "July" },
+    { value: 8, label: "August" },
+    { value: 9, label: "September" },
+    { value: 10, label: "October" },
+    { value: 11, label: "November" },
+    { value: 12, label: "December" },
+  ];
+
+  const yearOptions = useMemo(() => {
+    const y = new Date().getFullYear();
+    const years: number[] = [];
+    for (let i = y - 5; i <= y + 1; i++) years.push(i);
+    return years;
+  }, []);
+
   const ORDER_STATUS_OPTIONS = [
     { value: "PENDING", label: "Pending" },
     { value: "PAID", label: "Paid" },
@@ -136,27 +174,39 @@ export default function OrdersPage() {
     { value: "REFUNDED", label: "Refunded" },
   ];
 
-  // Track previous tab to detect tab changes
-  const prevTabRef = useRef<TabType>(activeTab);
+  useEffect(() => {
+    fetchOrders(activeTab, currentPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, currentPage, selectedMonth, selectedYear]);
 
   useEffect(() => {
-    // If tab changed, reset to page 1
-    if (prevTabRef.current !== activeTab) {
-      setCurrentPage(1);
-      setOrders([]);
-      prevTabRef.current = activeTab;
-      fetchOrders(activeTab, 1);
-    } else {
-      // Tab didn't change, just page changed
-      fetchOrders(activeTab, currentPage);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, currentPage]);
+    const loadSummary = async () => {
+      setLoadingSummary(true);
+      try {
+        const params = new URLSearchParams();
+        params.set("month", String(selectedMonth));
+        params.set("year", String(selectedYear));
+        params.set("orderType", activeTab);
+        const res = await fetch(`/api/orders/month-summary?${params.toString()}`);
+        const json = await res.json();
+        if (json.success && json.data) {
+          setMonthSummary(json.data);
+        } else {
+          setMonthSummary(null);
+        }
+      } catch {
+        setMonthSummary(null);
+      } finally {
+        setLoadingSummary(false);
+      }
+    };
+    loadSummary();
+  }, [selectedMonth, selectedYear, activeTab]);
 
-  // Clear selections when the visible dataset changes (tab / page / filters / search).
+  // Clear selections when the visible dataset changes (tab / page / filters / search / period).
   useEffect(() => {
     setSelectedOrderIds(new Set());
-  }, [activeTab, currentPage, searchTerm, filterStatus]);
+  }, [activeTab, currentPage, searchTerm, filterStatus, selectedMonth, selectedYear]);
 
   useEffect(() => {
     if (showSendPIPopup) {
@@ -188,8 +238,8 @@ export default function OrdersPage() {
       params.append("orderType", tabType);
       params.append("page", page.toString());
       params.append("limit", "10");
-      // Always fetch orders excluding DELIVERED for this page
-      params.append("excludeStatus", "DELIVERED");
+      params.append("month", String(selectedMonth));
+      params.append("year", String(selectedYear));
       if (searchTerm) params.append("search", searchTerm);
       if (filterStatus) params.append("status", filterStatus);
 
@@ -333,19 +383,14 @@ export default function OrdersPage() {
     }
   };
 
-  const visibleOrders = useMemo(() => {
-    // Always hide delivered orders on this page
-    return orders.filter((o) => o.status !== "DELIVERED");
-  }, [orders]);
-
   const pendingOrdersOnPage = useMemo(() => {
-    return visibleOrders.filter((o) => o.status === "PENDING");
-  }, [visibleOrders]);
+    return orders.filter((o) => o.status === "PENDING");
+  }, [orders]);
 
   const selectedOrders = useMemo(() => {
     if (selectedOrderIds.size === 0) return [];
-    return visibleOrders.filter((o) => selectedOrderIds.has(o.id));
-  }, [visibleOrders, selectedOrderIds]);
+    return orders.filter((o) => selectedOrderIds.has(o.id));
+  }, [orders, selectedOrderIds]);
 
   const allPendingSelected =
     pendingOrdersOnPage.length > 0 &&
@@ -465,7 +510,7 @@ export default function OrdersPage() {
               All Orders
             </h1>
             <p className="text-zinc-600 dark:text-zinc-400">
-              Manage and edit all orders
+              Manage and edit orders for the selected month (paginated).
             </p>
           </div>
           <Link
@@ -475,6 +520,132 @@ export default function OrdersPage() {
             Create New Order
           </Link>
         </div>
+      </div>
+
+      {/* Month & year (filters API to that calendar month) */}
+      <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md border border-zinc-200 dark:border-zinc-800 p-4 md:p-6 mb-6">
+        <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+          Order period
+        </Label>
+        <div className="flex flex-col sm:flex-row gap-4 sm:items-end">
+          <div className="w-full sm:w-48">
+            <Label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Month</Label>
+            <Select
+              value={String(selectedMonth)}
+              onChange={(e) => {
+                setSelectedMonth(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              {MONTH_LABELS.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-full sm:w-36">
+            <Label className="block text-xs text-zinc-500 dark:text-zinc-400 mb-1">Year</Label>
+            <Select
+              value={String(selectedYear)}
+              onChange={(e) => {
+                setSelectedYear(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              {yearOptions.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 pb-1">
+            Showing orders with order date in{" "}
+            <span className="font-medium text-zinc-800 dark:text-zinc-200">
+              {MONTH_LABELS.find((m) => m.value === selectedMonth)?.label} {selectedYear}
+            </span>
+            .
+          </p>
+        </div>
+      </div>
+
+      {/* Month summary: counts & amounts for the selected calendar month and current tab */}
+      <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md border border-zinc-200 dark:border-zinc-800 p-4 md:p-6 mb-6">
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-1">
+          Period summary
+        </h2>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4">
+          All orders in{" "}
+          {MONTH_LABELS.find((m) => m.value === selectedMonth)?.label} {selectedYear}
+          {activeTab === "business" && " (business customers)"}
+          {activeTab === "personal" && " (personal customers)"}
+          {activeTab === "pending" && " with status PENDING only"}
+          . Search and status filters below apply only to the table.
+        </p>
+        {loadingSummary ? (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading summary…</p>
+        ) : monthSummary ? (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+              <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-4">
+                <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                  Orders
+                </p>
+                <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                  {monthSummary.orderCount}
+                </p>
+              </div>
+              <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-4">
+                <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                  Total value
+                </p>
+                <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                  ₹{monthSummary.totalRounded.toFixed(2)}
+                </p>
+                <p className="text-[11px] text-zinc-500 mt-1">Sum of invoice or order total</p>
+              </div>
+              <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-4">
+                <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                  Discounts
+                </p>
+                <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                  ₹{monthSummary.totalDiscount.toFixed(2)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 p-4">
+                <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                  Shipping
+                </p>
+                <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                  ₹{monthSummary.totalShipping.toFixed(2)}
+                </p>
+              </div>
+            </div>
+            {monthSummary.byStatus.length > 0 && (
+              <div>
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                  Orders by status
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {monthSummary.byStatus.map(({ status: st, count }) => (
+                    <span
+                      key={st}
+                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm ${getStatusColor(st)}`}
+                    >
+                      <span className="font-medium">{st}</span>
+                      <span className="tabular-nums opacity-90">{count}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-zinc-500">No summary data.</p>
+        )}
       </div>
 
       {/* Tabs */}
@@ -605,11 +776,11 @@ export default function OrdersPage() {
             )}
           </div>
         </div>
-        {loading && visibleOrders.length === 0 ? (
+        {loading && orders.length === 0 ? (
           <div className="flex items-center justify-center min-h-[400px]">
             <p className="text-zinc-600 dark:text-zinc-400">Loading orders...</p>
           </div>
-        ) : visibleOrders.length === 0 ? (
+        ) : orders.length === 0 ? (
           <p className="text-zinc-600 dark:text-zinc-400">
             No orders found.
           </p>
@@ -662,7 +833,7 @@ export default function OrdersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {visibleOrders.map((order) => (
+                {orders.map((order) => (
                   <TableRow
                     key={order.id}
                     className="border-b border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800"
@@ -805,7 +976,7 @@ export default function OrdersPage() {
         )}
 
         {/* Pagination */}
-        {visibleOrders.length > 0 && (
+        {orders.length > 0 && (
           <div className="flex items-center justify-between mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-700">
             <div className="text-sm text-zinc-600 dark:text-zinc-400">
               Page {currentPage} of {totalPages} ({totalOrders} total orders)
