@@ -4,6 +4,7 @@ import { requireAdminApi } from "@/lib/require-admin";
 import {
   buildOrdersListWhere,
   parseMonthYearParams,
+  parseStatusesParam,
 } from "@/lib/build-orders-list-where";
 
 /**
@@ -23,14 +24,17 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const status = searchParams.get("status");
+    const statusesParam = searchParams.get("statuses");
     const orderType = searchParams.get("orderType");
     const monthParam = searchParams.get("month");
     const yearParam = searchParams.get("year");
 
     const { month, year } = parseMonthYearParams(monthParam, yearParam);
+    const statuses = parseStatusesParam(statusesParam);
     const where = buildOrdersListWhere({
       orderType,
       status,
+      statuses,
       search,
       month,
       year,

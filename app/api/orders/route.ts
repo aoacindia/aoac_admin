@@ -5,6 +5,7 @@ import { requireAdminApi } from "@/lib/require-admin";
 import {
   buildOrdersListWhere,
   parseMonthYearParams,
+  parseStatusesParam,
 } from "@/lib/build-orders-list-where";
 
 // Helper function to get financial year in format YYYY(YY+1)
@@ -186,6 +187,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const status = searchParams.get("status");
+    const statusesParam = searchParams.get("statuses");
     const monthParam = searchParams.get("month"); // 1–12
     const yearParam = searchParams.get("year"); // e.g. 2026
     const orderType = searchParams.get("orderType"); // "business", "personal", or "pending"
@@ -195,9 +197,11 @@ export async function GET(request: NextRequest) {
     const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 10;
 
     const { month, year } = parseMonthYearParams(monthParam, yearParam);
+    const statuses = parseStatusesParam(statusesParam);
     const where = buildOrdersListWhere({
       orderType,
       status,
+      statuses,
       search,
       month,
       year,

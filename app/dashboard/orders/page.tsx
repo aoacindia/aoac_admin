@@ -169,6 +169,10 @@ export default function OrdersPage() {
     { value: "PAID", label: "Paid" },
     { value: "PROCESSING", label: "Processing" },
     { value: "SHIPPED", label: "Shipped" },
+    {
+      value: "ORDER_SHIPPED_WITHOUT_PAYMENT",
+      label: "Shipped (no payment)",
+    },
     { value: "DELIVERED", label: "Delivered" },
     { value: "CANCELLED", label: "Cancelled" },
     { value: "REFUNDED", label: "Refunded" },
@@ -307,6 +311,8 @@ export default function OrdersPage() {
         return "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200";
       case "SHIPPED":
         return "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200";
+      case "ORDER_SHIPPED_WITHOUT_PAYMENT":
+        return "bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200";
       case "PAID":
         return "bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200";
       default:
@@ -723,6 +729,7 @@ export default function OrdersPage() {
               <option value="PAID">Paid</option>
               <option value="PROCESSING">Processing</option>
               <option value="SHIPPED">Shipped</option>
+              <option value="ORDER_SHIPPED_WITHOUT_PAYMENT">Shipped (no payment)</option>
               <option value="DELIVERED">Delivered</option>
               <option value="CANCELLED">Cancelled</option>
               <option value="REFUNDED">Refunded</option>

@@ -4,6 +4,7 @@
 export function buildOrdersListWhere(params: {
   orderType: string | null;
   status: string | null;
+  statuses?: string[] | null;
   search: string | null;
   month: number | null;
   year: number | null;
@@ -20,7 +21,13 @@ export function buildOrdersListWhere(params: {
     ];
   }
 
-  if (params.status) {
+  const statuses = (params.statuses || [])
+    .map((s) => String(s || "").trim())
+    .filter(Boolean);
+
+  if (statuses.length > 0) {
+    where.status = { in: statuses };
+  } else if (params.status) {
     where.status = params.status;
   } else if (params.orderType === "pending") {
     where.status = "PENDING";
@@ -68,6 +75,15 @@ export function buildOrdersListWhere(params: {
   }
 
   return where;
+}
+
+export function parseStatusesParam(raw: string | null): string[] | null {
+  if (!raw) return null;
+  const values = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return values.length > 0 ? values : null;
 }
 
 export function parseMonthYearParams(

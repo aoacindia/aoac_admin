@@ -156,6 +156,8 @@ export default function ViewOrderPage() {
         return "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200";
       case "SHIPPED":
         return "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200";
+      case "ORDER_SHIPPED_WITHOUT_PAYMENT":
+        return "bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200";
       case "PAID":
         return "bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200";
       default:

@@ -1105,6 +1105,7 @@ export default function CreateOrderPage() {
                 <option value="PAID">Paid</option>
                 <option value="PROCESSING">Processing</option>
                 <option value="SHIPPED">Shipped</option>
+                <option value="ORDER_SHIPPED_WITHOUT_PAYMENT">Shipped (no payment)</option>
                 <option value="DELIVERED">Delivered</option>
                 <option value="CANCELLED">Cancelled</option>
                 <option value="REFUNDED">Refunded</option>
