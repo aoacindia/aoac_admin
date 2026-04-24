@@ -16,6 +16,7 @@ export default async function OrdersLayout({
     { label: "All Orders", href: "/dashboard/orders" },
     { label: "Processing Orders", href: "/dashboard/orders/processing" },
     { label: "Create Order", href: "/dashboard/orders/create" },
+    { label: "Create Personal Order", href: "/dashboard/orders/create-personal" },
     { label: "Order summary", href: "/dashboard/orders/summary" },
   ];
 

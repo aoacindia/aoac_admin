@@ -519,12 +519,20 @@ export default function OrdersPage() {
               Manage and edit orders for the selected month (paginated).
             </p>
           </div>
-          <Link
-            href="/dashboard/orders/create"
-            className="mt-4 md:mt-0 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-block"
-          >
-            Create New Order
-          </Link>
+          <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-2">
+            <Link
+              href="/dashboard/orders/create-personal"
+              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors inline-block text-center"
+            >
+              Create Personal Order
+            </Link>
+            <Link
+              href="/dashboard/orders/create"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-block text-center"
+            >
+              Create Order
+            </Link>
+          </div>
         </div>
       </div>
 
