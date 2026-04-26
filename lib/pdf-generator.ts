@@ -1249,9 +1249,12 @@ export async function generateInvoicePDF(
     order.orderItems.forEach((item, index) => {
       const rate = Number(item.price ?? 0);
       const qty = Number(item.quantity ?? 0);
-      const discount = Number(item.discount ?? 0);
+      const discountPerUnit = Number(item.discount ?? 0);
       const taxPercent = Number(item.tax ?? 0);
-      const grossAmount = Math.max(0, rate * qty - discount);
+      // IMPORTANT: `price` is already the final (discounted) per-unit price in DB.
+      // `discount` is informational (per unit) and must not be subtracted again.
+      const grossAmount = Math.max(0, rate * qty);
+      const discountAmount = Math.max(0, discountPerUnit * qty);
       const taxDivisor = taxPercent > 0 ? 1 + taxPercent / 100 : 1;
       const taxableAmount = grossAmount / taxDivisor;
       const taxAmount = grossAmount - taxableAmount;
@@ -1266,7 +1269,7 @@ export async function generateInvoicePDF(
       }
 
       subtotal += taxableAmount;
-      totalDiscount += discount;
+      totalDiscount += discountAmount;
       totalTax += taxAmount;
 
       const itemName = item.productName || `Product ${item.productId}`;

@@ -285,8 +285,9 @@ export async function PUT(
       }
 
       const deliveryChargeAmount = deliveryCharge ? parseFloat(deliveryCharge) : existingOrder.shippingAmount || 0;
-      // Maintain full precision until final calculation
-      const grandTotal = subtotal - totalDiscount + deliveryChargeAmount;
+      // IMPORTANT: `price` is already discounted per unit in DB; do not subtract discount again.
+      // Maintain full precision until final calculation.
+      const grandTotal = subtotal + deliveryChargeAmount;
       // ONLY round the final total - this is the only place rounding should occur
       const roundedTotal = Math.round(grandTotal);
       const roundingOff = roundedTotal - grandTotal;

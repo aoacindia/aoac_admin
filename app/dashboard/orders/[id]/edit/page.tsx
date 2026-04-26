@@ -240,7 +240,9 @@ export default function EditOrderPage() {
               price: item.price,
               tax: item.tax || 0, // Include tax from order item
               discount: item.discount,
-              lineTotal: item.price * item.quantity - item.discount * item.quantity,
+              // NOTE: `price` is already the final (discounted) per-unit price in DB.
+              // `discount` is informational (per unit), so do not subtract again.
+              lineTotal: item.price * item.quantity,
               totalDiscount: item.discount * item.quantity,
               weightKg: effectiveWeightGrams ? effectiveWeightGrams / 1000 : 0,
               originalWeightGrams: productWeightGrams,
@@ -425,7 +427,7 @@ export default function EditOrderPage() {
             updatedItem.price = price;
             updatedItem.discount = discount;
             updatedItem.totalDiscount = discount * qty;
-            updatedItem.lineTotal = price * qty - updatedItem.totalDiscount;
+            updatedItem.lineTotal = price * qty;
           }
 
           return updatedItem;
@@ -446,7 +448,7 @@ export default function EditOrderPage() {
     });
 
     const deliveryChargeAmount = deliveryCharge ? parseFloat(deliveryCharge) : 0;
-    const grandTotal = subtotal - totalDiscount + deliveryChargeAmount;
+    const grandTotal = subtotal + deliveryChargeAmount;
     const roundedTotal = Math.round(grandTotal);
     const roundingOff = roundedTotal - grandTotal;
 

@@ -4,6 +4,7 @@ import { adminPrisma } from "@/lib/admin-prisma";
 import { requireAdminApi } from "@/lib/require-admin";
 
 const PERSONAL_ORDER_BY_USER_ID = "US2026149";
+const PERSONAL_SHIPPING_ADDRESS_ID = "cmoeietyc0001l704xuehp8rn";
 
 // Helper function to get financial year in format YYYY(YY+1)
 // Financial year in India: April 1 to March 31
@@ -144,7 +145,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { items, invoiceOfficeId, paymentMethod } = body as {
+    const { items, invoiceOfficeId, paymentMethod, orderDate } = body as {
       items: Array<{
         productId: string;
         quantity: number;
@@ -156,6 +157,7 @@ export async function POST(request: NextRequest) {
       }>;
       invoiceOfficeId: string;
       paymentMethod: string | null;
+      orderDate?: string | null;
     };
 
     if (!invoiceOfficeId) {
@@ -203,6 +205,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const personalAddress = await userPrisma.address.findUnique({
+      where: { id: PERSONAL_SHIPPING_ADDRESS_ID },
+      select: { id: true },
+    });
+    if (!personalAddress) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Address '${PERSONAL_SHIPPING_ADDRESS_ID}' not found`,
+        },
+        { status: 404 }
+      );
+    }
+
     const generatedOrderId = await generateOrderId();
 
     // Calculate totals (same rules as /api/orders: do not round intermediate values)
@@ -215,13 +231,21 @@ export async function POST(request: NextRequest) {
       totalDiscount += itemDiscount * Number(item.quantity);
     }
 
-    const grandTotal = subtotal - totalDiscount;
+    // IMPORTANT: `price` is already discounted per unit in DB; do not subtract discount again.
+    const grandTotal = subtotal;
     const roundedTotal = Math.round(grandTotal);
     const roundingOff = roundedTotal - grandTotal;
 
-    const now = new Date();
-    const financialYear = getFinancialYear(now);
-    const financialYearStart = getFinancialYearStart(now);
+    const effectiveOrderDate = orderDate ? new Date(orderDate) : new Date();
+    if (!Number.isFinite(effectiveOrderDate.getTime())) {
+      return NextResponse.json(
+        { success: false, error: "Invalid orderDate" },
+        { status: 400 }
+      );
+    }
+
+    const financialYear = getFinancialYear(effectiveOrderDate);
+    const financialYearStart = getFinancialYearStart(effectiveOrderDate);
 
     const invoiceType: "TAX_INVOICE" = "TAX_INVOICE";
     const isBusinessAccount = orderByUser.isBusinessAccount === true;
@@ -239,12 +263,12 @@ export async function POST(request: NextRequest) {
         id: generatedOrderId,
         customOrder: true,
         orderBy: PERSONAL_ORDER_BY_USER_ID,
-        orderDate: now,
+        orderDate: effectiveOrderDate,
         status: "DELIVERED",
-        deliveredAt: now,
+        deliveredAt: effectiveOrderDate,
         totalAmount: roundedTotal,
         discountAmount: totalDiscount,
-        shippingAddressId: null,
+        shippingAddressId: PERSONAL_SHIPPING_ADDRESS_ID,
         shippingAmount: null,
         shippingCourierName: null,
         invoiceOfficeId,

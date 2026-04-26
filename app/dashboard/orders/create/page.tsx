@@ -487,9 +487,8 @@ export default function CreateOrderPage() {
             
             // IMPORTANT: Do NOT round intermediate values - maintain full precision
             updatedItem.totalDiscount = discount * qty;
-            // Line total = (price * quantity) - total discount
-            // IMPORTANT: Do NOT round intermediate values - maintain full precision
-            updatedItem.lineTotal = price * qty - updatedItem.totalDiscount;
+            // NOTE: `price` is the final (discounted) per-unit price; don't subtract discount again.
+            updatedItem.lineTotal = price * qty;
           }
 
           return updatedItem;
@@ -524,7 +523,7 @@ export default function CreateOrderPage() {
 
     const deliveryChargeAmount = deliveryCharge ? parseFloat(deliveryCharge) : 0;
     // Maintain full precision until final calculation
-    const grandTotal = subtotal - totalDiscount + deliveryChargeAmount;
+    const grandTotal = subtotal + deliveryChargeAmount;
     // ONLY round the final total - this is the only place rounding should occur
     const roundedTotal = Math.round(grandTotal);
     const roundingOff = roundedTotal - grandTotal;

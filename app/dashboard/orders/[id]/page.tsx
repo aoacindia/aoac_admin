@@ -197,11 +197,13 @@ export default function ViewOrderPage() {
   let subtotal = 0;
   let totalDiscount = 0;
   order.orderItems.forEach((item) => {
+    // NOTE: `price` is already the final (discounted) per-unit price in DB.
+    // `discount` is informational (per-unit), so we should not subtract it again.
     subtotal += item.price * item.quantity;
     totalDiscount += item.discount * item.quantity;
   });
   const deliveryCharge = order.shippingAmount || 0;
-  const grandTotal = subtotal - totalDiscount + deliveryCharge;
+  const grandTotal = subtotal + deliveryCharge;
   const roundedTotal = order.invoiceAmount || Math.round(grandTotal);
   const roundingOff = order.roundedOffAmount || (roundedTotal - grandTotal);
 
@@ -669,11 +671,11 @@ export default function ViewOrderPage() {
             </TableHeader>
             <TableBody>
               {order.orderItems.map((item) => {
-                // price from API is already discounted per unit; original price = price + discount
+                // `price` is discounted per unit; `discount` is informational per unit.
                 const originalPricePerUnit = item.price + item.discount;
                 const itemTotal = item.price * item.quantity;
                 const itemDiscount = item.discount * item.quantity;
-                const lineTotal = itemTotal - itemDiscount;
+                const lineTotal = itemTotal;
                 return (
                   <TableRow
                     key={item.id}
@@ -691,7 +693,12 @@ export default function ViewOrderPage() {
                       {item.quantity}
                     </TableCell>
                     <TableCell className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
-                      ₹{originalPricePerUnit.toFixed(2)}
+                      ₹{item.price.toFixed(2)}
+                      {item.discount > 0 && (
+                        <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                          MRP: ₹{originalPricePerUnit.toFixed(2)}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
                       {formatWeight(item.weightInGrams)}

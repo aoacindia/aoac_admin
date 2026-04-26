@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +38,8 @@ interface OrderItem {
 
 export default function CreatePersonalOrderPage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
   const [loading, setLoading] = useState(false);
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -53,6 +56,14 @@ export default function CreatePersonalOrderPage() {
   // - status = DELIVERED + deliveredAt = now (server-enforced)
   const invoiceOfficeId = "cml092i700000jxt8bjv8opzq";
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
+  const [orderDate, setOrderDate] = useState<string>(() => {
+    // YYYY-MM-DD (local)
+    const now = new Date();
+    const yyyy = String(now.getFullYear());
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  });
 
   const [items, setItems] = useState<OrderItem[]>([
     {
@@ -257,7 +268,8 @@ export default function CreatePersonalOrderPage() {
           }
 
           updatedItem.totalDiscount = discount * qty;
-          updatedItem.lineTotal = price * qty - updatedItem.totalDiscount;
+          // NOTE: `price` is the final (discounted) per-unit price; don't subtract discount again.
+          updatedItem.lineTotal = price * qty;
         }
 
         return updatedItem;
@@ -278,7 +290,7 @@ export default function CreatePersonalOrderPage() {
       subtotal += item.price * item.quantity;
     });
 
-    const grandTotal = subtotal - totalDiscount;
+    const grandTotal = subtotal;
     const roundedTotal = Math.round(grandTotal);
     const roundingOff = roundedTotal - grandTotal;
 
@@ -347,9 +359,18 @@ export default function CreatePersonalOrderPage() {
         return;
       }
 
+      // Use selected date with current time (so it's a full timestamp).
+      const now = new Date();
+      const [y, m, d] = orderDate.split("-").map((v) => parseInt(v, 10));
+      const effectiveOrderDate = new Date(now);
+      if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)) {
+        effectiveOrderDate.setFullYear(y, m - 1, d);
+      }
+
       const payload = {
         invoiceOfficeId,
         paymentMethod: paymentMethod || null,
+        orderDate: effectiveOrderDate.toISOString(),
         items: items.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
@@ -622,6 +643,19 @@ export default function CreatePersonalOrderPage() {
               </h2>
 
               <div className="space-y-4">
+                {isAdmin && (
+                  <div>
+                    <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                      Order Date
+                    </Label>
+                    <Input
+                      type="date"
+                      value={orderDate}
+                      onChange={(e) => setOrderDate(e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
+                )}
                 <div>
                   <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                     Payment Method
