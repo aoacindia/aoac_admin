@@ -1564,3 +1564,123 @@ export async function generateInvoicePDF(
   });
 }
 
+export async function generateOrderItemsPDF(order: InvoiceOrder): Promise<Uint8Array> {
+  return createPdfBuffer(async (ctx) => {
+    const logoPath = path.join(process.cwd(), 'public/logo/logo.png');
+    const logoImage = fs.existsSync(logoPath)
+      ? await ctx.pdfDoc.embedPng(fs.readFileSync(logoPath))
+      : null;
+
+    const headerTop = ctx.margin;
+    let leftWidth = 0;
+    if (logoImage) {
+      const logoHeight = 44;
+      const logoWidth = (logoImage.width / logoImage.height) * logoHeight;
+      drawImageAtTopLeft(ctx, logoImage, ctx.margin, headerTop, logoWidth, logoHeight);
+      leftWidth = logoWidth + 10;
+    }
+
+    const title = 'ORDER ITEMS';
+    const titleWidth = ctx.boldFont.widthOfTextAtSize(title, HEADER_FONT_SIZE);
+    drawTextLine(ctx, title, ctx.pageWidth - ctx.margin - titleWidth, headerTop + 6, HEADER_FONT_SIZE, ctx.boldFont);
+
+    const headerBottom = headerTop + 54;
+    drawHorizontalLine(ctx, headerBottom);
+    let y = headerBottom + 12;
+
+    const invoiceNoValue = order.InvoiceNumber || order.id;
+    drawTextLine(ctx, 'Order ID:', ctx.margin + leftWidth, y, BODY_FONT_SIZE, ctx.boldFont);
+    drawTextLine(ctx, ` ${order.id}`, ctx.margin + leftWidth + ctx.boldFont.widthOfTextAtSize('Order ID:', BODY_FONT_SIZE), y, BODY_FONT_SIZE);
+    y += LINE_HEIGHT;
+    drawTextLine(ctx, 'Invoice No:', ctx.margin + leftWidth, y, BODY_FONT_SIZE, ctx.boldFont);
+    drawTextLine(
+      ctx,
+      ` ${invoiceNoValue}`,
+      ctx.margin + leftWidth + ctx.boldFont.widthOfTextAtSize('Invoice No:', BODY_FONT_SIZE),
+      y,
+      BODY_FONT_SIZE
+    );
+    y += LINE_HEIGHT + 8;
+
+    const tableWidth = ctx.pageWidth - ctx.margin * 2;
+    const colPercents = [8, 72, 20];
+    const colWidths = [
+      Math.floor((tableWidth * colPercents[0]) / 100),
+      Math.floor((tableWidth * colPercents[1]) / 100),
+      tableWidth - Math.floor((tableWidth * colPercents[0]) / 100) - Math.floor((tableWidth * colPercents[1]) / 100),
+    ];
+    const headers = ['Sr', 'Item (Weight)', 'Qty'];
+
+    const drawHeader = () => {
+      const headerLines = headers.map((h, i) => wrapText(h, colWidths[i] - 6, ctx.boldFont, BODY_FONT_SIZE));
+      const maxLines = Math.max(...headerLines.map((l) => l.length), 1);
+      const headerHeight = Math.max(20, maxLines * LINE_HEIGHT + 8);
+      const headerY = ensureSpace(ctx, y, headerHeight);
+      const textStartY = headerY + Math.max(2, (headerHeight - maxLines * LINE_HEIGHT) / 2);
+      let x = ctx.margin;
+      headers.forEach((_, i) => {
+        ctx.page.drawRectangle({
+          x,
+          y: ctx.pageHeight - headerY - headerHeight,
+          width: colWidths[i],
+          height: headerHeight,
+          borderWidth: 1,
+          borderColor: rgb(0, 0, 0),
+        });
+        drawCellLines(ctx, headerLines[i], x, textStartY, colWidths[i], BODY_FONT_SIZE, 'center');
+        x += colWidths[i];
+      });
+      y = headerY + headerHeight;
+    };
+
+    drawHeader();
+
+    order.orderItems.forEach((item, index) => {
+      const itemName = item.productName || `Product ${item.productId}`;
+      const itemWeightGrams =
+        item.customWeightItem === true && typeof item.customWeight === 'number'
+          ? item.customWeight
+          : item.weight ?? null;
+      const weightLabel = formatWeightLabel(itemWeightGrams);
+      const displayName = weightLabel ? `${itemName} (${weightLabel})` : itemName;
+      const qty = Number(item.quantity ?? 0);
+
+      const cellLines = [
+        wrapText(String(index + 1), colWidths[0] - 6, ctx.font, BODY_FONT_SIZE),
+        wrapText(displayName, colWidths[1] - 6, ctx.font, BODY_FONT_SIZE),
+        wrapText(String(qty), colWidths[2] - 6, ctx.font, BODY_FONT_SIZE),
+      ];
+      const maxLines = Math.max(...cellLines.map((l) => l.length), 1);
+      const rowHeight = Math.max(ROW_HEIGHT, maxLines * LINE_HEIGHT + 6);
+      const nextY = ensureSpace(ctx, y, rowHeight);
+      if (nextY !== y) {
+        y = nextY;
+        drawHeader();
+      }
+
+      let x = ctx.margin;
+      const rowBottom = ctx.pageHeight - y - rowHeight;
+      colWidths.forEach((w) => {
+        ctx.page.drawRectangle({
+          x,
+          y: rowBottom,
+          width: w,
+          height: rowHeight,
+          borderWidth: 1,
+          borderColor: rgb(0, 0, 0),
+        });
+        x += w;
+      });
+
+      x = ctx.margin;
+      drawCellLines(ctx, cellLines[0], x, y + 4, colWidths[0], BODY_FONT_SIZE, 'center');
+      x += colWidths[0];
+      drawCellLines(ctx, cellLines[1], x, y + 4, colWidths[1], BODY_FONT_SIZE, 'left');
+      x += colWidths[1];
+      drawCellLines(ctx, cellLines[2], x, y + 4, colWidths[2], BODY_FONT_SIZE, 'center');
+
+      y += rowHeight;
+    });
+  });
+}
+

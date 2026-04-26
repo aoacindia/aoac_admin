@@ -107,6 +107,7 @@ export default function OrdersPage() {
   const [showDownloadPopup, setShowDownloadPopup] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [downloadItemsOnly, setDownloadItemsOnly] = useState(false);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -1024,16 +1025,27 @@ export default function OrdersPage() {
           onClose={() => {
             setShowDownloadPopup(false);
             setSelectedOrderId(null);
+            setDownloadItemsOnly(false);
           }}
         >
           <p className="text-zinc-600 dark:text-zinc-400 mb-6">
             Click the button below to download the invoice PDF for this order.
           </p>
           <div className="space-y-2 mb-6">
+            <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+              <input
+                type="checkbox"
+                checked={downloadItemsOnly}
+                onChange={(event) => setDownloadItemsOnly(event.target.checked)}
+              />
+              Download items PDF (Order ID + Invoice No + item list only)
+            </label>
+          </div>
+          <div className="space-y-2 mb-6">
             <Label className="text-sm text-zinc-700 dark:text-zinc-300">
               Select invoice copies to include
             </Label>
-            <div className="flex flex-col gap-2">
+            <div className={`flex flex-col gap-2 ${downloadItemsOnly ? "opacity-50 pointer-events-none" : ""}`}>
               <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
                 <input
                   type="checkbox"
@@ -1091,6 +1103,7 @@ export default function OrdersPage() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                       copies: selectedCopies.length ? selectedCopies : ["original"],
+                      downloadItemsOnly,
                     }),
                   });
 
@@ -1103,7 +1116,7 @@ export default function OrdersPage() {
                   const url = window.URL.createObjectURL(blob);
                   const a = document.createElement("a");
                   a.href = url;
-                  a.download = `invoice-${selectedOrderId}-${Date.now()}.pdf`;
+                  a.download = `${downloadItemsOnly ? "order-items" : "invoice"}-${selectedOrderId}-${Date.now()}.pdf`;
                   document.body.appendChild(a);
                   a.click();
                   window.URL.revokeObjectURL(url);
@@ -1111,6 +1124,7 @@ export default function OrdersPage() {
 
                   setShowDownloadPopup(false);
                   setSelectedOrderId(null);
+                  setDownloadItemsOnly(false);
                 } catch (error: any) {
                   alert("Error downloading invoice: " + error.message);
                 } finally {
@@ -1120,12 +1134,13 @@ export default function OrdersPage() {
               disabled={downloading}
               className="flex-1 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {downloading ? "Generating PDF..." : "Download Invoice"}
+              {downloading ? "Generating PDF..." : downloadItemsOnly ? "Download Items PDF" : "Download Invoice"}
             </Button>
             <Button
               onClick={() => {
                 setShowDownloadPopup(false);
                 setSelectedOrderId(null);
+                setDownloadItemsOnly(false);
               }}
               disabled={downloading}
               className="px-6 py-2 bg-zinc-600 hover:bg-zinc-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

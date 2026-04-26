@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { userPrisma } from "@/lib/user-prisma";
 import { adminPrisma } from "@/lib/admin-prisma";
 import { productPrisma } from "@/lib/product-prisma";
-import { generateInvoicePDF } from "@/lib/pdf-generator";
+import { generateInvoicePDF, generateOrderItemsPDF } from "@/lib/pdf-generator";
 import { requireAdminApi } from "@/lib/require-admin";
 
 export async function POST(
@@ -19,10 +19,14 @@ export async function POST(
   try {
     const { id } = await params;
     let copies: string[] = [];
+    let downloadItemsOnly = false;
     try {
       const body = await request.json();
       if (Array.isArray(body?.copies)) {
         copies = body.copies;
+      }
+      if (body?.downloadItemsOnly === true) {
+        downloadItemsOnly = true;
       }
     } catch {
       copies = [];
@@ -122,12 +126,16 @@ export async function POST(
     };
 
     // Generate PDF
-    const allowedCopies = new Set(["original", "duplicate", "triplicate"]);
-    const normalizedCopies = copies.filter((copy) => allowedCopies.has(copy));
-    const pdfBuffer = await generateInvoicePDF(
-      orderWithProducts,
-      normalizedCopies.length ? (normalizedCopies as any) : undefined
-    );
+    const pdfBuffer = downloadItemsOnly
+      ? await generateOrderItemsPDF(orderWithProducts as any)
+      : await (async () => {
+          const allowedCopies = new Set(["original", "duplicate", "triplicate"]);
+          const normalizedCopies = copies.filter((copy) => allowedCopies.has(copy));
+          return generateInvoicePDF(
+            orderWithProducts as any,
+            normalizedCopies.length ? (normalizedCopies as any) : undefined
+          );
+        })();
 
     // Convert Uint8Array to Buffer for NextResponse
     const buffer = Buffer.from(pdfBuffer);
@@ -136,7 +144,9 @@ export async function POST(
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="invoice-${order.InvoiceNumber || order.id}-${Date.now()}.pdf"`,
+        "Content-Disposition": `attachment; filename="${
+          downloadItemsOnly ? "order-items" : "invoice"
+        }-${order.InvoiceNumber || order.id}-${Date.now()}.pdf"`,
       },
     });
   } catch (error: any) {
