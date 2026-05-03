@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,6 @@ import {
 interface BusinessRow {
   orderId: string;
   buyerGstin: string | null;
-  sellerGstin: string | null;
   invoiceNumber: string | null;
   orderDate: string;
   invoiceTotalRounded: number;
@@ -53,11 +52,34 @@ function formatInr(n: number) {
   })}`;
 }
 
-/** Display convention: 5% → ÷1.05, 12% → ÷1.12 (matches “1.{two-digit rate}”). */
-function formatTaxDivisor(taxPercent: number) {
-  const t = Math.round(Number(taxPercent));
-  if (t <= 0) return "1";
-  return `1.${String(t).padStart(2, "0")}`;
+/** Group multiple orders under the same buyer GSTIN into one visual block */
+function groupBusinessByBuyerGstin(rows: BusinessRow[]) {
+  const keyOrder: string[] = [];
+  const byKey = new Map<string, BusinessRow[]>();
+
+  for (const row of rows) {
+    const raw = row.buyerGstin?.trim();
+    const key = raw ? raw.toUpperCase() : "__NONE__";
+    if (!byKey.has(key)) {
+      byKey.set(key, []);
+      keyOrder.push(key);
+    }
+    byKey.get(key)!.push(row);
+  }
+
+  return keyOrder.map((key) => {
+    const orders = [...(byKey.get(key) ?? [])].sort(
+      (a, b) =>
+        new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()
+    );
+    return {
+      key,
+      buyerGstinDisplay:
+        key === "__NONE__" ? null : (orders[0]?.buyerGstin?.trim().toUpperCase() ?? key),
+      customerLabel: orders[0]?.customerLabel ?? "—",
+      orders,
+    };
+  });
 }
 
 const MONTHS = [
@@ -105,25 +127,60 @@ export default function OrderSummaryPage() {
     year: number;
     businessOrderCount: number;
     personalOrderCount: number;
+    invoiceOffices?: Array<{ id: string; gstin: string | null }>;
+    selectedInvoiceOfficeId?: string | null;
   } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingFull, setLoadingFull] = useState(true);
+  const [segmentLoading, setSegmentLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * When null, omit `sellerOfficeId` so the API auto-selects the 2nd invoice office (newest-first list).
+   * Applies to every tab (B2B, B2C, HSN). Synced from `meta.selectedInvoiceOfficeId` after each load.
+   */
+  const [invoiceOfficeId, setInvoiceOfficeId] = useState<string | null>(null);
+  /** Kept stable across tab-only fetches so the office picker does not flicker */
+  const [invoiceOfficeList, setInvoiceOfficeList] = useState<
+    Array<{ id: string; gstin: string | null }>
+  >([]);
+  /** After first load, switching tabs only refreshes segment data (not totals or office list) */
+  const tabLoadSkipOnce = useRef(false);
 
-  async function load(
-    monthOverride?: number,
-    yearOverride?: number,
-    tabOverride?: SummaryTab
-  ) {
-    const m = monthOverride !== undefined ? monthOverride : month;
-    const y = yearOverride !== undefined ? yearOverride : year;
-    const tab = tabOverride !== undefined ? tabOverride : activeTab;
+  const tabBodyLoading = loadingFull || segmentLoading;
+  const blockingActions = loadingFull || segmentLoading;
+
+  async function fetchSummary(opts: {
+    monthOverride?: number;
+    yearOverride?: number;
+    tabOverride?: SummaryTab;
+    invoiceOfficeOverride?: string | null;
+    includeTotals: boolean;
+  }) {
+    const m = opts.monthOverride !== undefined ? opts.monthOverride : month;
+    const y = opts.yearOverride !== undefined ? opts.yearOverride : year;
+    const tab =
+      opts.tabOverride !== undefined ? opts.tabOverride : activeTab;
+
     try {
-      setLoading(true);
+      if (opts.includeTotals) {
+        setLoadingFull(true);
+      } else {
+        setSegmentLoading(true);
+      }
       setError(null);
       const params = new URLSearchParams();
       params.set("month", String(m));
       params.set("year", String(y));
       params.set("segment", tab);
+      if (!opts.includeTotals) {
+        params.set("includeTotals", "false");
+      }
+      const sellerForApi =
+        opts.invoiceOfficeOverride !== undefined
+          ? opts.invoiceOfficeOverride
+          : invoiceOfficeId;
+      if (sellerForApi !== null && sellerForApi !== "") {
+        params.set("sellerOfficeId", sellerForApi);
+      }
       const res = await fetch(`/api/orders/summary?${params.toString()}`);
       const data = await res.json();
       if (!res.ok || !data.success) {
@@ -132,18 +189,59 @@ export default function OrderSummaryPage() {
       setBusiness(data.data.business ?? []);
       setPersonal(data.data.personal ?? []);
       setHsnSummary(data.data.hsnSummary ?? []);
-      setCombinedTotals(data.data.totals ?? null);
-      setMeta(data.data.meta);
+
+      if (opts.includeTotals && data.data?.totals !== undefined) {
+        setCombinedTotals(data.data.totals ?? null);
+      }
+
+      const metaIncoming = data.data.meta;
+      setMeta(metaIncoming ?? null);
+
+      if (opts.includeTotals && metaIncoming) {
+        setInvoiceOfficeList(metaIncoming.invoiceOffices ?? []);
+      }
+
+      if (metaIncoming?.selectedInvoiceOfficeId !== undefined) {
+        setInvoiceOfficeId(metaIncoming.selectedInvoiceOfficeId ?? null);
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load summary");
     } finally {
-      setLoading(false);
+      if (opts.includeTotals) {
+        setLoadingFull(false);
+      } else {
+        setSegmentLoading(false);
+      }
     }
   }
 
+  async function loadFull(
+    monthOverride?: number,
+    yearOverride?: number,
+    tabOverride?: SummaryTab,
+    invoiceOfficeOverride?: string | null
+  ) {
+    await fetchSummary({
+      monthOverride,
+      yearOverride,
+      tabOverride,
+      invoiceOfficeOverride,
+      includeTotals: true,
+    });
+  }
+
   useEffect(() => {
-    void load(undefined, undefined, activeTab);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- month/year applied via Load summary / This month
+    void loadFull();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial totals + offices + active tab payload only
+  }, []);
+
+  useEffect(() => {
+    if (!tabLoadSkipOnce.current) {
+      tabLoadSkipOnce.current = true;
+      return;
+    }
+    void fetchSummary({ tabOverride: activeTab, includeTotals: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberate: manual load handles month/year/office refresh
   }, [activeTab]);
 
   return (
@@ -154,8 +252,9 @@ export default function OrderSummaryPage() {
             Order summary
           </h1>
           <p className="text-zinc-600 dark:text-zinc-400 text-sm">
-            Choose a month and year — only orders from that calendar month are included.
-            Taxable amount uses gross ÷ (1 + GST% ÷ 100), same as invoices.
+            Choose month, year, and invoice office — summaries (all tabs and combined totals)
+            only include orders for that office. Taxable amount uses gross ÷ (1 + GST% ÷ 100), same
+            as invoices.
           </p>
         </div>
         <Link
@@ -173,7 +272,10 @@ export default function OrderSummaryPage() {
             <Select
               className="mt-1"
               value={String(month)}
-              onChange={(e) => setMonth(Number(e.target.value))}
+              onChange={(e) => {
+                setMonth(Number(e.target.value));
+                setInvoiceOfficeId(null);
+              }}
             >
               {MONTHS.map((m) => (
                 <option key={m.value} value={m.value}>
@@ -187,7 +289,10 @@ export default function OrderSummaryPage() {
             <Select
               className="mt-1"
               value={String(year)}
-              onChange={(e) => setYear(Number(e.target.value))}
+              onChange={(e) => {
+                setYear(Number(e.target.value));
+                setInvoiceOfficeId(null);
+              }}
             >
               {buildYearOptions().map((y) => (
                 <option key={y} value={y}>
@@ -197,8 +302,12 @@ export default function OrderSummaryPage() {
             </Select>
           </div>
           <div className="sm:col-span-2 flex flex-wrap gap-2">
-            <Button type="button" onClick={() => load()} disabled={loading}>
-              {loading ? "Loading…" : "Load summary"}
+            <Button
+              type="button"
+              onClick={() => loadFull()}
+              disabled={blockingActions}
+            >
+              {loadingFull ? "Loading…" : "Load summary"}
             </Button>
             <Button
               type="button"
@@ -209,13 +318,53 @@ export default function OrderSummaryPage() {
                 const cy = d.getFullYear();
                 setMonth(cm);
                 setYear(cy);
-                void load(cm, cy);
+                setInvoiceOfficeId(null);
+                void loadFull(cm, cy, undefined, null);
               }}
             >
               This month
             </Button>
           </div>
         </div>
+
+        <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+          <Label className="text-zinc-700 dark:text-zinc-300">
+            Invoice office
+          </Label>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 mb-2">
+            Applies to{" "}
+            <span className="font-medium text-zinc-700 dark:text-zinc-300">
+              every tab and combined totals.
+            </span>{" "}
+            All offices listed (same order as Offices admin: newest first). By default the{" "}
+            <span className="font-medium text-zinc-700 dark:text-zinc-300">second</span> office
+            in that list is selected.
+          </p>
+          {loadingFull && invoiceOfficeList.length === 0 ? (
+            <p className="text-sm text-zinc-500">Loading offices…</p>
+          ) : invoiceOfficeList.length > 0 ? (
+            <Select
+              className="mt-1 max-w-xl"
+              value={invoiceOfficeId ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setInvoiceOfficeId(v);
+                void loadFull(undefined, undefined, activeTab, v);
+              }}
+            >
+              {invoiceOfficeList.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.gstin?.trim() || `Office ${o.id.slice(0, 8)}…`}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <p className="text-sm text-zinc-500">
+              No invoice offices configured — orders are shown without an office filter.
+            </p>
+          )}
+        </div>
+
         {meta && (
           <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
             {MONTHS.find((m) => m.value === meta.month)?.label} {meta.year}:{" "}
@@ -242,12 +391,15 @@ export default function OrderSummaryPage() {
               Combined tax totals (B2B + B2C)
             </h2>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-              Totals for the selected month across both business and personal orders.
+              Totals for the selected month and invoice office across business and personal orders.
+              Reloads only when you use <span className="font-medium text-zinc-600 dark:text-zinc-400">Load summary</span>,{" "}
+              <span className="font-medium text-zinc-600 dark:text-zinc-400">This month</span>, or change the invoice office
+              above — not when switching tabs.
             </p>
           </div>
         </div>
 
-        {loading ? (
+        {loadingFull && combinedTotals === null ? (
           <p className="mt-4 text-sm text-zinc-500">Loading…</p>
         ) : combinedTotals ? (
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
@@ -354,101 +506,94 @@ export default function OrderSummaryPage() {
               Business order summary
             </h2>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-              Per order: buyer GSTIN, invoice #, date, rounded total, then amount
-              by GST rate (gross inclusive of tax vs taxable base).
+              Grouped by buyer GSTIN — multiple invoices for one buyer appear together. Invoice
+              office is chosen above with month/year (applies site-wide here). Shows GST % and taxable
+              amount per invoice.
             </p>
           </div>
           <div className="p-4 max-h-[70vh] overflow-auto">
-            {loading ? (
+            {tabBodyLoading ? (
               <p className="text-sm text-zinc-500">Loading…</p>
             ) : business.length === 0 ? (
               <p className="text-sm text-zinc-500">No business orders in this month.</p>
             ) : (
               <div className="space-y-6">
-                {business.map((row) => (
+                {groupBusinessByBuyerGstin(business).map((grp) => (
                   <div
-                    key={row.orderId}
-                    className="rounded-md border border-zinc-200 dark:border-zinc-700 p-3 text-sm"
+                    key={grp.key}
+                    className="rounded-md border border-zinc-200 dark:border-zinc-700 p-4 text-sm space-y-4"
                   >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
-                      <div>
-                        <span className="text-zinc-500 dark:text-zinc-400">
-                          Buyer GSTIN
-                        </span>
-                        <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                          {row.buyerGstin || "—"}
-                        </p>
-                        <p className="text-xs text-zinc-500 mt-0.5">{row.customerLabel}</p>
-                      </div>
-                      <div>
-                        <span className="text-zinc-500 dark:text-zinc-400">
-                          Seller GSTIN (invoice office)
-                        </span>
-                        <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                          {row.sellerGstin || "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-zinc-500 dark:text-zinc-400">
-                          Invoice number
-                        </span>
-                        <p className="font-medium">{row.invoiceNumber || "—"}</p>
-                      </div>
-                      <div>
-                        <span className="text-zinc-500 dark:text-zinc-400">
-                          Order date
-                        </span>
-                        <p className="font-medium">
-                          {new Date(row.orderDate).toLocaleString("en-IN", {
-                            dateStyle: "medium",
-                            timeStyle: "short",
-                          })}
-                        </p>
-                      </div>
-                      <div className="sm:col-span-2">
-                        <span className="text-zinc-500 dark:text-zinc-400">
-                          Total invoice value (rounded)
-                        </span>
-                        <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                          {formatInr(row.invoiceTotalRounded)}
-                        </p>
-                      </div>
+                    <div>
+                      <span className="text-zinc-500 dark:text-zinc-400">
+                        Buyer GSTIN
+                      </span>
+                      <p className="font-medium text-zinc-900 dark:text-zinc-100">
+                        {grp.buyerGstinDisplay || "—"}
+                      </p>
+                      <p className="text-xs text-zinc-500 mt-0.5">{grp.customerLabel}</p>
                     </div>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>GST %</TableHead>
-                          <TableHead>Divisor</TableHead>
-                          <TableHead className="text-right">Gross (incl. tax)</TableHead>
-                          <TableHead className="text-right">Taxable</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {row.taxBreakdown.map((t) => (
-                          <TableRow key={`${row.orderId}-${t.taxPercent}`}>
-                            <TableCell>{t.taxPercent}%</TableCell>
-                            <TableCell className="text-zinc-500 text-xs">
-                              ÷ {formatTaxDivisor(t.taxPercent)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatInr(t.grossAmount)}
-                            </TableCell>
-                            <TableCell className="text-right font-medium">
-                              {formatInr(t.taxableAmount)}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                    <p className="mt-2 text-xs text-zinc-500">
-                      Order ID:{" "}
-                      <Link
-                        href={`/dashboard/orders/${row.orderId}`}
-                        className="text-blue-600 dark:text-blue-400 hover:underline"
+
+                    {grp.orders.map((row) => (
+                      <div
+                        key={row.orderId}
+                        className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/40 p-3 space-y-3"
                       >
-                        {row.orderId}
-                      </Link>
-                    </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div>
+                            <span className="text-zinc-500 dark:text-zinc-400">
+                              Invoice number
+                            </span>
+                            <p className="font-medium">{row.invoiceNumber || "—"}</p>
+                          </div>
+                          <div>
+                            <span className="text-zinc-500 dark:text-zinc-400">
+                              Order date
+                            </span>
+                            <p className="font-medium">
+                              {new Date(row.orderDate).toLocaleString("en-IN", {
+                                dateStyle: "medium",
+                                timeStyle: "short",
+                              })}
+                            </p>
+                          </div>
+                          <div className="sm:col-span-2">
+                            <span className="text-zinc-500 dark:text-zinc-400">
+                              Total invoice value (rounded)
+                            </span>
+                            <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                              {formatInr(row.invoiceTotalRounded)}
+                            </p>
+                          </div>
+                        </div>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>GST %</TableHead>
+                              <TableHead className="text-right">Taxable</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {row.taxBreakdown.map((t) => (
+                              <TableRow key={`${row.orderId}-${t.taxPercent}`}>
+                                <TableCell>{t.taxPercent}%</TableCell>
+                                <TableCell className="text-right font-medium">
+                                  {formatInr(t.taxableAmount)}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                        <p className="text-xs text-zinc-500">
+                          Order ID:{" "}
+                          <Link
+                            href={`/dashboard/orders/${row.orderId}`}
+                            className="text-blue-600 dark:text-blue-400 hover:underline"
+                          >
+                            {row.orderId}
+                          </Link>
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
@@ -470,7 +615,7 @@ export default function OrderSummaryPage() {
             </p>
           </div>
           <div className="p-4 max-h-[70vh] overflow-auto">
-            {loading ? (
+            {tabBodyLoading ? (
               <p className="text-sm text-zinc-500">Loading…</p>
             ) : personal.length === 0 ? (
               <p className="text-sm text-zinc-500">No personal orders in this month.</p>
@@ -516,7 +661,7 @@ export default function OrderSummaryPage() {
               </p>
             </div>
             <div className="p-4 max-h-[70vh] overflow-auto">
-              {loading ? (
+              {tabBodyLoading ? (
                 <p className="text-sm text-zinc-500">Loading…</p>
               ) : hsnSummary.length === 0 ? (
                 <p className="text-sm text-zinc-500">
@@ -578,7 +723,7 @@ export default function OrderSummaryPage() {
               </p>
             </div>
             <div className="p-4 max-h-[70vh] overflow-auto">
-              {loading ? (
+              {tabBodyLoading ? (
                 <p className="text-sm text-zinc-500">Loading…</p>
               ) : hsnSummary.length === 0 ? (
                 <p className="text-sm text-zinc-500">

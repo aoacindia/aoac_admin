@@ -104,6 +104,23 @@ function parseSegment(
   return null;
 }
 
+/**
+ * `orderedOfficeIds`: all invoice offices (same order as dropdown, e.g. newest first).
+ * Auto-selects index 1 when there are ≥2 offices; else index 0.
+ * If `requested` is a valid id in that list, use it.
+ */
+function resolveB2bSellerOfficeId(
+  orderedOfficeIds: string[],
+  requested: string | null
+): string | null {
+  const autoDefault =
+    orderedOfficeIds.length >= 2
+      ? orderedOfficeIds[1]!
+      : orderedOfficeIds[0] ?? null;
+  if (requested && orderedOfficeIds.includes(requested)) return requested;
+  return autoDefault;
+}
+
 const businessWhereBase = { isBusinessAccount: true as const };
 const personalWhereUser = {
   OR: [{ isBusinessAccount: false }, { isBusinessAccount: null }],
@@ -228,22 +245,49 @@ export async function GET(request: NextRequest) {
     const { month, year } = parsed;
     const dateWhere = getOrderDateFilterForMonthYear(month, year);
     const segment = parseSegment(searchParams);
+    /** Tab-only refreshes omit this to skip B2B+B2C wide queries used for the combined totals strip */
+    const includeTotals = searchParams.get("includeTotals") !== "false";
+
+    const allOfficesForSelect = await adminPrisma.office.findMany({
+      orderBy: { createdAt: "desc" },
+      select: { id: true, gstin: true },
+    });
+    const invoiceOfficesPayload = allOfficesForSelect.map((o) => ({
+      id: o.id,
+      gstin: o.gstin,
+    }));
+    const orderedOfficeIds = allOfficesForSelect.map((o) => o.id);
+    const requestedSeller =
+      searchParams.get("sellerOfficeId")?.trim() || null;
+    const selectedInvoiceOfficeId = resolveB2bSellerOfficeId(
+      orderedOfficeIds,
+      requestedSeller
+    );
+
+    const officeFilter =
+      selectedInvoiceOfficeId != null
+        ? { invoiceOfficeId: selectedInvoiceOfficeId }
+        : {};
 
     const businessWhere = {
       ...dateWhere,
       status: { not: "PENDING" as const },
       user: businessWhereBase,
+      ...officeFilter,
     };
     const personalWhere = {
       ...dateWhere,
       status: { not: "PENDING" as const },
       user: personalWhereUser,
+      ...officeFilter,
     };
 
-    // Always fetch both segments for combined tax totals (B2B + B2C),
-    // regardless of the requested segment/tab.
-    const [businessOrdersForTotals, personalOrdersForTotals] =
-      await Promise.all([
+    let businessOrdersForTotals: OrderForCombinedTotals[] = [];
+    let personalOrdersForTotals: OrderForCombinedTotals[] = [];
+
+    // B2B + B2C order sets for combined tax totals (skipped on tab-only refetch)
+    if (includeTotals) {
+      const [bizT, persT] = await Promise.all([
         userPrisma.order.findMany({
           where: businessWhere,
           select: {
@@ -269,6 +313,9 @@ export async function GET(request: NextRequest) {
           orderBy: { orderDate: "desc" },
         }),
       ]);
+      businessOrdersForTotals = bizT;
+      personalOrdersForTotals = persT;
+    }
 
     let businessOrders: OrderBusinessStandard[] | OrderBusinessHsn[] = [];
     let personalOrders: OrderPersonalStandard[] | OrderPersonalHsn[] = [];
@@ -335,15 +382,25 @@ export async function GET(request: NextRequest) {
             select: { id: true, gstin: true, stateCode: true },
           })
         : [];
-    const officeGstinById = new Map(offices.map((o) => [o.id, o.gstin]));
     const officeStateCodeById = new Map(
       offices.map((o) => [o.id, o.stateCode])
     );
 
-    const totals = computeCombinedTaxTotals(
-      [...businessOrdersForTotals, ...personalOrdersForTotals],
-      officeStateCodeById
-    );
+    let totals:
+      | {
+          taxableAmount: number;
+          igst: number;
+          cgst: number;
+          sgst: number;
+        }
+      | undefined;
+
+    if (includeTotals) {
+      totals = computeCombinedTaxTotals(
+        [...businessOrdersForTotals, ...personalOrdersForTotals],
+        officeStateCodeById
+      );
+    }
 
     const isHsnSegment = segment === "hsn-b2b" || segment === "hsn-b2c";
 
@@ -381,9 +438,6 @@ export async function GET(request: NextRequest) {
             return {
               orderId: order.id,
               buyerGstin: order.user.gstNumber?.trim() || null,
-              sellerGstin: order.invoiceOfficeId
-                ? officeGstinById.get(order.invoiceOfficeId) ?? null
-                : null,
               invoiceNumber: order.InvoiceNumber,
               orderDate: order.orderDate.toISOString(),
               invoiceTotalRounded: Math.round(Number(invoiceTotal)),
@@ -443,12 +497,14 @@ export async function GET(request: NextRequest) {
         business,
         personal,
         hsnSummary,
-        totals,
+        ...(includeTotals ? { totals } : {}),
         meta: {
           month,
           year,
           businessOrderCount: businessOrders.length,
           personalOrderCount: personalOrders.length,
+          invoiceOffices: invoiceOfficesPayload,
+          selectedInvoiceOfficeId,
         },
       },
     });
