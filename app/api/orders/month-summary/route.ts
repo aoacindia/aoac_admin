@@ -57,6 +57,8 @@ export async function GET(request: NextRequest) {
     const byStatus: Record<string, number> = {};
 
     for (const r of rows) {
+      // Amount summary should exclude PENDING orders (unless on the "pending" tab).
+      if (orderType !== "pending" && r.status === "PENDING") continue;
       totalRounded += r.invoiceAmount ?? r.totalAmount ?? 0;
       totalDiscount += r.discountAmount ?? 0;
       totalShipping += r.shippingAmount ?? 0;
@@ -71,7 +73,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        orderCount: rows.length,
+        orderCount: Object.values(byStatus).reduce((s, n) => s + n, 0),
         totalRounded,
         totalDiscount,
         totalShipping,

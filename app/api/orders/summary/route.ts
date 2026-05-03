@@ -10,6 +10,15 @@ import {
 } from "@/lib/order-tax";
 import { aggregateHsnSummary, type OrderForHsn } from "@/lib/hsn-summary";
 
+type OrderForCombinedTotals = Prisma.OrderGetPayload<{
+  select: {
+    invoiceOfficeId: true;
+    shippingAmount: true;
+    orderItems: true;
+    user: { select: { billingAddress: { select: { stateCode: true } } } };
+  };
+}>;
+
 type OrderBusinessStandard = Prisma.OrderGetPayload<{
   include: {
     orderItems: true;
@@ -151,6 +160,53 @@ async function fetchProductHsns(
   return new Map(products.map((p) => [p.id, p.hsnsac]));
 }
 
+function normalizeStateCode(code: unknown): string | null {
+  if (code === null || code === undefined) return null;
+  const s = String(code).trim();
+  return s ? s : null;
+}
+
+function computeCombinedTaxTotals(
+  orders: OrderForCombinedTotals[],
+  officeStateCodeById: Map<string, unknown>
+): { taxableAmount: number; igst: number; cgst: number; sgst: number } {
+  let taxableAmount = 0;
+  let igst = 0;
+  let cgst = 0;
+  let sgst = 0;
+
+  for (const order of orders) {
+    const officeStateCode = order.invoiceOfficeId
+      ? normalizeStateCode(officeStateCodeById.get(order.invoiceOfficeId))
+      : null;
+    const supplyStateCode = normalizeStateCode(
+      order.user?.billingAddress?.stateCode
+    );
+    const isIntraState =
+      officeStateCode !== null &&
+      supplyStateCode !== null &&
+      officeStateCode === supplyStateCode;
+
+    const buckets = aggregateOrderTaxBuckets(
+      order.orderItems,
+      order.shippingAmount
+    );
+
+    for (const [, v] of buckets) {
+      taxableAmount += v.taxableAmount;
+      const taxAmount = v.grossAmount - v.taxableAmount;
+      if (isIntraState) {
+        cgst += taxAmount / 2;
+        sgst += taxAmount / 2;
+      } else {
+        igst += taxAmount;
+      }
+    }
+  }
+
+  return { taxableAmount, igst, cgst, sgst };
+}
+
 export async function GET(request: NextRequest) {
   const authResult = await requireAdminApi();
   if ("error" in authResult) {
@@ -175,12 +231,44 @@ export async function GET(request: NextRequest) {
 
     const businessWhere = {
       ...dateWhere,
+      status: { not: "PENDING" as const },
       user: businessWhereBase,
     };
     const personalWhere = {
       ...dateWhere,
+      status: { not: "PENDING" as const },
       user: personalWhereUser,
     };
+
+    // Always fetch both segments for combined tax totals (B2B + B2C),
+    // regardless of the requested segment/tab.
+    const [businessOrdersForTotals, personalOrdersForTotals] =
+      await Promise.all([
+        userPrisma.order.findMany({
+          where: businessWhere,
+          select: {
+            invoiceOfficeId: true,
+            shippingAmount: true,
+            orderItems: true,
+            user: {
+              select: { billingAddress: { select: { stateCode: true } } },
+            },
+          },
+          orderBy: { orderDate: "desc" },
+        }),
+        userPrisma.order.findMany({
+          where: personalWhere,
+          select: {
+            invoiceOfficeId: true,
+            shippingAmount: true,
+            orderItems: true,
+            user: {
+              select: { billingAddress: { select: { stateCode: true } } },
+            },
+          },
+          orderBy: { orderDate: "desc" },
+        }),
+      ]);
 
     let businessOrders: OrderBusinessStandard[] | OrderBusinessHsn[] = [];
     let personalOrders: OrderPersonalStandard[] | OrderPersonalHsn[] = [];
@@ -230,7 +318,12 @@ export async function GET(request: NextRequest) {
 
     const officeIds = [
       ...new Set(
-        [...businessOrders, ...personalOrders]
+        [
+          ...businessOrders,
+          ...personalOrders,
+          ...businessOrdersForTotals,
+          ...personalOrdersForTotals,
+        ]
           .map((o) => o.invoiceOfficeId)
           .filter((id): id is string => Boolean(id))
       ),
@@ -245,6 +338,11 @@ export async function GET(request: NextRequest) {
     const officeGstinById = new Map(offices.map((o) => [o.id, o.gstin]));
     const officeStateCodeById = new Map(
       offices.map((o) => [o.id, o.stateCode])
+    );
+
+    const totals = computeCombinedTaxTotals(
+      [...businessOrdersForTotals, ...personalOrdersForTotals],
+      officeStateCodeById
     );
 
     const isHsnSegment = segment === "hsn-b2b" || segment === "hsn-b2c";
@@ -345,6 +443,7 @@ export async function GET(request: NextRequest) {
         business,
         personal,
         hsnSummary,
+        totals,
         meta: {
           month,
           year,

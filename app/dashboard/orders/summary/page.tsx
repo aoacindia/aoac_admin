@@ -94,6 +94,12 @@ export default function OrderSummaryPage() {
   const [business, setBusiness] = useState<BusinessRow[]>([]);
   const [personal, setPersonal] = useState<PersonalRow[]>([]);
   const [hsnSummary, setHsnSummary] = useState<HsnRow[]>([]);
+  const [combinedTotals, setCombinedTotals] = useState<{
+    taxableAmount: number;
+    igst: number;
+    cgst: number;
+    sgst: number;
+  } | null>(null);
   const [meta, setMeta] = useState<{
     month: number;
     year: number;
@@ -126,6 +132,7 @@ export default function OrderSummaryPage() {
       setBusiness(data.data.business ?? []);
       setPersonal(data.data.personal ?? []);
       setHsnSummary(data.data.hsnSummary ?? []);
+      setCombinedTotals(data.data.totals ?? null);
       setMeta(data.data.meta);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load summary");
@@ -224,6 +231,61 @@ export default function OrderSummaryPage() {
               </>
             )}
           </p>
+        )}
+      </div>
+
+      {/* Combined totals (B2B + B2C) */}
+      <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4 md:p-6 mb-8 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+              Combined tax totals (B2B + B2C)
+            </h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+              Totals for the selected month across both business and personal orders.
+            </p>
+          </div>
+        </div>
+
+        {loading ? (
+          <p className="mt-4 text-sm text-zinc-500">Loading…</p>
+        ) : combinedTotals ? (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+            <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 p-4">
+              <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                Taxable amount
+              </p>
+              <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                {formatInr(combinedTotals.taxableAmount)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 p-4">
+              <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                IGST
+              </p>
+              <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                {formatInr(combinedTotals.igst)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 p-4">
+              <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                CGST
+              </p>
+              <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                {formatInr(combinedTotals.cgst)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 p-4">
+              <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                SGST
+              </p>
+              <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                {formatInr(combinedTotals.sgst)}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-zinc-500">No totals available.</p>
         )}
       </div>
 
