@@ -18,6 +18,21 @@ interface Product {
   weight?: number | null;
 }
 
+/** Calendar date (YYYY-MM-DD) + wall clock from `clock` (typically “now” at submit or preview tick). */
+function buildEffectivePersonalOrderDate(
+  isAdminUser: boolean,
+  orderDateYmd: string,
+  clock: Date
+): Date {
+  if (!isAdminUser) return new Date(clock);
+  const out = new Date(clock);
+  const [y, m, d] = orderDateYmd.split("-").map((v) => parseInt(v, 10));
+  if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)) {
+    out.setFullYear(y, m - 1, d);
+  }
+  return out;
+}
+
 interface OrderItem {
   id: string;
   productId: string;
@@ -57,7 +72,6 @@ export default function CreatePersonalOrderPage() {
   const invoiceOfficeId = "cml092i700000jxt8bjv8opzq";
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
   const [orderDate, setOrderDate] = useState<string>(() => {
-    // YYYY-MM-DD (local)
     const now = new Date();
     const yyyy = String(now.getFullYear());
     const mm = String(now.getMonth() + 1).padStart(2, "0");
@@ -65,9 +79,11 @@ export default function CreatePersonalOrderPage() {
     return `${yyyy}-${mm}-${dd}`;
   });
 
-  const [items, setItems] = useState<OrderItem[]>([
+  const defaultItemId = "1";
+
+  const buildInitialItems = (): OrderItem[] => [
     {
-      id: "1",
+      id: defaultItemId,
       productId: "",
       productName: "",
       quantity: 1,
@@ -83,7 +99,46 @@ export default function CreatePersonalOrderPage() {
       customWeightItem: false,
       customWeightGrams: null,
     },
-  ]);
+  ];
+
+  const [items, setItems] = useState<OrderItem[]>(() => buildInitialItems());
+
+  const getDefaultOrderDateString = () => {
+    const now = new Date();
+    const yyyy = String(now.getFullYear());
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const resetFormToInitial = () => {
+    setPaymentMethod("cash");
+    setOrderDate(getDefaultOrderDateString());
+    const nextItems = buildInitialItems();
+    setItems(nextItems);
+    const id = nextItems[0]!.id;
+    setProductQueryByItemId({ [id]: "" });
+    setProductSearchOpenByItemId({});
+  };
+
+  /** Re-render once per second so the live “order time” preview stays on the current clock */
+  const [currentTimeTick, setCurrentTimeTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setCurrentTimeTick((t) => t + 1);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const orderTimestampPreview = useMemo(() => {
+    void currentTimeTick;
+    const clock = new Date();
+    const dt = buildEffectivePersonalOrderDate(isAdmin, orderDate, clock);
+    return dt.toLocaleString("en-IN", {
+      dateStyle: "medium",
+      timeStyle: "medium",
+    });
+  }, [isAdmin, orderDate, currentTimeTick]);
 
   useEffect(() => {
     fetchProducts();
@@ -305,39 +360,6 @@ export default function CreatePersonalOrderPage() {
     };
   }, [items]);
 
-  const printInvoiceForOrder = async (orderId: string) => {
-    const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}/download-invoice`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ copies: ["original"] }),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || "Invoice download failed");
-    }
-
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-
-    const w = window.open(url, "_blank", "noopener,noreferrer");
-    if (!w) {
-      // Popup blocked; fallback to direct download in same tab
-      window.location.href = url;
-      return;
-    }
-
-    // Best-effort auto print; browsers may ignore without user gesture.
-    w.onload = () => {
-      try {
-        w.focus();
-        w.print();
-      } catch {
-        // ignore
-      }
-    };
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -359,13 +381,11 @@ export default function CreatePersonalOrderPage() {
         return;
       }
 
-      // Use selected date with current time (so it's a full timestamp).
-      const now = new Date();
-      const [y, m, d] = orderDate.split("-").map((v) => parseInt(v, 10));
-      const effectiveOrderDate = new Date(now);
-      if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)) {
-        effectiveOrderDate.setFullYear(y, m - 1, d);
-      }
+      const effectiveOrderDate = buildEffectivePersonalOrderDate(
+        isAdmin,
+        orderDate,
+        new Date()
+      );
 
       const payload = {
         invoiceOfficeId,
@@ -397,12 +417,9 @@ export default function CreatePersonalOrderPage() {
       const orderId = data.data?.order?.id as string | undefined;
       if (!orderId) {
         alert("Order created but response missing order id.");
-        router.push("/dashboard/orders");
-        return;
       }
-
-      await printInvoiceForOrder(orderId);
-      router.push(`/dashboard/orders/${encodeURIComponent(orderId)}`);
+      resetFormToInitial();
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error: any) {
       console.error("Error creating personal order:", error);
       alert("Error creating order: " + error.message);
@@ -643,10 +660,23 @@ export default function CreatePersonalOrderPage() {
               </h2>
 
               <div className="space-y-4">
+                <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/40 p-3">
+                  <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-1">
+                    Order date &amp; time (saved on create)
+                  </p>
+                  <p className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                    {orderTimestampPreview}
+                  </p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                    {isAdmin
+                      ? "Time is always the current clock; only the calendar date is editable below."
+                      : "Uses your device's current date and time when you create the order."}
+                  </p>
+                </div>
                 {isAdmin && (
                   <div>
                     <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                      Order Date
+                      Order date
                     </Label>
                     <Input
                       type="date"
@@ -724,7 +754,7 @@ export default function CreatePersonalOrderPage() {
                 disabled={loading}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? "Creating..." : "Create Order & Print Invoice"}
+                {loading ? "Creating..." : "Create Order"}
               </Button>
             </div>
           </div>

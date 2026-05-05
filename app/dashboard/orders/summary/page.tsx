@@ -611,7 +611,7 @@ export default function OrderSummaryPage() {
             </h2>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
               Shipping state from the order address, aggregated across all personal
-              orders in this month.
+              orders in this month (taxable amount per GST rate).
             </p>
           </div>
           <div className="p-4 max-h-[70vh] overflow-auto">
@@ -625,7 +625,6 @@ export default function OrderSummaryPage() {
                   <TableRow>
                     <TableHead>State</TableHead>
                     <TableHead>GST %</TableHead>
-                    <TableHead className="text-right">Gross (incl. tax)</TableHead>
                     <TableHead className="text-right">Taxable</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -634,7 +633,6 @@ export default function OrderSummaryPage() {
                     <TableRow key={`${r.state}-${r.taxPercent}`}>
                       <TableCell className="font-medium">{r.state}</TableCell>
                       <TableCell>{r.taxPercent}%</TableCell>
-                      <TableCell className="text-right">{formatInr(r.grossAmount)}</TableCell>
                       <TableCell className="text-right">{formatInr(r.taxableAmount)}</TableCell>
                     </TableRow>
                   ))}
