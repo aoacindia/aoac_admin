@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { productPrisma } from "@/lib/product-prisma";
+import { asc, eq } from "drizzle-orm";
+
+import { dbProduct } from "@/lib/db";
+import { products } from "@/lib/db/product-schema";
 
 // GET products by categoryId
 export async function GET(request: NextRequest) {
@@ -14,27 +17,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const products = await productPrisma.product.findMany({
-      where: {
-        categoryId,
-      },
-      select: {
-        id: true,
-        name: true,
-        price: true,
-      },
-      orderBy: {
-        name: "asc",
-      },
-    });
+    const rows = await dbProduct
+      .select({
+        id: products.id,
+        name: products.name,
+        price: products.price,
+      })
+      .from(products)
+      .where(eq(products.categoryId, categoryId))
+      .orderBy(asc(products.name));
 
-    return NextResponse.json(products);
-  } catch (error: any) {
+    return NextResponse.json(rows);
+  } catch (error: unknown) {
     console.error("Error fetching products by category:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
-

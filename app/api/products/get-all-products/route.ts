@@ -1,27 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { productPrisma } from "@/lib/product-prisma";
+import { asc } from "drizzle-orm";
+
+import { dbProduct } from "@/lib/db";
+import { products } from "@/lib/db/product-schema";
 
 // GET all products (simplified for discount management)
 export async function GET(request: NextRequest) {
   try {
-    const products = await productPrisma.product.findMany({
-      select: {
-        id: true,
-        name: true,
-        price: true,
-      },
-      orderBy: {
-        name: "asc",
-      },
-    });
+    const rows = await dbProduct
+      .select({
+        id: products.id,
+        name: products.name,
+        price: products.price,
+      })
+      .from(products)
+      .orderBy(asc(products.name));
 
-    return NextResponse.json(products);
-  } catch (error: any) {
+    return NextResponse.json(rows);
+  } catch (error: unknown) {
     console.error("Error fetching all products:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
-

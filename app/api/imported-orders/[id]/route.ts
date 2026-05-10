@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@/prisma/generated/admin";
-import { adminPrisma } from "@/lib/admin-prisma";
+import { eq } from "drizzle-orm";
+
+import { dbAdmin } from "@/lib/db";
+import {
+  importedOrderItems,
+  importedOrders,
+} from "@/lib/db/admin-schema";
 import { requireAdminApi } from "@/lib/require-admin";
 
 function parseOrderDateUtc(s: unknown): Date | null {
@@ -110,9 +115,11 @@ export async function PATCH(
     );
   }
 
-  const existing = await adminPrisma.importedOrder.findUnique({
-    where: { id },
-  });
+  const [existing] = await dbAdmin
+    .select({ id: importedOrders.id })
+    .from(importedOrders)
+    .where(eq(importedOrders.id, id))
+    .limit(1);
   if (!existing) {
     return NextResponse.json(
       { success: false, error: "Order not found." },
@@ -120,30 +127,41 @@ export async function PATCH(
     );
   }
 
-  await adminPrisma.$transaction(async (tx) => {
-    await tx.importedOrder.update({
-      where: { id },
-      data: {
+  const now = new Date();
+
+  await dbAdmin.transaction(async (tx) => {
+    await tx
+      .update(importedOrders)
+      .set({
         orderDate,
         orderName,
-        deliveryCharges: new Prisma.Decimal(deliveryCharges),
-        orderTotal: new Prisma.Decimal(orderTotal),
-      },
-    });
-    await tx.importedOrderItem.deleteMany({ where: { orderId: id } });
-    await tx.importedOrderItem.createMany({
-      data: items.map((it, idx) => ({
+        deliveryCharges: String(deliveryCharges),
+        orderTotal: String(orderTotal),
+        updatedAt: now,
+      })
+      .where(eq(importedOrders.id, id));
+
+    await tx
+      .delete(importedOrderItems)
+      .where(eq(importedOrderItems.orderId, id));
+
+    await tx.insert(importedOrderItems).values(
+      items.map((it, idx) => ({
         orderId: id,
         lineIndex: idx,
         itemName: it.itemName,
-        amount: new Prisma.Decimal(it.amount),
-      })),
-    });
+        amount: String(it.amount),
+      }))
+    );
   });
 
-  const updated = await adminPrisma.importedOrder.findUnique({
-    where: { id },
-    include: { items: { orderBy: { lineIndex: "asc" } } },
+  const updated = await dbAdmin.query.importedOrders.findFirst({
+    where: eq(importedOrders.id, id),
+    with: {
+      items: {
+        orderBy: (it, { asc: a }) => [a(it.lineIndex)],
+      },
+    },
   });
 
   if (!updated) {

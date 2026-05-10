@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@/prisma/generated/admin";
-import { adminPrisma } from "@/lib/admin-prisma";
+import { and, count, desc, gte, lte, sql } from "drizzle-orm";
+
 import { requireAdminApi, requireSessionApi } from "@/lib/require-admin";
 import { utcCalendarMonthRange } from "@/lib/imported-orders-dates";
 import {
   groupImportedRows,
   parseImportedOrdersFile,
 } from "@/lib/imported-orders-parse";
+import { dbAdmin } from "@/lib/db";
+import {
+  importedOrderItems,
+  importedOrders,
+} from "@/lib/db/admin-schema";
 
 /** Vercel Hobby max is 300s; keep within platform limit. */
 export const maxDuration = 300;
 
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
-
-/** Default interactive transaction timeout is 5s; large CSV imports exceed that on remote DBs (P2028). */
-const IMPORT_TX_MAX_WAIT_MS = 60_000;
-// Keep below serverless maxDuration to avoid mid-transaction abort.
-const IMPORT_TX_TIMEOUT_MS = 270_000;
 
 export async function GET(request: NextRequest) {
   const gate = await requireSessionApi();
@@ -28,23 +28,16 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const page = Math.max(1, Number.parseInt(searchParams.get("page") || "1", 10) || 1);
+  const page = Math.max(
+    1,
+    Number.parseInt(searchParams.get("page") || "1", 10) || 1
+  );
   const pageSize = Math.min(
     100,
     Math.max(1, Number.parseInt(searchParams.get("pageSize") || "20", 10) || 20)
   );
   const year = searchParams.get("year");
   const month = searchParams.get("month");
-
-  const where: Prisma.ImportedOrderWhereInput = {};
-  if (year && month) {
-    const y = Number.parseInt(year, 10);
-    const m = Number.parseInt(month, 10);
-    if (Number.isFinite(y) && m >= 1 && m <= 12) {
-      const { start, end } = utcCalendarMonthRange(y, m);
-      where.orderDate = { gte: start, lte: end };
-    }
-  }
 
   const monthNum = month ? Number.parseInt(month, 10) : 0;
   const hasMonthFilter =
@@ -54,42 +47,75 @@ export async function GET(request: NextRequest) {
     monthNum >= 1 &&
     monthNum <= 12;
 
-  const [total, orders, periodAgg] = await Promise.all([
-    adminPrisma.importedOrder.count({ where }),
-    adminPrisma.importedOrder.findMany({
-      where,
-      orderBy: [{ orderDate: "desc" }, { orderName: "asc" }],
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      include: {
-        items: { orderBy: { lineIndex: "asc" } },
-      },
-    }),
-    hasMonthFilter
-      ? adminPrisma.importedOrder.aggregate({
-          where,
-          _count: { _all: true },
-          _sum: { orderTotal: true },
-        })
-      : Promise.resolve(null),
-  ]);
+  let monthRange: { start: Date; end: Date } | null = null;
+  if (year && month && hasMonthFilter) {
+    const y = Number.parseInt(year, 10);
+    monthRange = utcCalendarMonthRange(y, monthNum);
+  }
 
-  const periodSummary =
-    hasMonthFilter && periodAgg && year
-      ? {
-          year: Number.parseInt(year, 10),
-          month: monthNum,
-          orderCount: periodAgg._count._all,
-          totalAmount: periodAgg._sum.orderTotal
-            ? Number(periodAgg._sum.orderTotal)
-            : 0,
-        }
-      : null;
+  const countBase = dbAdmin.select({ c: count() }).from(importedOrders);
+  const [totalRow] =
+    monthRange
+      ? await countBase.where(
+          and(
+            gte(importedOrders.orderDate, monthRange.start),
+            lte(importedOrders.orderDate, monthRange.end)
+          )
+        )
+      : await countBase;
+  const total = Number(totalRow?.c ?? 0);
+
+  const orderRows = await dbAdmin.query.importedOrders.findMany({
+    where: monthRange
+      ? (io, { and: andOp, gte: gteOp, lte: lteOp }) =>
+          andOp(
+            gteOp(io.orderDate, monthRange!.start),
+            lteOp(io.orderDate, monthRange!.end)
+          )
+      : undefined,
+    with: {
+      items: {
+        orderBy: (it, { asc: a }) => [a(it.lineIndex)],
+      },
+    },
+    orderBy: (io, { desc: d, asc: a }) => [d(io.orderDate), a(io.orderName)],
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+  });
+
+  let periodSummary: {
+    year: number;
+    month: number;
+    orderCount: number;
+    totalAmount: number;
+  } | null = null;
+
+  if (hasMonthFilter && year && monthRange) {
+    const y = Number.parseInt(year, 10);
+    const [agg] = await dbAdmin
+      .select({
+        n: count(),
+        total: sql<string>`coalesce(sum(${importedOrders.orderTotal}), 0)`,
+      })
+      .from(importedOrders)
+      .where(
+        and(
+          gte(importedOrders.orderDate, monthRange.start),
+          lte(importedOrders.orderDate, monthRange.end)
+        )
+      );
+    periodSummary = {
+      year: y,
+      month: monthNum,
+      orderCount: Number(agg?.n ?? 0),
+      totalAmount: Number(agg?.total ?? 0),
+    };
+  }
 
   return NextResponse.json({
     success: true,
     data: {
-      orders: orders.map((o) => ({
+      orders: orderRows.map((o) => ({
         id: o.id,
         orderDate: o.orderDate.toISOString(),
         orderName: o.orderName,
@@ -175,32 +201,34 @@ export async function POST(request: NextRequest) {
   }
 
   let created = 0;
-  await adminPrisma.$transaction(
-    async (tx) => {
-      for (const g of grouped.orders) {
-        await tx.importedOrder.create({
-          data: {
-            orderDate: g.orderDate,
-            orderName: g.orderName,
-            deliveryCharges: new Prisma.Decimal(g.deliveryCharges),
-            orderTotal: new Prisma.Decimal(g.orderTotal),
-            items: {
-              create: g.items.map((it, idx) => ({
-                lineIndex: idx,
-                itemName: it.itemName,
-                amount: new Prisma.Decimal(it.amount),
-              })),
-            },
-          },
-        });
-        created += 1;
-      }
-    },
-    {
-      maxWait: IMPORT_TX_MAX_WAIT_MS,
-      timeout: IMPORT_TX_TIMEOUT_MS,
+  await dbAdmin.transaction(async (tx) => {
+    const now = new Date();
+    for (const g of grouped.orders) {
+      const [row] = await tx
+        .insert(importedOrders)
+        .values({
+          orderDate: g.orderDate,
+          orderName: g.orderName,
+          deliveryCharges: String(g.deliveryCharges),
+          orderTotal: String(g.orderTotal),
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning({ id: importedOrders.id });
+
+      if (!row) continue;
+
+      await tx.insert(importedOrderItems).values(
+        g.items.map((it, idx) => ({
+          orderId: row.id,
+          lineIndex: idx,
+          itemName: it.itemName,
+          amount: String(it.amount),
+        }))
+      );
+      created += 1;
     }
-  );
+  });
 
   return NextResponse.json({
     success: true,

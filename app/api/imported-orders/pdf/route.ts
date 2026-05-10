@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminPrisma } from "@/lib/admin-prisma";
+import { and, asc, count, gte, lte, sql } from "drizzle-orm";
+
 import { requireSessionApi } from "@/lib/require-admin";
 import { utcCalendarMonthRange } from "@/lib/imported-orders-dates";
 import { buildAllOrdersMonthPdf } from "@/lib/all-orders-month-pdf";
@@ -7,6 +8,8 @@ import {
   pdfExportHasSelection,
   type PdfExportOptions,
 } from "@/lib/pdf-export-options";
+import { dbAdmin } from "@/lib/db";
+import { importedOrders } from "@/lib/db/admin-schema";
 
 export const maxDuration = 300;
 
@@ -74,27 +77,39 @@ export async function POST(request: NextRequest) {
 
   const { start, end } = utcCalendarMonthRange(year, month);
 
-  const [orders, agg] = await Promise.all([
-    adminPrisma.importedOrder.findMany({
-      where: { orderDate: { gte: start, lte: end } },
-      orderBy: [{ orderDate: "asc" }, { orderName: "asc" }],
-      include: {
-        items: { orderBy: { lineIndex: "asc" } },
+  const [agg] = await dbAdmin
+    .select({
+      n: count(),
+      totalSum: sql<string>`coalesce(sum(${importedOrders.orderTotal}), 0)`,
+    })
+    .from(importedOrders)
+    .where(
+      and(
+        gte(importedOrders.orderDate, start),
+        lte(importedOrders.orderDate, end)
+      )
+    );
+
+  const orderRows = await dbAdmin.query.importedOrders.findMany({
+    where: (io, { and: andOp, gte: gteOp, lte: lteOp }) =>
+      andOp(
+        gteOp(io.orderDate, start),
+        lteOp(io.orderDate, end)
+      ),
+    with: {
+      items: {
+        orderBy: (it, { asc: a }) => [a(it.lineIndex)],
       },
-    }),
-    adminPrisma.importedOrder.aggregate({
-      where: { orderDate: { gte: start, lte: end } },
-      _count: { _all: true },
-      _sum: { orderTotal: true },
-    }),
-  ]);
+    },
+    orderBy: (io, { asc: a }) => [a(io.orderDate), a(io.orderName)],
+  });
 
   const pdfBytes = await buildAllOrdersMonthPdf({
     year,
     month,
-    orderCount: agg._count._all,
-    totalAmount: agg._sum.orderTotal ? Number(agg._sum.orderTotal) : 0,
-    orders: orders.map((o) => ({
+    orderCount: Number(agg?.n ?? 0),
+    totalAmount: Number(agg?.totalSum ?? 0),
+    orders: orderRows.map((o) => ({
       orderDate: o.orderDate,
       orderName: o.orderName,
       deliveryCharges: Number(o.deliveryCharges),

@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { userPrisma } from "@/lib/user-prisma";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  ilike,
+  isNull,
+  or,
+} from "drizzle-orm";
+
+import { dbUser } from "@/lib/db";
+import { billingAddresses, users } from "@/lib/db/user-schema";
 import { generateNextUserId } from "@/lib/user-id";
 
 // GET all customers
@@ -15,65 +26,102 @@ export async function GET(request: NextRequest) {
     const safePage = Number.isFinite(page) && page > 0 ? page : 1;
     const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 10;
 
-    const where: any = {};
-
-    const searchTerm = search?.trim();
-
-    if (searchTerm) {
-      if (searchMode === "prefix") {
-        where.OR = [
-          { name: { startsWith: searchTerm } },
-          { businessName: { startsWith: searchTerm } },
-        ];
-      } else {
-        where.OR = [
-          { name: { contains: searchTerm } },
-          { email: { contains: searchTerm } },
-          { phone: { contains: searchTerm } },
-          { businessName: { contains: searchTerm } },
-          { gstNumber: { contains: searchTerm } },
-        ];
-      }
-    }
-
-    if (suspended !== null) {
-      where.suspended = suspended === "true";
-    }
-
-    if (terminated !== null) {
-      where.terminated = terminated === "true";
-    }
-
-    const total = await userPrisma.user.count({ where });
-    const businessCount = await userPrisma.user.count({
-      where: { ...where, isBusinessAccount: true },
-    });
-    const personalCount = await userPrisma.user.count({
-      where: {
-        AND: [
-          where,
-          {
-            OR: [{ isBusinessAccount: false }, { isBusinessAccount: null }],
-          },
-        ],
+    const userWhereCallback = (
+      // Drizzle relational `where` passes the selected table's column map, not `PgTable`.
+      u: {
+        name: typeof users.name;
+        email: typeof users.email;
+        phone: typeof users.phone;
+        businessName: typeof users.businessName;
+        gstNumber: typeof users.gstNumber;
+        suspended: typeof users.suspended;
+        terminated: typeof users.terminated;
       },
+      ops: {
+        and: typeof and;
+        eq: typeof eq;
+        ilike: typeof ilike;
+        or: typeof or;
+        isNull: typeof isNull;
+      }
+    ) => {
+      const { and: andOp, eq: eqOp, ilike: il, or: orOp, isNull: isN } = ops;
+      const parts = [];
+      const searchTerm = search?.trim();
+
+      if (searchTerm) {
+        if (searchMode === "prefix") {
+          const needle = `${searchTerm}%`;
+          parts.push(
+            orOp(il(u.name, needle), il(u.businessName, needle))
+          );
+        } else {
+          const needle = `%${searchTerm}%`;
+          parts.push(
+            orOp(
+              il(u.name, needle),
+              il(u.email, needle),
+              il(u.phone, needle),
+              il(u.businessName, needle),
+              il(u.gstNumber, needle)
+            )
+          );
+        }
+      }
+
+      if (suspended !== null && suspended !== undefined) {
+        parts.push(eqOp(u.suspended, suspended === "true"));
+      }
+      if (terminated !== null && terminated !== undefined) {
+        parts.push(eqOp(u.terminated, terminated === "true"));
+      }
+
+      return parts.length > 0 ? andOp(...parts) : undefined;
+    };
+
+    const baseWhere = userWhereCallback(users, {
+      and,
+      eq,
+      ilike,
+      or,
+      isNull,
     });
 
-    const customers = await userPrisma.user.findMany({
-      where,
-      include: {
+    const countBase = dbUser.select({ c: count() }).from(users);
+    const [totalRow] = baseWhere
+      ? await countBase.where(baseWhere)
+      : await countBase;
+    const total = Number(totalRow?.c ?? 0);
+
+    const bizFilter = baseWhere
+      ? and(baseWhere, eq(users.isBusinessAccount, true))
+      : eq(users.isBusinessAccount, true);
+    const [bizRow] = await dbUser.select({ c: count() }).from(users).where(bizFilter);
+    const businessCount = Number(bizRow?.c ?? 0);
+
+    const personalFilter = baseWhere
+      ? and(
+          baseWhere,
+          or(eq(users.isBusinessAccount, false), isNull(users.isBusinessAccount))
+        )
+      : or(eq(users.isBusinessAccount, false), isNull(users.isBusinessAccount));
+    const [persRow] = await dbUser
+      .select({ c: count() })
+      .from(users)
+      .where(personalFilter);
+    const personalCount = Number(persRow?.c ?? 0);
+
+    const customers = await dbUser.query.users.findMany({
+      where: userWhereCallback,
+      with: {
         suspensionReasons: {
-          orderBy: {
-            suspendedAt: "desc",
-          },
+          orderBy: (sr, { desc: d }) => [d(sr.suspendedAt)],
         },
         billingAddress: true,
       },
-      orderBy: {
-        createdAt: "desc",
-      },
-      skip: (safePage - 1) * safeLimit,
-      take: safeLimit,
+      orderBy: (u, { desc: d }) => [d(u.createdAt)],
+      limit: safeLimit,
+      offset: (safePage - 1) * safeLimit,
     });
 
     return NextResponse.json({
@@ -88,10 +136,11 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / safeLimit),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching customers:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
@@ -113,7 +162,6 @@ export async function POST(request: NextRequest) {
       billingAddress,
     } = body;
 
-    // Validate required fields
     if (!name || !email || !phone) {
       return NextResponse.json(
         { success: false, error: "Missing required fields: name, email, phone" },
@@ -121,12 +169,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if email or phone already exists
-    const existingUser = await userPrisma.user.findFirst({
-      where: {
-        OR: [{ email }, { phone }],
-      },
-    });
+    const [existingUser] = await dbUser
+      .select({ id: users.id })
+      .from(users)
+      .where(or(eq(users.email, email), eq(users.phone, phone)))
+      .limit(1);
 
     if (existingUser) {
       return NextResponse.json(
@@ -135,52 +182,70 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique user ID based on account type and year
-    const isBusiness = isBusinessAccount || false;
-    const userId = await generateNextUserId(userPrisma, isBusiness);
+    const isBusiness = Boolean(isBusinessAccount);
+    const userId = await generateNextUserId(dbUser, isBusiness);
 
-    // Create customer without password
-    const customer = await userPrisma.user.create({
-      data: {
+    const now = new Date();
+
+    await dbUser.transaction(async (tx) => {
+      await tx.insert(users).values({
         id: userId,
         name,
         email,
         phone,
-        password: null, // No password for admin-created customers
-        isBusinessAccount: isBusinessAccount || false,
-        businessName: isBusinessAccount ? businessName : null,
-        gstNumber: isBusinessAccount ? gstNumber : null,
-        hasAdditionalTradeName: isBusinessAccount ? (hasAdditionalTradeName || false) : false,
-        additionalTradeName: isBusinessAccount && hasAdditionalTradeName ? additionalTradeName : null,
-        billingAddress:
-          isBusinessAccount && billingAddress
-            ? {
-                create: {
-                  houseNo: billingAddress.houseNo,
-                  line1: billingAddress.line1,
-                  line2: billingAddress.line2 || null,
-                  city: billingAddress.city,
-                  district: billingAddress.district,
-                  state: billingAddress.state,
-                  stateCode: billingAddress.stateCode || null,
-                  country: billingAddress.country || "India",
-                  pincode: billingAddress.pincode,
-                },
-              }
-            : undefined,
-      },
-      include: {
-        billingAddress: true,
-      },
+        password: null,
+        isBusinessAccount: isBusiness,
+        businessName: isBusiness ? businessName : null,
+        gstNumber: isBusiness ? gstNumber : null,
+        hasAdditionalTradeName: isBusiness
+          ? Boolean(hasAdditionalTradeName)
+          : false,
+        additionalTradeName:
+          isBusiness && hasAdditionalTradeName ? additionalTradeName : null,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      if (isBusiness && billingAddress) {
+        await tx.insert(billingAddresses).values({
+          userId,
+          houseNo: billingAddress.houseNo,
+          line1: billingAddress.line1,
+          line2: billingAddress.line2 || null,
+          city: billingAddress.city,
+          district: billingAddress.district,
+          state: billingAddress.state,
+          stateCode: billingAddress.stateCode || null,
+          country: billingAddress.country || "India",
+          pincode: billingAddress.pincode,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
     });
 
-    return NextResponse.json({ success: true, data: customer }, { status: 201 });
-  } catch (error: any) {
-    console.error("Error creating customer:", error);
+    const customer = await dbUser.query.users.findFirst({
+      where: eq(users.id, userId),
+      with: { billingAddress: true },
+    });
+
+    if (!customer) {
+      return NextResponse.json(
+        { success: false, error: "Failed to load customer" },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: true, data: customer },
+      { status: 201 }
+    );
+  } catch (error: unknown) {
+    console.error("Error creating customer:", error);
+    const message = error instanceof Error ? error.message : "Server error";
+    return NextResponse.json(
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
-

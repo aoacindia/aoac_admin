@@ -1,110 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { userPrisma } from "@/lib/user-prisma";
-import { adminPrisma } from "@/lib/admin-prisma";
-import { productPrisma } from "@/lib/product-prisma";
+import { eq } from "drizzle-orm";
+
+import { dbAdmin, dbProduct, dbUser } from "@/lib/db";
+import { offices } from "@/lib/db/admin-schema";
+import { products } from "@/lib/db/product-schema";
+import {
+  orderItems,
+  orders,
+  users,
+} from "@/lib/db/user-schema";
+import {
+  generateInvoiceNumber,
+  getFinancialYear,
+  getFinancialYearStart,
+} from "@/lib/order-helpers";
 import { requireAdminApi } from "@/lib/require-admin";
-
-// Helper function to get financial year in format YYYY(YY+1)
-// Financial year in India: April 1 to March 31
-// Example: April 1, 2025 to March 31, 2026 = FY 2025-26 = "202526"
-function getFinancialYear(date: Date): string {
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1; // getMonth() returns 0-11, so add 1
-  
-  // If month is April (4) or later, financial year starts from current year
-  // If month is January-March (1-3), financial year started from previous year
-  if (month >= 4) {
-    // FY 2025-26: April 2025 to March 2026
-    const fyStart = year;
-    const fyEnd = year + 1;
-    return `${fyStart}${String(fyEnd).slice(-2)}`;
-  } else {
-    // FY 2024-25: April 2024 to March 2025
-    const fyStart = year - 1;
-    const fyEnd = year;
-    return `${fyStart}${String(fyEnd).slice(-2)}`;
-  }
-}
-
-// Helper function to get financial year start date
-function getFinancialYearStart(date: Date): Date {
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  
-  if (month >= 4) {
-    // Current FY started in April of current year
-    return new Date(year, 3, 1); // Month 3 = April (0-indexed)
-  } else {
-    // Current FY started in April of previous year
-    return new Date(year - 1, 3, 1); // Month 3 = April (0-indexed)
-  }
-}
-
-// Helper function to generate invoice number
-// Format:
-// - PI: P2025261, P2025262, etc. (state code 10)
-// - TAX_INVOICE Business: B2025261, B2025262, etc. (state code 10)
-// - TAX_INVOICE Non-business: R2025261, R2025262, etc. (state code 10)
-// - Other states: add state code after prefix, ex: P122025261, B092025261
-async function generateInvoiceNumber(
-  invoiceType: "PI" | "TAX_INVOICE",
-  isBusinessAccount: boolean,
-  financialYear: string,
-  financialYearStart: Date,
-  invoiceOfficeStateCode?: string | number | null
-): Promise<{ invoiceNumber: string; sequenceNumber: number }> {
-  // For PI, use "P" prefix regardless of customer type
-  // For TAX_INVOICE, use "B" for business or "R" for non-business
-  const prefix = invoiceType === "PI" ? "P" : (isBusinessAccount ? "B" : "R");
-  const normalizedStateCode =
-    invoiceOfficeStateCode === null || invoiceOfficeStateCode === undefined
-      ? ""
-      : String(invoiceOfficeStateCode).trim();
-  const stateCodeSegment =
-    normalizedStateCode && normalizedStateCode !== "10"
-      ? normalizedStateCode
-      : "";
-  const prefixAndFY = `${prefix}${stateCodeSegment}${financialYear}`;
-
-  // Find the last invoice for this invoice type and prefix/state in the current financial year
-  const lastInvoice = await userPrisma.order.findFirst({
-    where: {
-      invoiceType: invoiceType,
-      InvoiceNumber: {
-        startsWith: prefixAndFY,
-      },
-      orderDate: {
-        gte: financialYearStart,
-      },
-    },
-    orderBy: {
-      orderDate: "desc",
-    },
-  });
-
-  let nextSequenceNumber = 1;
-  
-  if (lastInvoice?.InvoiceNumber) {
-    // Extract sequence from invoice number
-    // Format:
-    // - State 10: P2025261, B2025261, or R2025261
-    // - Other states: P122025261, B092025261, etc.
-    // Extract the last part (sequence)
-    const invoiceNumber = lastInvoice.InvoiceNumber;
-    if (invoiceNumber.startsWith(prefixAndFY)) {
-      const sequenceStr = invoiceNumber.substring(prefixAndFY.length);
-      const lastSequence = parseInt(sequenceStr, 10);
-      if (!isNaN(lastSequence)) {
-        nextSequenceNumber = lastSequence + 1;
-      }
-    }
-  }
-
-  // Format sequence without padding (just the number)
-  const invoiceNumber = `${prefixAndFY}${nextSequenceNumber}`;
-
-  return { invoiceNumber, sequenceNumber: nextSequenceNumber };
-}
 
 // GET order by id
 export async function GET(
@@ -120,12 +30,12 @@ export async function GET(
   }
   try {
     const { id } = await params;
-    
-    const order = await userPrisma.order.findUnique({
-      where: { id },
-      include: {
+
+    const order = await dbUser.query.orders.findFirst({
+      where: eq(orders.id, id),
+      with: {
         user: {
-          select: {
+          columns: {
             id: true,
             name: true,
             email: true,
@@ -148,26 +58,25 @@ export async function GET(
       );
     }
 
-    // Enrich order items with product name and weight (in grams) from product DB
     const orderItemsEnriched = await Promise.all(
-      order.orderItems.map(async (item: { productId: string; customWeightItem?: boolean; customWeight?: number | null }) => {
+      order.orderItems.map(async (item) => {
         let productName = "Unknown Product";
         let weightInGrams: number | null = null;
         try {
-          const product = await productPrisma.product.findUnique({
-            where: { id: item.productId },
-            select: { name: true, weight: true },
-          });
+          const [product] = await dbProduct
+            .select({ name: products.name, weight: products.weight })
+            .from(products)
+            .where(eq(products.id, item.productId))
+            .limit(1);
           if (product) {
             productName = product.name;
-            // Weight: use custom weight from order item when set, else product weight (both in grams)
             if (item.customWeightItem === true && item.customWeight != null) {
               weightInGrams = item.customWeight;
             } else if (product.weight != null) {
               weightInGrams = product.weight;
             }
           }
-        } catch (_) {
+        } catch {
           // keep defaults
         }
         return {
@@ -185,14 +94,25 @@ export async function GET(
         orderItems: orderItemsEnriched,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching order:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
+
+type UpdateItemBody = {
+  productId: string;
+  quantity: number | string;
+  price: number | string;
+  tax?: number | string;
+  discount?: number | string;
+  customWeightItem?: boolean;
+  customWeight?: number | string | null;
+};
 
 // PUT update order
 export async function PUT(
@@ -215,14 +135,13 @@ export async function PUT(
       deliveryPartner,
       deliveryPartnerName,
       addressId,
-      invoiceType, // Optional - for updating invoice
+      invoiceType,
       invoiceOfficeId,
       paymentMethod,
       status,
       orderDate,
       isDifferentSupplier,
       supplierId,
-      // Additional fields
       packed,
       refund,
       customOrder,
@@ -245,21 +164,16 @@ export async function PUT(
       refundCreatedAt,
     } = body;
 
-    // Get existing order with customer info
-    const existingOrder = await userPrisma.order.findUnique({
-      where: { id },
-      select: {
-        invoiceType: true,
-        invoiceOfficeId: true,
-        shippingAmount: true,
-        user: {
-          select: {
-            id: true,
-            isBusinessAccount: true,
-          },
-        },
-      },
-    });
+    const [existingOrder] = await dbUser
+      .select({
+        invoiceType: orders.invoiceType,
+        invoiceOfficeId: orders.invoiceOfficeId,
+        shippingAmount: orders.shippingAmount,
+        userId: orders.orderBy,
+      })
+      .from(orders)
+      .where(eq(orders.id, id))
+      .limit(1);
 
     if (!existingOrder) {
       return NextResponse.json(
@@ -268,201 +182,274 @@ export async function PUT(
       );
     }
 
-    // Calculate totals if items are provided
-    // IMPORTANT: Do NOT round intermediate values - maintain full precision for all item-level calculations
-    let updateData: any = {};
-    
+    const [userRow] = await dbUser
+      .select({ isBusinessAccount: users.isBusinessAccount })
+      .from(users)
+      .where(eq(users.id, existingOrder.userId))
+      .limit(1);
+
+    const userForOrder = userRow ?? {
+      isBusinessAccount: false as boolean | null,
+    };
+
+    type OrderPatch = Partial<typeof orders.$inferInsert>;
+    const updateValues: OrderPatch = {};
+
     if (items && Array.isArray(items) && items.length > 0) {
       let subtotal = 0;
       let totalDiscount = 0;
 
-      // IMPORTANT: Maintain full precision - no rounding for item calculations
-      for (const item of items) {
-        const itemTotal = item.price * item.quantity;
-        const itemDiscount = item.discount || 0;
+      for (const item of items as UpdateItemBody[]) {
+        const itemTotal = Number(item.price) * Number(item.quantity);
+        const itemDiscount = Number(item.discount || 0);
         subtotal += itemTotal;
-        totalDiscount += itemDiscount * item.quantity;
+        totalDiscount += itemDiscount * Number(item.quantity);
       }
 
-      const deliveryChargeAmount = deliveryCharge ? parseFloat(deliveryCharge) : existingOrder.shippingAmount || 0;
-      // IMPORTANT: `price` is already discounted per unit in DB; do not subtract discount again.
-      // Maintain full precision until final calculation.
+      const deliveryChargeAmount = deliveryCharge
+        ? parseFloat(String(deliveryCharge))
+        : existingOrder.shippingAmount || 0;
       const grandTotal = subtotal + deliveryChargeAmount;
-      // ONLY round the final total - this is the only place rounding should occur
       const roundedTotal = Math.round(grandTotal);
       const roundingOff = roundedTotal - grandTotal;
 
-      updateData.totalAmount = roundedTotal;
-      updateData.discountAmount = totalDiscount;
-      updateData.shippingAmount = deliveryChargeAmount > 0 ? deliveryChargeAmount : null;
-      
-      // Update invoice amounts if invoice exists
+      updateValues.totalAmount = roundedTotal;
+      updateValues.discountAmount = totalDiscount;
+      updateValues.shippingAmount =
+        deliveryChargeAmount > 0 ? deliveryChargeAmount : null;
+
       if (existingOrder.invoiceType) {
-        updateData.roundedOffAmount = roundingOff;
-        updateData.invoiceAmount = roundedTotal;
+        updateValues.roundedOffAmount = roundingOff;
+        updateValues.invoiceAmount = roundedTotal;
       }
     }
 
     if (deliveryPartner !== undefined) {
-      updateData.shippingCourierName =
+      updateValues.shippingCourierName =
         deliveryPartner === "OTHER"
           ? deliveryPartnerName
           : deliveryPartner || null;
     }
 
     if (addressId) {
-      updateData.shippingAddressId = addressId;
+      updateValues.shippingAddressId = addressId;
     }
 
     if (paymentMethod !== undefined) {
-      updateData.paymentMethod = paymentMethod || null;
+      updateValues.paymentMethod = paymentMethod || null;
     }
 
     if (invoiceOfficeId !== undefined) {
-      updateData.invoiceOfficeId = invoiceOfficeId || null;
+      updateValues.invoiceOfficeId = invoiceOfficeId || null;
     }
 
     if (status !== undefined) {
-      updateData.status = status || "PENDING";
+      updateValues.status = status || "PENDING";
     }
 
     if (orderDate) {
       const parsedOrderDate = new Date(orderDate);
       if (!Number.isNaN(parsedOrderDate.getTime())) {
-        updateData.orderDate = parsedOrderDate;
+        updateValues.orderDate = parsedOrderDate;
       }
     }
 
     if (isDifferentSupplier !== undefined) {
-      updateData.isDifferentSupplier = isDifferentSupplier || false;
-      updateData.supplierId = isDifferentSupplier && supplierId ? supplierId : null;
+      updateValues.isDifferentSupplier = Boolean(isDifferentSupplier);
+      updateValues.supplierId =
+        isDifferentSupplier && supplierId ? supplierId : null;
     } else if (supplierId !== undefined) {
-      // If only supplierId is provided, update it
-      updateData.supplierId = supplierId || null;
+      updateValues.supplierId = supplierId || null;
     }
 
-    // Handle additional boolean fields
     if (packed !== undefined) {
-      updateData.packed = packed === true;
+      updateValues.packed = packed === true;
     }
     if (refund !== undefined) {
-      updateData.refund = refund === true;
+      updateValues.refund = refund === true;
     }
     if (customOrder !== undefined) {
-      updateData.customOrder = customOrder === true;
+      updateValues.customOrder = customOrder === true;
     }
     if (manifestGenerated !== undefined) {
-      updateData.manifestGenerated = manifestGenerated === true;
+      updateValues.manifestGenerated = manifestGenerated === true;
     }
 
-    // Handle payment fields
     if (paidAmount !== undefined) {
-      updateData.paidAmount = paidAmount !== null && paidAmount !== "" ? parseFloat(paidAmount) : null;
+      updateValues.paidAmount =
+        paidAmount !== null && paidAmount !== ""
+          ? parseFloat(String(paidAmount))
+          : null;
     }
     if (r_orderId !== undefined) {
-      updateData.r_orderId = r_orderId || null;
+      updateValues.r_orderId = r_orderId || null;
     }
     if (r_paymentId !== undefined) {
-      updateData.r_paymentId = r_paymentId || null;
+      updateValues.r_paymentId = r_paymentId || null;
     }
     if (paymentLinkUrl !== undefined) {
-      updateData.paymentLinkUrl = paymentLinkUrl || null;
+      updateValues.paymentLinkUrl = paymentLinkUrl || null;
     }
     if (paymentVpa !== undefined) {
-      updateData.paymentVpa = paymentVpa || null;
+      updateValues.paymentVpa = paymentVpa || null;
     }
 
-    // Handle shipping fields
     if (courierId !== undefined) {
-      updateData.courierId = courierId !== null && courierId !== "" ? parseInt(courierId) : null;
+      updateValues.courierId =
+        courierId !== null && courierId !== ""
+          ? parseInt(String(courierId), 10)
+          : null;
     }
     if (shippingId !== undefined) {
-      updateData.shippingId = shippingId || null;
+      updateValues.shippingId = shippingId || null;
     }
     if (awsCode !== undefined) {
-      updateData.awsCode = awsCode || null;
+      updateValues.awsCode = awsCode || null;
     }
     if (shippingInvoiceNumber !== undefined) {
-      updateData.shippingInvoiceNumber = shippingInvoiceNumber || null;
+      updateValues.shippingInvoiceNumber = shippingInvoiceNumber || null;
     }
     if (estimatedDeliveryDate !== undefined) {
-      updateData.estimatedDeliveryDate = estimatedDeliveryDate || null;
+      updateValues.estimatedDeliveryDate = estimatedDeliveryDate || null;
     }
-    if (pickupScheduled !== undefined && pickupScheduled !== null && pickupScheduled !== "") {
+    if (
+      pickupScheduled !== undefined &&
+      pickupScheduled !== null &&
+      pickupScheduled !== ""
+    ) {
       const parsedPickupScheduled = new Date(pickupScheduled);
       if (!Number.isNaN(parsedPickupScheduled.getTime())) {
-        updateData.pickupScheduled = parsedPickupScheduled;
+        updateValues.pickupScheduled = parsedPickupScheduled;
       }
     }
-    if (deliveredAt !== undefined && deliveredAt !== null && deliveredAt !== "") {
+    if (
+      deliveredAt !== undefined &&
+      deliveredAt !== null &&
+      deliveredAt !== ""
+    ) {
       const parsedDeliveredAt = new Date(deliveredAt);
       if (!Number.isNaN(parsedDeliveredAt.getTime())) {
-        updateData.deliveredAt = parsedDeliveredAt;
+        updateValues.deliveredAt = parsedDeliveredAt;
       }
     }
 
-    // Handle refund fields
     if (refundId !== undefined) {
-      updateData.refundId = refundId || null;
+      updateValues.refundId = refundId || null;
     }
     if (refundReceipt !== undefined) {
-      updateData.refundReceipt = refundReceipt || null;
+      updateValues.refundReceipt = refundReceipt || null;
     }
     if (refundArn !== undefined) {
-      updateData.refundArn = refundArn || null;
+      updateValues.refundArn = refundArn || null;
     }
-    if (refundCreatedAt !== undefined && refundCreatedAt !== null && refundCreatedAt !== "") {
+    if (
+      refundCreatedAt !== undefined &&
+      refundCreatedAt !== null &&
+      refundCreatedAt !== ""
+    ) {
       const parsedRefundCreatedAt = new Date(refundCreatedAt);
       if (!Number.isNaN(parsedRefundCreatedAt.getTime())) {
-        updateData.refundCreatedAt = parsedRefundCreatedAt;
+        updateValues.refundCreatedAt = parsedRefundCreatedAt;
       }
     }
 
-    // Handle invoice type update if provided
-    if (invoiceType && (invoiceType === "PI" || invoiceType === "TAX_INVOICE")) {
-      // Generate new invoice if order doesn't have one OR if invoice type is being changed
-      const isInvoiceTypeChanging = existingOrder.invoiceType && existingOrder.invoiceType !== invoiceType;
-      
-      if (!existingOrder.invoiceType || isInvoiceTypeChanging) {
-        const now = new Date();
-        const financialYear = getFinancialYear(now);
-        const financialYearStart = getFinancialYearStart(now);
-        
-        // Determine if customer is business or non-business
-        const isBusinessAccount = existingOrder.user.isBusinessAccount === true;
-        const effectiveInvoiceOfficeId =
-          invoiceOfficeId !== undefined ? invoiceOfficeId : existingOrder.invoiceOfficeId;
-        const invoiceOffice = effectiveInvoiceOfficeId
-          ? await adminPrisma.office.findUnique({
-              where: { id: effectiveInvoiceOfficeId },
-              select: { stateCode: true },
-            })
-          : null;
+    if (
+      invoiceType &&
+      (invoiceType === "PI" || invoiceType === "TAX_INVOICE")
+    ) {
+      const isInvoiceTypeChanging =
+        Boolean(existingOrder.invoiceType) &&
+        existingOrder.invoiceType !== invoiceType;
 
-        // Generate invoice number:
-        // - PI: P prefix (separate sequence)
-        // - TAX_INVOICE: B prefix (business) or R prefix (non-business)
-        const { invoiceNumber, sequenceNumber } = await generateInvoiceNumber(
+      if (!existingOrder.invoiceType || isInvoiceTypeChanging) {
+        const nowInv = new Date();
+        const financialYear = getFinancialYear(nowInv);
+        const financialYearStart = getFinancialYearStart(nowInv);
+
+        const isBusinessAccount = userForOrder.isBusinessAccount === true;
+        const effectiveInvoiceOfficeId =
+          invoiceOfficeId !== undefined
+            ? invoiceOfficeId
+            : existingOrder.invoiceOfficeId;
+        let officeStateCode: string | null = null;
+        if (effectiveInvoiceOfficeId) {
+          const [invOff] = await dbAdmin
+            .select({ stateCode: offices.stateCode })
+            .from(offices)
+            .where(eq(offices.id, effectiveInvoiceOfficeId))
+            .limit(1);
+          officeStateCode = invOff?.stateCode ?? null;
+        }
+
+        const inv = await generateInvoiceNumber(
           invoiceType,
           isBusinessAccount,
           financialYear,
           financialYearStart,
-          invoiceOffice?.stateCode
+          officeStateCode
         );
 
-        updateData.invoiceType = invoiceType;
-        updateData.invoiceSequenceNumber = sequenceNumber;
-        updateData.InvoiceNumber = invoiceNumber;
+        updateValues.invoiceType = invoiceType;
+        updateValues.invoiceSequenceNumber = inv.sequenceNumber;
+        updateValues.InvoiceNumber = inv.invoiceNumber;
       }
     }
 
-    // Update order
-    const order = await userPrisma.order.update({
-      where: { id },
-      data: updateData,
-      include: {
+    if (items && Array.isArray(items) && items.length > 0) {
+      await dbUser.transaction(async (tx) => {
+        await tx
+          .update(orders)
+          .set(updateValues)
+          .where(eq(orders.id, id));
+        await tx.delete(orderItems).where(eq(orderItems.orderId, id));
+        await tx.insert(orderItems).values(
+          (items as UpdateItemBody[]).map((item) => ({
+            orderId: id,
+            productId: item.productId,
+            quantity: parseInt(String(item.quantity), 10),
+            price: parseFloat(String(item.price)),
+            tax: parseInt(String(item.tax || 0), 10),
+            discount: parseFloat(String(item.discount || 0)),
+            customWeightItem: item.customWeightItem === true,
+            customWeight:
+              item.customWeightItem === true &&
+              item.customWeight !== undefined &&
+              item.customWeight !== null
+                ? parseFloat(String(item.customWeight))
+                : null,
+          }))
+        );
+      });
+
+      const updatedOrder = await dbUser.query.orders.findFirst({
+        where: eq(orders.id, id),
+        with: {
+          user: {
+            columns: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              businessName: true,
+              gstNumber: true,
+            },
+          },
+          shippingAddress: true,
+          orderItems: true,
+          supplier: true,
+        },
+      });
+
+      return NextResponse.json({ success: true, data: updatedOrder });
+    }
+
+    await dbUser.update(orders).set(updateValues).where(eq(orders.id, id));
+
+    const order = await dbUser.query.orders.findFirst({
+      where: eq(orders.id, id),
+      with: {
         user: {
-          select: {
+          columns: {
             id: true,
             name: true,
             email: true,
@@ -477,58 +464,12 @@ export async function PUT(
       },
     });
 
-    // Update order items if provided
-    if (items && Array.isArray(items) && items.length > 0) {
-      // Delete existing items
-      await userPrisma.orderItem.deleteMany({
-        where: { orderId: id },
-      });
-
-      // Create new items
-      await userPrisma.orderItem.createMany({
-        data: items.map((item: any) => ({
-          orderId: id,
-          productId: item.productId,
-          quantity: parseInt(item.quantity),
-          price: parseFloat(item.price),
-          tax: parseInt(item.tax || 0), // Include tax field
-          discount: parseFloat(item.discount || 0),
-          customWeightItem: item.customWeightItem === true,
-          customWeight:
-            item.customWeightItem === true && item.customWeight !== undefined && item.customWeight !== null
-              ? parseFloat(item.customWeight)
-              : null,
-        })),
-      });
-
-      // Fetch updated order with new items
-      const updatedOrder = await userPrisma.order.findUnique({
-        where: { id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            businessName: true,
-            gstNumber: true,
-          },
-        },
-        shippingAddress: true,
-        orderItems: true,
-        supplier: true,
-      },
-      });
-
-      return NextResponse.json({ success: true, data: updatedOrder });
-    }
-
     return NextResponse.json({ success: true, data: order });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating order:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
@@ -549,10 +490,11 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    const existingOrder = await userPrisma.order.findUnique({
-      where: { id },
-      select: { id: true },
-    });
+    const [existingOrder] = await dbUser
+      .select({ id: orders.id })
+      .from(orders)
+      .where(eq(orders.id, id))
+      .limit(1);
 
     if (!existingOrder) {
       return NextResponse.json(
@@ -561,22 +503,18 @@ export async function DELETE(
       );
     }
 
-    await userPrisma.orderItem.deleteMany({
-      where: { orderId: id },
-    });
-
-    await userPrisma.order.delete({
-      where: { id },
+    await dbUser.transaction(async (tx) => {
+      await tx.delete(orderItems).where(eq(orderItems.orderId, id));
+      await tx.delete(orders).where(eq(orders.id, id));
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting order:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
-
-

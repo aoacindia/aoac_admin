@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { productPrisma } from "@/lib/product-prisma";
+import { asc, eq, inArray } from "drizzle-orm";
+
 import { auth } from "@/auth";
+import { dbProduct } from "@/lib/db";
+import {
+  categories,
+  categoryWeightDiscounts,
+  productDiscountPrices,
+  products,
+} from "@/lib/db/product-schema";
 
 // GET category discounts by categoryId
 export async function GET(request: NextRequest) {
@@ -29,31 +37,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const discounts = await productPrisma.categoryWeightDiscount.findMany({
-      where: {
-        categoryId,
-      },
-      include: {
+    const discounts = await dbProduct.query.categoryWeightDiscounts.findMany({
+      where: eq(categoryWeightDiscounts.categoryId, categoryId),
+      with: {
         productDiscounts: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
+          with: {
+            product: { columns: { id: true, name: true } },
           },
         },
       },
-      orderBy: {
-        minWeight: "asc",
-      },
+      orderBy: (d, { asc: a }) => [a(d.minWeight)],
     });
 
-    // Transform the data to match frontend expectations
     const formattedDiscounts = discounts.map((discount) => ({
       id: discount.id,
-      minWeight: discount.minWeight, // in kg (frontend will convert to grams)
+      minWeight: discount.minWeight,
       productDiscounts: discount.productDiscounts.map((pd) => ({
         productId: pd.productId,
         discountPrice: pd.discountPrice,
@@ -61,10 +59,11 @@ export async function GET(request: NextRequest) {
     }));
 
     return NextResponse.json(formattedDiscounts);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching category discounts:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
@@ -88,7 +87,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { categoryId, discounts } = body;
+    const { categoryId, discounts } = body as {
+      categoryId?: string;
+      discounts?: Array<{
+        minWeight?: number | string;
+        productPrices?: Record<string, number | string | null>;
+      }>;
+    };
 
     if (!categoryId) {
       return NextResponse.json(
@@ -104,10 +109,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify category exists
-    const category = await productPrisma.category.findUnique({
-      where: { id: categoryId },
-    });
+    const [category] = await dbProduct
+      .select({ id: categories.id })
+      .from(categories)
+      .where(eq(categories.id, categoryId))
+      .limit(1);
 
     if (!category) {
       return NextResponse.json(
@@ -116,90 +122,86 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get all products in this category
-    const categoryProducts = await productPrisma.product.findMany({
-      where: { categoryId },
-      select: { id: true },
-    });
+    const categoryProducts = await dbProduct
+      .select({ id: products.id })
+      .from(products)
+      .where(eq(products.categoryId, categoryId));
 
     const productIds = categoryProducts.map((p) => p.id);
 
-    // Get existing discount IDs for this category
-    const existingDiscounts = await productPrisma.categoryWeightDiscount.findMany({
-      where: { categoryId },
-      select: { id: true },
-    });
+    await dbProduct.transaction(async (tx) => {
+      const existingDiscounts = await tx
+        .select({ id: categoryWeightDiscounts.id })
+        .from(categoryWeightDiscounts)
+        .where(eq(categoryWeightDiscounts.categoryId, categoryId));
 
-    const existingDiscountIds = existingDiscounts.map((d) => d.id);
+      const existingDiscountIds = existingDiscounts.map((d) => d.id);
 
-    // Delete ProductDiscountPrice records first (they reference CategoryWeightDiscount)
-    if (existingDiscountIds.length > 0) {
-      await productPrisma.productDiscountPrice.deleteMany({
-        where: {
-          discountId: {
-            in: existingDiscountIds,
-          },
-        },
-      });
-    }
-
-    // Now delete the CategoryWeightDiscount records
-    await productPrisma.categoryWeightDiscount.deleteMany({
-      where: { categoryId },
-    });
-
-    // Create new discounts
-    for (const discount of discounts) {
-      const { minWeight, productPrices } = discount;
-
-      if (minWeight === undefined || minWeight === null) {
-        continue; // Skip invalid entries
+      if (existingDiscountIds.length > 0) {
+        await tx
+          .delete(productDiscountPrices)
+          .where(inArray(productDiscountPrices.discountId, existingDiscountIds));
       }
 
-      // Create the category weight discount
-      const categoryDiscount = await productPrisma.categoryWeightDiscount.create({
-        data: {
-          categoryId,
-          minWeight: parseFloat(minWeight), // Store in kg
-        },
-      });
+      await tx
+        .delete(categoryWeightDiscounts)
+        .where(eq(categoryWeightDiscounts.categoryId, categoryId));
 
-      // Create product discount prices for products that have prices specified
-      if (productPrices && typeof productPrices === "object") {
-        const productDiscountData = Object.entries(productPrices)
-          .filter(([productId, price]) => {
-            // Only include products that are in this category and have a valid price
-            return (
-              productIds.includes(productId) &&
-              price !== null &&
-              price !== undefined &&
-              !isNaN(parseFloat(price as string))
-            );
+      const now = new Date();
+
+      for (const discount of discounts) {
+        const { minWeight, productPrices } = discount;
+        if (minWeight === undefined || minWeight === null) {
+          continue;
+        }
+
+        const [categoryDiscount] = await tx
+          .insert(categoryWeightDiscounts)
+          .values({
+            categoryId,
+            minWeight: parseFloat(String(minWeight)),
+            createdAt: now,
+            updatedAt: now,
           })
-          .map(([productId, price]) => ({
-            productId,
-            discountId: categoryDiscount.id,
-            discountPrice: parseFloat(price as string),
-          }));
+          .returning({ id: categoryWeightDiscounts.id });
 
-        if (productDiscountData.length > 0) {
-          await productPrisma.productDiscountPrice.createMany({
-            data: productDiscountData,
-          });
+        if (!categoryDiscount) continue;
+
+        if (productPrices && typeof productPrices === "object") {
+          const productDiscountData = Object.entries(productPrices)
+            .filter(([productId, price]) => {
+              return (
+                productIds.includes(productId) &&
+                price !== null &&
+                price !== undefined &&
+                !Number.isNaN(parseFloat(String(price)))
+              );
+            })
+            .map(([productId, price]) => ({
+              productId,
+              discountId: categoryDiscount.id,
+              discountPrice: parseFloat(String(price)),
+              createdAt: now,
+              updatedAt: now,
+            }));
+
+          if (productDiscountData.length > 0) {
+            await tx.insert(productDiscountPrices).values(productDiscountData);
+          }
         }
       }
-    }
+    });
 
     return NextResponse.json({
       success: true,
       message: "Category discounts saved successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error saving category discounts:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
-

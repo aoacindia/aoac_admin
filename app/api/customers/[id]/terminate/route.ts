@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { userPrisma } from "@/lib/user-prisma";
+import { eq } from "drizzle-orm";
+
+import { dbUser } from "@/lib/db";
+import { users } from "@/lib/db/user-schema";
 
 // POST terminate customer
 export async function POST(
@@ -9,9 +12,11 @@ export async function POST(
   try {
     const { id } = await params;
 
-    const customer = await userPrisma.user.findUnique({
-      where: { id: id },
-    });
+    const [customer] = await dbUser
+      .select()
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
 
     if (!customer) {
       return NextResponse.json(
@@ -20,30 +25,33 @@ export async function POST(
       );
     }
 
-    // Update customer termination status
-    const updatedCustomer = await userPrisma.user.update({
-      where: { id: id },
-      data: {
+    const now = new Date();
+    await dbUser
+      .update(users)
+      .set({
         terminated: true,
-        suspended: false, // Also unsuspend if suspended
-      },
-      include: {
+        suspended: false,
+        updatedAt: now,
+      })
+      .where(eq(users.id, id));
+
+    const updatedCustomer = await dbUser.query.users.findFirst({
+      where: eq(users.id, id),
+      with: {
         suspensionReasons: {
-          orderBy: {
-            suspendedAt: "desc",
-          },
+          orderBy: (sr, { desc: d }) => [d(sr.suspendedAt)],
         },
         billingAddress: true,
       },
     });
 
     return NextResponse.json({ success: true, data: updatedCustomer });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error terminating customer:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
-

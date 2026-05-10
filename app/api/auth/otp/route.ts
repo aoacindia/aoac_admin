@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
-import { adminPrisma } from "@/lib/admin-prisma";
+import { eq, or } from "drizzle-orm";
+
+import { dbAdmin } from "@/lib/db";
+import { adminOtpVerifications, adminUsers } from "@/lib/db/admin-schema";
 import { sendOtpEmail } from "@/lib/email";
 
 const OTP_EXPIRY_MINUTES = 10;
@@ -25,20 +28,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await adminPrisma.user.findFirst({
-      where: {
-        OR: [{ email: identifier }, { phone: identifier }],
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        role: true,
-        suspended: true,
-        terminated: true,
-      },
-    });
+    const [user] = await dbAdmin
+      .select({
+        id: adminUsers.id,
+        name: adminUsers.name,
+        email: adminUsers.email,
+        phone: adminUsers.phone,
+        role: adminUsers.role,
+        suspended: adminUsers.suspended,
+        terminated: adminUsers.terminated,
+      })
+      .from(adminUsers)
+      .where(
+        or(eq(adminUsers.email, identifier), eq(adminUsers.phone, identifier))
+      )
+      .limit(1);
 
     if (!user) {
       return NextResponse.json(
@@ -58,18 +62,19 @@ export async function POST(request: NextRequest) {
     const otpHash = await bcrypt.hash(otp, 10);
     const token = randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+    const now = new Date();
 
-    await adminPrisma.otpVerification.deleteMany({
-      where: { email: user.email },
-    });
+    await dbAdmin
+      .delete(adminOtpVerifications)
+      .where(eq(adminOtpVerifications.email, user.email));
 
-    await adminPrisma.otpVerification.create({
-      data: {
-        email: user.email,
-        token,
-        otp: otpHash,
-        expiresAt,
-      },
+    await dbAdmin.insert(adminOtpVerifications).values({
+      email: user.email,
+      token,
+      otp: otpHash,
+      expiresAt,
+      createdAt: now,
+      updatedAt: now,
     });
 
     await sendOtpEmail(user.email, otp);
@@ -79,7 +84,7 @@ export async function POST(request: NextRequest) {
       token,
       email: maskEmail(user.email),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error sending OTP:", error);
     return NextResponse.json(
       { success: false, error: "Failed to send OTP" },
@@ -87,4 +92,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

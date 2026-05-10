@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { userPrisma } from "@/lib/user-prisma";
 import { requireAdminApi } from "@/lib/require-admin";
 import {
-  buildOrdersListWhere,
   parseMonthYearParams,
   parseStatusesParam,
 } from "@/lib/build-orders-list-where";
+import { selectOrdersSummariesForMonthDrizzle } from "@/lib/orders-list-drizzle";
 
 /**
  * Aggregates order counts and amounts for the same filter as GET /api/orders
@@ -31,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     const { month, year } = parseMonthYearParams(monthParam, yearParam);
     const statuses = parseStatusesParam(statusesParam);
-    const where = buildOrdersListWhere({
+    const rows = await selectOrdersSummariesForMonthDrizzle({
       orderType,
       status,
       statuses,
@@ -40,24 +39,12 @@ export async function GET(request: NextRequest) {
       year,
     });
 
-    const rows = await userPrisma.order.findMany({
-      where,
-      select: {
-        status: true,
-        invoiceAmount: true,
-        totalAmount: true,
-        discountAmount: true,
-        shippingAmount: true,
-      },
-    });
-
     let totalRounded = 0;
     let totalDiscount = 0;
     let totalShipping = 0;
     const byStatus: Record<string, number> = {};
 
     for (const r of rows) {
-      // Amount summary should exclude PENDING orders (unless on the "pending" tab).
       if (orderType !== "pending" && r.status === "PENDING") continue;
       totalRounded += r.invoiceAmount ?? r.totalAmount ?? 0;
       totalDiscount += r.discountAmount ?? 0;
@@ -67,7 +54,7 @@ export async function GET(request: NextRequest) {
     }
 
     const byStatusList = Object.entries(byStatus)
-      .map(([statusKey, count]) => ({ status: statusKey, count }))
+      .map(([statusKey, countVal]) => ({ status: statusKey, count: countVal }))
       .sort((a, b) => a.status.localeCompare(b.status));
 
     return NextResponse.json({
@@ -80,10 +67,14 @@ export async function GET(request: NextRequest) {
         byStatus: byStatusList,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error building month summary:", error);
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to load summary";
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to load summary" },
+      { success: false, error: message },
       { status: 500 }
     );
   }

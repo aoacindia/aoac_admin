@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { userPrisma } from "@/lib/user-prisma";
+import { inArray, or } from "drizzle-orm";
+
+import { dbUser } from "@/lib/db";
+import { billingAddresses, users } from "@/lib/db/user-schema";
 import { formatUserId, getIdPrefix, getMaxSequence } from "@/lib/user-id";
 
 type RawBulkRecord = {
@@ -132,8 +135,8 @@ async function buildPreviewRows(records: RawBulkRecord[]) {
   const businessPrefix = getIdPrefix(true);
   const individualPrefix = getIdPrefix(false);
   const [businessStart, individualStart] = await Promise.all([
-    getMaxSequence(userPrisma, businessPrefix, year),
-    getMaxSequence(userPrisma, individualPrefix, year),
+    getMaxSequence(dbUser, businessPrefix, year),
+    getMaxSequence(dbUser, individualPrefix, year),
   ]);
 
   let businessSequence = businessStart;
@@ -153,19 +156,21 @@ async function buildPreviewRows(records: RawBulkRecord[]) {
 
   const emails = Array.from(emailMap.keys());
   const phones = Array.from(phoneMap.keys());
-  const orFilters = [
-    emails.length ? { email: { in: emails } } : null,
-    phones.length ? { phone: { in: phones } } : null,
-  ].filter(Boolean) as Array<{ email?: { in: string[] }; phone?: { in: string[] } }>;
+  const matchParts = [];
+  if (emails.length) {
+    matchParts.push(inArray(users.email, emails));
+  }
+  if (phones.length) {
+    matchParts.push(inArray(users.phone, phones));
+  }
 
-  const existingUsers = orFilters.length
-    ? await userPrisma.user.findMany({
-        where: {
-          OR: orFilters,
-        },
-        select: { email: true, phone: true },
-      })
-    : [];
+  const existingUsers =
+    matchParts.length > 0
+      ? await dbUser
+          .select({ email: users.email, phone: users.phone })
+          .from(users)
+          .where(or(...matchParts))
+      : [];
 
   const existingEmails = new Set(existingUsers.map((user) => user.email.toLowerCase()));
   const existingPhones = new Set(existingUsers.map((user) => user.phone));
@@ -252,54 +257,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const createdUsers = await userPrisma.$transaction(
-      preview.rows.map((row) =>
-        userPrisma.user.create({
-          data: {
-            id: row.expectedId,
-            name: row.data.name,
-            email: row.data.email,
-            phone: row.data.phone,
-            password: null,
-            isBusinessAccount: row.data.isBusinessAccount,
-            businessName: row.data.businessName,
-            gstNumber: row.data.gstNumber,
-            hasAdditionalTradeName: row.data.hasAdditionalTradeName,
-            additionalTradeName: row.data.additionalTradeName,
-            billingAddress: row.data.isBusinessAccount && row.data.billingAddress
-              ? {
-                  create: {
-                    houseNo: row.data.billingAddress.houseNo,
-                    line1: row.data.billingAddress.line1,
-                    line2: row.data.billingAddress.line2,
-                    city: row.data.billingAddress.city,
-                    district: row.data.billingAddress.district,
-                    state: row.data.billingAddress.state,
-                    stateCode: row.data.billingAddress.stateCode,
-                    country: row.data.billingAddress.country,
-                    pincode: row.data.billingAddress.pincode,
-                  },
-                }
-              : undefined,
-          },
-          include: {
-            billingAddress: true,
-          },
-        })
-      )
-    );
+    await dbUser.transaction(async (tx) => {
+      const now = new Date();
+      for (const row of preview.rows) {
+        await tx.insert(users).values({
+          id: row.expectedId,
+          name: row.data.name,
+          email: row.data.email,
+          phone: row.data.phone,
+          password: null,
+          isBusinessAccount: row.data.isBusinessAccount,
+          businessName: row.data.businessName,
+          gstNumber: row.data.gstNumber,
+          hasAdditionalTradeName: row.data.hasAdditionalTradeName,
+          additionalTradeName: row.data.additionalTradeName,
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        if (row.data.isBusinessAccount && row.data.billingAddress) {
+          await tx.insert(billingAddresses).values({
+            userId: row.expectedId,
+            houseNo: row.data.billingAddress.houseNo,
+            line1: row.data.billingAddress.line1,
+            line2: row.data.billingAddress.line2,
+            city: row.data.billingAddress.city,
+            district: row.data.billingAddress.district,
+            state: row.data.billingAddress.state,
+            stateCode: row.data.billingAddress.stateCode,
+            country: row.data.billingAddress.country,
+            pincode: row.data.billingAddress.pincode,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+      }
+    });
 
     return NextResponse.json({
       success: true,
       data: {
-        createdCount: createdUsers.length,
-        ids: createdUsers.map((user) => user.id),
+        createdCount: preview.rows.length,
+        ids: preview.rows.map((row) => row.expectedId),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating bulk customers:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }

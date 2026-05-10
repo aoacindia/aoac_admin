@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { and, count, desc, eq, ilike, or } from "drizzle-orm";
+
 import { auth } from "@/auth";
-import { adminPrisma } from "@/lib/admin-prisma";
-import type { AdminRole } from "@/prisma/generated/admin";
+import { dbAdmin } from "@/lib/db";
+import type { AdminRole } from "@/lib/db/admin-schema";
+import { adminUsers } from "@/lib/db/admin-schema";
 
 const ALLOWED_ROLES = ["ADMIN", "MANAGER", "STAFF"] as const;
 
@@ -31,42 +34,58 @@ export async function GET(request: NextRequest) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get("search");
+    const searchRaw = searchParams.get("search");
     const role = searchParams.get("role");
     const page = Number(searchParams.get("page") || "1");
     const limit = Number(searchParams.get("limit") || "10");
     const safePage = Number.isFinite(page) && page > 0 ? page : 1;
     const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 10;
 
-    const where: any = {};
+    const search =
+      typeof searchRaw === "string" && searchRaw.trim() ? searchRaw.trim() : "";
+
+    const whereParts = [];
+
     if (search) {
-      where.OR = [
-        { name: { contains: search } },
-        { email: { contains: search } },
-        { phone: { contains: search } },
-      ];
+      const needle = `%${search}%`;
+      whereParts.push(
+        or(
+          ilike(adminUsers.name, needle),
+          ilike(adminUsers.email, needle),
+          ilike(adminUsers.phone, needle)
+        )
+      );
     }
     if (role && isAllowedRole(role)) {
-      where.role = role as AdminRole;
+      whereParts.push(eq(adminUsers.role, role as AdminRole));
     }
 
-    const total = await adminPrisma.user.count({ where });
-    const users = await adminPrisma.user.findMany({
-      where,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        role: true,
-        suspended: true,
-        terminated: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: "desc" },
-      skip: (safePage - 1) * safeLimit,
-      take: safeLimit,
-    });
+    const wc = whereParts.length > 0 ? and(...whereParts) : undefined;
+
+    const countBase = dbAdmin.select({ c: count() }).from(adminUsers);
+    const [countRow] =
+      wc !== undefined
+        ? await countBase.where(wc)
+        : await countBase;
+    const total = Number(countRow?.c ?? 0);
+
+    const selector = dbAdmin
+      .select({
+        id: adminUsers.id,
+        name: adminUsers.name,
+        email: adminUsers.email,
+        phone: adminUsers.phone,
+        role: adminUsers.role,
+        suspended: adminUsers.suspended,
+        terminated: adminUsers.terminated,
+        createdAt: adminUsers.createdAt,
+      })
+      .from(adminUsers);
+
+    const users = await (wc !== undefined ? selector.where(wc) : selector)
+      .orderBy(desc(adminUsers.createdAt))
+      .offset((safePage - 1) * safeLimit)
+      .limit(safeLimit);
 
     return NextResponse.json({
       success: true,
@@ -78,10 +97,11 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / safeLimit),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching admin users:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
@@ -117,11 +137,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const existingUser = await adminPrisma.user.findFirst({
-      where: {
-        OR: [{ email }, { phone }],
-      },
-    });
+    const [existingUser] = await dbAdmin
+      .select({ id: adminUsers.id })
+      .from(adminUsers)
+      .where(or(eq(adminUsers.email, email), eq(adminUsers.phone, phone)))
+      .limit(1);
 
     if (existingUser) {
       return NextResponse.json(
@@ -130,22 +150,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await adminPrisma.user.create({
-      data: {
+    const now = new Date();
+    const inserted = await dbAdmin
+      .insert(adminUsers)
+      .values({
         name,
         email,
         phone,
         role: role as AdminRole,
-      },
-    });
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+
+    const user = inserted[0];
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "Failed to create user" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ success: true, data: user }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating admin user:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
-

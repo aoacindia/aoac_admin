@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { userPrisma } from "@/lib/user-prisma";
-import { adminPrisma } from "@/lib/admin-prisma";
-import { productPrisma } from "@/lib/product-prisma";
+import { eq } from "drizzle-orm";
+
 import { sendEmail } from "@/lib/email";
+import { dbAdmin, dbProduct, dbUser } from "@/lib/db";
+import { accounts, emailAccounts, offices } from "@/lib/db/admin-schema";
+import { products } from "@/lib/db/product-schema";
+import { orders } from "@/lib/db/user-schema";
 import { requireAdminApi } from "@/lib/require-admin";
 
 function formatWeightLabel(weightGrams?: number | null): string | null {
@@ -468,11 +471,11 @@ export async function POST(
     }
 
     // Fetch order with all necessary data
-    const order = await userPrisma.order.findUnique({
-      where: { id },
-      include: {
+    const order = await dbUser.query.orders.findFirst({
+      where: eq(orders.id, id),
+      with: {
         user: {
-          select: {
+          columns: {
             id: true,
             name: true,
             email: true,
@@ -482,6 +485,8 @@ export async function POST(
             isBusinessAccount: true,
             hasAdditionalTradeName: true,
             additionalTradeName: true,
+          },
+          with: {
             billingAddress: true,
           },
         },
@@ -500,51 +505,58 @@ export async function POST(
 
     // Fetch invoice office
     const invoiceOffice = order.invoiceOfficeId
-      ? await adminPrisma.office.findUnique({
-          where: { id: order.invoiceOfficeId },
-          select: {
-            id: true,
-            gstin: true,
-            address: true,
-            city: true,
-            state: true,
-            stateCode: true,
-            pincode: true,
-            country: true,
-          },
-        })
+      ? await dbAdmin
+          .select({
+            id: offices.id,
+            gstin: offices.gstin,
+            address: offices.address,
+            city: offices.city,
+            state: offices.state,
+            stateCode: offices.stateCode,
+            pincode: offices.pincode,
+            country: offices.country,
+          })
+          .from(offices)
+          .where(eq(offices.id, order.invoiceOfficeId))
+          .limit(1)
+          .then((rows) => rows[0] ?? null)
       : null;
 
     // Fetch bank details
-    const bank = await adminPrisma.account.findFirst({
-      where: { isDefault: true },
-    });
+    const [bank] = await dbAdmin
+      .select()
+      .from(accounts)
+      .where(eq(accounts.isDefault, true))
+      .limit(1);
 
     // Fetch product details for each order item
     const orderItemsWithProducts = await Promise.all(
       order.orderItems.map(async (item) => {
         try {
-          const product = await productPrisma.product.findUnique({
-            where: { id: item.productId },
-            select: {
-              name: true,
-              hsnsac: true,
-              weight: true,
-            },
-          });
+          const [product] = await dbProduct
+            .select({
+              name: products.name,
+              hsnsac: products.hsnsac,
+              weight: products.weight,
+            })
+            .from(products)
+            .where(eq(products.id, item.productId))
+            .limit(1);
           return {
             ...item,
             customWeightItem: item.customWeightItem === true,
-            customWeight: typeof item.customWeight === "number" ? item.customWeight : null,
+            customWeight:
+              typeof item.customWeight === "number" ? item.customWeight : null,
             productName: product?.name || `Product ${item.productId}`,
             hsnsac: product?.hsnsac || "-",
             weight: product?.weight ?? null,
           };
-        } catch (error) {
+        } catch {
           return {
             ...item,
             customWeightItem: item.customWeightItem === true,
-            customWeight: typeof item.customWeight === "number" ? item.customWeight : null,
+            customWeight:
+              typeof item.customWeight === "number" ? item.customWeight : null,
             productName: `Product ${item.productId}`,
             hsnsac: "-",
             weight: null,
@@ -562,16 +574,19 @@ export async function POST(
     const emailHTML = generatePIEmailHTML(orderWithProducts, bank, invoiceOffice);
 
     // Determine email configuration
-    let emailConfig;
+    let emailConfig:
+      | { host: string; port: number; user: string; password: string; from: string }
+      | undefined;
     let ccEmail: string | undefined;
 
     if (emailAccountId && emailAccountId !== "hello@aoac.in") {
-      // Fetch email account from database
-      const emailAccount = await adminPrisma.emailAccount.findUnique({
-        where: { id: emailAccountId },
-      });
+      const [emailAccountRow] = await dbAdmin
+        .select()
+        .from(emailAccounts)
+        .where(eq(emailAccounts.id, emailAccountId))
+        .limit(1);
 
-      if (!emailAccount) {
+      if (!emailAccountRow) {
         return NextResponse.json(
           { success: false, error: "Email account not found" },
           { status: 404 }
@@ -579,17 +594,15 @@ export async function POST(
       }
 
       emailConfig = {
-        host: emailAccount.smtpHost,
-        port: emailAccount.smtpPort,
-        user: emailAccount.smtpUser,
-        password: emailAccount.smtpPassword,
-        from: emailAccount.fromEmail,
+        host: emailAccountRow.smtpHost,
+        port: emailAccountRow.smtpPort,
+        user: emailAccountRow.smtpUser,
+        password: emailAccountRow.smtpPassword,
+        from: emailAccountRow.fromEmail,
       };
 
-      // Always CC hello@aoac.in when using other email accounts
       ccEmail = "hello@aoac.in";
     } else {
-      // Use .env configuration (hello@aoac.in)
       emailConfig = undefined;
     }
 
@@ -604,10 +617,12 @@ export async function POST(
       success: true,
       message: "PI email sent successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error sending PI email:", error);
+    const message =
+      error instanceof Error ? error.message : "Failed to send PI email";
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to send PI email" },
+      { success: false, error: message },
       { status: 500 }
     );
   }

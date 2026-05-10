@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { productPrisma } from "@/lib/product-prisma";
+import { desc, eq, like } from "drizzle-orm";
 
-// Function to generate product code
+import { dbProduct } from "@/lib/db";
+import {
+  productDiscountPrices,
+  productNutrition,
+  products,
+  productWeightDiscounts,
+} from "@/lib/db/product-schema";
+
 async function generateProductCode(
   vegetable: boolean,
   veg: boolean,
   frozen: boolean
 ): Promise<string> {
-  // Determine prefix based on product type
   let prefix: string;
   if (vegetable) {
     prefix = "VEG-";
@@ -17,37 +23,25 @@ async function generateProductCode(
     prefix = "PDR-";
   }
 
-  // Add veg/non-veg indicator
   const vegIndicator = veg ? "VEG" : "NVG";
   const baseCode = `${prefix}${vegIndicator}-`;
 
-  // Find the highest sequential number for this code pattern
-  const existingProducts = await productPrisma.product.findMany({
-    where: {
-      code: {
-        startsWith: baseCode,
-      },
-    },
-    select: {
-      code: true,
-    },
-    orderBy: {
-      code: "desc",
-    },
-  });
+  const [last] = await dbProduct
+    .select({ code: products.code })
+    .from(products)
+    .where(like(products.code, `${baseCode}%`))
+    .orderBy(desc(products.code))
+    .limit(1);
 
-  // Extract the highest number
   let nextNumber = 1;
-  if (existingProducts.length > 0) {
-    const lastCode = existingProducts[0].code;
-    const numberPart = lastCode.replace(baseCode, "");
+  if (last?.code) {
+    const numberPart = last.code.replace(baseCode, "");
     const parsedNumber = parseInt(numberPart, 10);
-    if (!isNaN(parsedNumber)) {
+    if (!Number.isNaN(parsedNumber)) {
       nextNumber = parsedNumber + 1;
     }
   }
 
-  // Format as 3-digit number
   const sequentialPart = nextNumber.toString().padStart(3, "0");
   return `${baseCode}${sequentialPart}`;
 }
@@ -58,30 +52,27 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const approved = searchParams.get("approved");
 
-    const where: any = {};
-    if (approved !== null) {
-      where.approved = approved === "true";
-    }
-
-    const products = await productPrisma.product.findMany({
-      where,
-      include: {
-        category: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+    const rows = await dbProduct.query.products.findMany({
+      where:
+        approved !== null
+          ? (p, { eq: eqOp }) => eqOp(p.approved, approved === "true")
+          : undefined,
+      with: { category: true },
+      orderBy: (p, { desc: d }) => [d(p.createdAt)],
     });
 
-    return NextResponse.json({ success: true, data: products });
-  } catch (error: any) {
+    return NextResponse.json({ success: true, data: rows });
+  } catch (error: unknown) {
     console.error("Error fetching products:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
+
+type NutritionBody = { name?: string; grams?: number | string };
 
 // POST create new product
 export async function POST(request: NextRequest) {
@@ -113,7 +104,6 @@ export async function POST(request: NextRequest) {
       nutrition,
     } = body;
 
-    // Validate required fields
     if (!name || !price || !tax || !categoryId) {
       return NextResponse.json(
         { success: false, error: "Missing required fields" },
@@ -121,10 +111,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate product code automatically
-    const vegetableValue = vegetable !== undefined ? vegetable : false;
-    const vegValue = veg !== undefined ? veg : false;
-    const frozenValue = frozen !== undefined ? frozen : false;
+    const vegetableValue = vegetable !== undefined ? Boolean(vegetable) : false;
+    const vegValue = veg !== undefined ? Boolean(veg) : false;
+    const frozenValue = frozen !== undefined ? Boolean(frozen) : false;
 
     const generatedCode = await generateProductCode(
       vegetableValue,
@@ -132,54 +121,101 @@ export async function POST(request: NextRequest) {
       frozenValue
     );
 
-    const product = await productPrisma.product.create({
-      data: {
-        code: generatedCode,
-        name,
-        description,
-        price: parseFloat(price),
-        regularPrice: regularPrice ? parseFloat(regularPrice) : null,
-        length: length ? parseFloat(length) : null,
-        breadth: breadth ? parseFloat(breadth) : null,
-        height: height ? parseFloat(height) : null,
-        weight: weight ? parseFloat(weight) : null,
-        packingWeight: packingWeight ? parseFloat(packingWeight) : null,
-        tax: parseInt(tax),
-        hsnsac: hsnsac || null,
-        mainImage,
-        images: images && typeof images === "string" ? JSON.parse(images) : images || null,
-        inStock: inStock !== undefined ? inStock : true,
-        approved: approved !== undefined ? approved : false,
-        webVisible: webVisible !== undefined ? webVisible : true,
-        stockCount: stockCount ? parseInt(stockCount) : null,
-        vegetable: vegetableValue,
-        veg: vegValue,
-        frozen: frozenValue,
-        categoryId,
-        createdBy: "4568",
-        updatedBy: updatedBy || "4568",
-        nutrition: nutrition && Array.isArray(nutrition) && nutrition.length > 0
-          ? {
-              create: nutrition.map((n: any) => ({
-                name: n.name,
-                grams: parseFloat(n.grams) || 0,
-              })),
-            }
-          : undefined,
-      },
-      include: {
-        category: true,
-        nutrition: true,
-      },
+    let parsedImages: unknown = null;
+    if (images && typeof images === "string") {
+      try {
+        parsedImages = JSON.parse(images) as unknown;
+      } catch {
+        parsedImages = null;
+      }
+    } else if (images != null) {
+      parsedImages = images;
+    }
+
+    const nutritionList: NutritionBody[] = Array.isArray(nutrition)
+      ? nutrition
+      : [];
+
+    const now = new Date();
+    const productId = await dbProduct.transaction(async (tx) => {
+      const [p] = await tx
+        .insert(products)
+        .values({
+          code: generatedCode,
+          name,
+          description,
+          price: parseFloat(String(price)),
+          regularPrice: regularPrice ? parseFloat(String(regularPrice)) : null,
+          length: length ? parseFloat(String(length)) : null,
+          breadth: breadth ? parseFloat(String(breadth)) : null,
+          height: height ? parseFloat(String(height)) : null,
+          weight: weight ? parseFloat(String(weight)) : null,
+          packingWeight: packingWeight
+            ? parseFloat(String(packingWeight))
+            : null,
+          tax: parseInt(String(tax), 10),
+          hsnsac: hsnsac || null,
+          mainImage,
+          images: parsedImages,
+          inStock: inStock !== undefined ? Boolean(inStock) : true,
+          approved: approved !== undefined ? Boolean(approved) : false,
+          webVisible: webVisible !== undefined ? Boolean(webVisible) : true,
+          stockCount: stockCount ? parseInt(String(stockCount), 10) : null,
+          vegetable: vegetableValue,
+          veg: vegValue,
+          frozen: frozenValue,
+          categoryId,
+          createdBy: "4568",
+          updatedBy: updatedBy || "4568",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning({ id: products.id });
+
+      if (!p) {
+        throw new Error("Failed to create product");
+      }
+
+      const validNutrition = nutritionList.filter(
+        (n) => n?.name && n?.grams !== undefined
+      );
+      if (validNutrition.length > 0) {
+        await tx.insert(productNutrition).values(
+          validNutrition.map((n) => ({
+            productId: p.id,
+            name: String(n.name),
+            grams: parseFloat(String(n.grams)) || 0,
+            createdAt: now,
+            updatedAt: now,
+          }))
+        );
+      }
+
+      return p.id;
     });
 
-    return NextResponse.json({ success: true, data: product }, { status: 201 });
-  } catch (error: any) {
-    console.error("Error creating product:", error);
+    const product = await dbProduct.query.products.findFirst({
+      where: eq(products.id, productId),
+      with: { category: true, nutrition: true },
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        { success: false, error: "Failed to load product" },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: true, data: product },
+      { status: 201 }
+    );
+  } catch (error: unknown) {
+    console.error("Error creating product:", error);
+    const message = error instanceof Error ? error.message : "Server error";
+    return NextResponse.json(
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
-

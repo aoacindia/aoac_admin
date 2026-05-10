@@ -2,7 +2,9 @@ import 'server-only';
 import fs from 'fs';
 import path from 'path';
 import { PDFDocument, PageSizes, StandardFonts, rgb, PDFPage, PDFFont, PDFImage } from 'pdf-lib';
-import { adminPrisma } from './admin-prisma';
+import { eq } from 'drizzle-orm';
+import { dbAdmin } from '@/lib/db';
+import { accounts as adminAccountsTable } from '@/lib/db/admin-schema';
 
 interface SuspensionReason {
   id: string;
@@ -872,7 +874,11 @@ export async function generateInvoicePDF(
   copies: InvoiceCopyType[] = ['original']
 ): Promise<Uint8Array> {
   return createPdfBuffer(async (ctx) => {
-    const bank = await adminPrisma.account.findFirst({ where: { isDefault: true } });
+    const [bank] = await dbAdmin
+      .select()
+      .from(adminAccountsTable)
+      .where(eq(adminAccountsTable.isDefault, true))
+      .limit(1);
     const logoPath = path.join(process.cwd(), 'public/logo/logo.png');
     const signPath = path.join(process.cwd(), 'public/img/imp/auth_sign.png');
     const logoImage = fs.existsSync(logoPath)

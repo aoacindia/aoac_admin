@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { userPrisma } from "@/lib/user-prisma";
+import { count, desc } from "drizzle-orm";
+
+import { dbUser } from "@/lib/db";
+import { contacts } from "@/lib/db/user-schema";
 
 // GET all contacts
 export async function GET(request: NextRequest) {
@@ -10,19 +13,19 @@ export async function GET(request: NextRequest) {
     const safePage = Number.isFinite(page) && page > 0 ? page : 1;
     const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 10;
 
-    const total = await userPrisma.contact.count();
+    const [countRow] = await dbUser.select({ c: count() }).from(contacts);
+    const total = Number(countRow?.c ?? 0);
 
-    const contacts = await userPrisma.contact.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
-      skip: (safePage - 1) * safeLimit,
-      take: safeLimit,
-    });
+    const rows = await dbUser
+      .select()
+      .from(contacts)
+      .orderBy(desc(contacts.createdAt))
+      .limit(safeLimit)
+      .offset((safePage - 1) * safeLimit);
 
     return NextResponse.json({
       success: true,
-      data: contacts,
+      data: rows,
       meta: {
         total,
         page: safePage,
@@ -30,10 +33,11 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / safeLimit),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching contacts:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }

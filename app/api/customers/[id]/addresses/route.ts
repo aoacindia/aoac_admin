@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { userPrisma } from "@/lib/user-prisma";
+import { desc, eq } from "drizzle-orm";
+
+import { dbUser } from "@/lib/db";
+import { users } from "@/lib/db/user-schema";
 
 // GET all addresses for a customer
 export async function GET(
@@ -8,16 +11,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    
-    // Optimize: Get customer and addresses in a single query using include
-    const customer = await userPrisma.user.findUnique({
-      where: { id },
-      select: {
-        id: true,
+
+    const customer = await dbUser.query.users.findFirst({
+      where: eq(users.id, id),
+      columns: { id: true },
+      with: {
         addresses: {
-          orderBy: {
-            createdAt: "desc",
-          },
+          orderBy: (a, { desc: d }) => [d(a.createdAt)],
         },
       },
     });
@@ -30,24 +30,12 @@ export async function GET(
     }
 
     return NextResponse.json({ success: true, data: customer.addresses });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching customer addresses:", error);
-    
-    // Handle connection pool timeout specifically
-    if (error.code === "P2024") {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: "Database connection timeout. Please try again in a moment." 
-        },
-        { status: 503 }
-      );
-    }
-    
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message || "Internal server error" },
+      { success: false, error: message || "Internal server error" },
       { status: 500 }
     );
   }
 }
-

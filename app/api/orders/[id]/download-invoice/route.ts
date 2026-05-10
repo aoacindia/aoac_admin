@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { userPrisma } from "@/lib/user-prisma";
-import { adminPrisma } from "@/lib/admin-prisma";
-import { productPrisma } from "@/lib/product-prisma";
+import { eq } from "drizzle-orm";
+
 import { generateInvoicePDF, generateOrderItemsPDF } from "@/lib/pdf-generator";
+import { dbAdmin, dbProduct, dbUser } from "@/lib/db";
+import { offices } from "@/lib/db/admin-schema";
+import { products } from "@/lib/db/product-schema";
+import { orders } from "@/lib/db/user-schema";
 import { requireAdminApi } from "@/lib/require-admin";
 
 export async function POST(
@@ -32,11 +35,11 @@ export async function POST(
       copies = [];
     }
     
-    const order = await userPrisma.order.findUnique({
-      where: { id },
-      include: {
+    const order = await dbUser.query.orders.findFirst({
+      where: eq(orders.id, id),
+      with: {
         user: {
-          select: {
+          columns: {
             id: true,
             name: true,
             email: true,
@@ -46,6 +49,8 @@ export async function POST(
             isBusinessAccount: true,
             hasAdditionalTradeName: true,
             additionalTradeName: true,
+          },
+          with: {
             billingAddress: true,
           },
         },
@@ -63,19 +68,21 @@ export async function POST(
     }
 
     const invoiceOffice = order.invoiceOfficeId
-      ? await adminPrisma.office.findUnique({
-          where: { id: order.invoiceOfficeId },
-          select: {
-            id: true,
-            gstin: true,
-            address: true,
-          city: true,
-            state: true,
-            stateCode: true,
-            pincode: true,
-            country: true,
-          },
-        })
+      ? await dbAdmin
+          .select({
+            id: offices.id,
+            gstin: offices.gstin,
+            address: offices.address,
+            city: offices.city,
+            state: offices.state,
+            stateCode: offices.stateCode,
+            pincode: offices.pincode,
+            country: offices.country,
+          })
+          .from(offices)
+          .where(eq(offices.id, order.invoiceOfficeId))
+          .limit(1)
+          .then((r) => r[0] ?? null)
       : null;
     const normalizedInvoiceOffice = invoiceOffice
       ? {
@@ -89,27 +96,30 @@ export async function POST(
     const orderItemsWithProducts = await Promise.all(
       order.orderItems.map(async (item) => {
         try {
-          const product = await productPrisma.product.findUnique({
-            where: { id: item.productId },
-            select: {
-              name: true,
-              hsnsac: true,
-              weight: true,
-            },
-          });
+          const [product] = await dbProduct
+            .select({
+              name: products.name,
+              hsnsac: products.hsnsac,
+              weight: products.weight,
+            })
+            .from(products)
+            .where(eq(products.id, item.productId))
+            .limit(1);
           return {
             ...item,
             customWeightItem: item.customWeightItem === true,
-            customWeight: typeof item.customWeight === "number" ? item.customWeight : null,
+            customWeight:
+              typeof item.customWeight === "number" ? item.customWeight : null,
             productName: product?.name || `Product ${item.productId}`,
             hsnsac: product?.hsnsac || "-",
             weight: product?.weight ?? null,
           };
-        } catch (error) {
+        } catch {
           return {
             ...item,
             customWeightItem: item.customWeightItem === true,
-            customWeight: typeof item.customWeight === "number" ? item.customWeight : null,
+            customWeight:
+              typeof item.customWeight === "number" ? item.customWeight : null,
             productName: `Product ${item.productId}`,
             hsnsac: "-",
             weight: null,
@@ -149,10 +159,11 @@ export async function POST(
         }-${order.InvoiceNumber || order.id}-${Date.now()}.pdf"`,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error generating invoice PDF:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }

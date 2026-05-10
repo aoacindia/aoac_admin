@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminPrisma } from "@/lib/admin-prisma";
+import { eq } from "drizzle-orm";
+
+import { dbAdmin } from "@/lib/db";
+import { accounts } from "@/lib/db/admin-schema";
 
 export async function GET(
   request: NextRequest,
@@ -7,9 +10,11 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const account = await adminPrisma.account.findUnique({
-      where: { id },
-    });
+    const [account] = await dbAdmin
+      .select()
+      .from(accounts)
+      .where(eq(accounts.id, id))
+      .limit(1);
 
     if (!account) {
       return NextResponse.json(
@@ -19,10 +24,11 @@ export async function GET(
     }
 
     return NextResponse.json({ success: true, data: account });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching account:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
@@ -52,9 +58,11 @@ export async function PUT(
       );
     }
 
-    const existingAccount = await adminPrisma.account.findUnique({
-      where: { id },
-    });
+    const [existingAccount] = await dbAdmin
+      .select()
+      .from(accounts)
+      .where(eq(accounts.id, id))
+      .limit(1);
 
     if (!existingAccount) {
       return NextResponse.json(
@@ -73,25 +81,48 @@ export async function PUT(
       isDefault: Boolean(isDefault),
     };
 
-    if (payload.isDefault) {
-      const [, account] = await adminPrisma.$transaction([
-        adminPrisma.account.updateMany({ data: { isDefault: false } }),
-        adminPrisma.account.update({ where: { id }, data: payload }),
-      ]);
+    const now = new Date();
 
-      return NextResponse.json({ success: true, data: account });
+    if (payload.isDefault) {
+      const updated = await dbAdmin.transaction(async (tx) => {
+        await tx.update(accounts).set({ isDefault: false, updatedAt: now });
+        const [row] = await tx
+          .update(accounts)
+          .set({ ...payload, updatedAt: now })
+          .where(eq(accounts.id, id))
+          .returning();
+        return row;
+      });
+
+      if (!updated) {
+        return NextResponse.json(
+          { success: false, error: "Update failed" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ success: true, data: updated });
     }
 
-    const account = await adminPrisma.account.update({
-      where: { id },
-      data: payload,
-    });
+    const [account] = await dbAdmin
+      .update(accounts)
+      .set({ ...payload, updatedAt: now })
+      .where(eq(accounts.id, id))
+      .returning();
+
+    if (!account) {
+      return NextResponse.json(
+        { success: false, error: "Update failed" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ success: true, data: account });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating account:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
@@ -104,9 +135,11 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    const existingAccount = await adminPrisma.account.findUnique({
-      where: { id },
-    });
+    const [existingAccount] = await dbAdmin
+      .select({ id: accounts.id })
+      .from(accounts)
+      .where(eq(accounts.id, id))
+      .limit(1);
 
     if (!existingAccount) {
       return NextResponse.json(
@@ -115,17 +148,18 @@ export async function DELETE(
       );
     }
 
-    await adminPrisma.account.delete({
-      where: { id },
-    });
+    await dbAdmin.delete(accounts).where(eq(accounts.id, id));
 
-    return NextResponse.json({ success: true, message: "Account deleted successfully" });
-  } catch (error: any) {
+    return NextResponse.json({
+      success: true,
+      message: "Account deleted successfully",
+    });
+  } catch (error: unknown) {
     console.error("Error deleting account:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
-

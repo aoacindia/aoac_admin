@@ -1,6 +1,10 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import { eq, or } from "drizzle-orm";
+
+import { dbAdmin } from "@/lib/db";
+import { adminOtpVerifications, adminUsers } from "@/lib/db/admin-schema";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
@@ -26,36 +30,37 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        const { adminPrisma } = await import("@/lib/admin-prisma");
-
-        const user = await adminPrisma.user.findFirst({
-          where: {
-            OR: [{ email: identifier }, { phone: identifier }],
-          },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            role: true,
-            suspended: true,
-            terminated: true,
-          },
-        });
+        const [user] = await dbAdmin
+          .select({
+            id: adminUsers.id,
+            name: adminUsers.name,
+            email: adminUsers.email,
+            phone: adminUsers.phone,
+            role: adminUsers.role,
+            suspended: adminUsers.suspended,
+            terminated: adminUsers.terminated,
+          })
+          .from(adminUsers)
+          .where(
+            or(eq(adminUsers.email, identifier), eq(adminUsers.phone, identifier))
+          )
+          .limit(1);
 
         if (!user || user.suspended || user.terminated) {
           return null;
         }
 
-        const otpRecord = await adminPrisma.otpVerification.findUnique({
-          where: { token },
-        });
+        const [otpRecord] = await dbAdmin
+          .select()
+          .from(adminOtpVerifications)
+          .where(eq(adminOtpVerifications.token, token))
+          .limit(1);
 
         if (!otpRecord || otpRecord.expiresAt < new Date()) {
           if (otpRecord) {
-            await adminPrisma.otpVerification.delete({
-              where: { id: otpRecord.id },
-            });
+            await dbAdmin
+              .delete(adminOtpVerifications)
+              .where(eq(adminOtpVerifications.id, otpRecord.id));
           }
           return null;
         }
@@ -69,9 +74,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        await adminPrisma.otpVerification.delete({
-          where: { id: otpRecord.id },
-        });
+        await dbAdmin
+          .delete(adminOtpVerifications)
+          .where(eq(adminOtpVerifications.id, otpRecord.id));
 
         return {
           id: user.id,

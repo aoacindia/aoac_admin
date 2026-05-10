@@ -1,72 +1,107 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { Prisma } from "@/prisma/generated/user";
-import { userPrisma } from "@/lib/user-prisma";
-import { adminPrisma } from "@/lib/admin-prisma";
-import { productPrisma } from "@/lib/product-prisma";
-import { requireAdminApi } from "@/lib/require-admin";
+import {
+  and,
+  desc,
+  eq,
+  exists,
+  gte,
+  inArray,
+  isNull,
+  lte,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
+
 import {
   aggregateOrderTaxBuckets,
   bucketsToSortedArray,
 } from "@/lib/order-tax";
 import { aggregateHsnSummary, type OrderForHsn } from "@/lib/hsn-summary";
+import { requireAdminApi } from "@/lib/require-admin";
+import { dbAdmin, dbProduct, dbUser } from "@/lib/db";
+import { offices } from "@/lib/db/admin-schema";
+import { products } from "@/lib/db/product-schema";
+import { orders, users } from "@/lib/db/user-schema";
+import type { OrderItemRow } from "@/lib/db/user-schema";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
-type OrderForCombinedTotals = Prisma.OrderGetPayload<{
-  select: {
-    invoiceOfficeId: true;
-    shippingAmount: true;
-    orderItems: true;
-    user: { select: { billingAddress: { select: { stateCode: true } } } };
-  };
-}>;
+type OrderForCombinedTotals = {
+  invoiceOfficeId: string | null;
+  shippingAmount: number | null;
+  orderItems: OrderItemRow[];
+  user: {
+    billingAddress: { stateCode: string | null } | null;
+  } | null;
+};
 
-type OrderBusinessStandard = Prisma.OrderGetPayload<{
-  include: {
-    orderItems: true;
-    user: { select: { gstNumber: true; businessName: true; name: true } };
-    shippingAddress: true;
+type OrderBusinessStandard = {
+  id: string;
+  invoiceOfficeId: string | null;
+  orderItems: OrderItemRow[];
+  shippingAmount: number | null;
+  invoiceAmount: number | null;
+  totalAmount: number;
+  InvoiceNumber: string | null;
+  orderDate: Date;
+  user: {
+    gstNumber: string | null;
+    businessName: string | null;
+    name: string;
   };
-}>;
+};
 
-type OrderPersonalStandard = Prisma.OrderGetPayload<{
-  include: {
-    orderItems: true;
-    shippingAddress: true;
-  };
-}>;
+type OrderPersonalStandard = {
+  id: string;
+  invoiceOfficeId: string | null;
+  orderItems: OrderItemRow[];
+  shippingAmount: number | null;
+  shippingAddress: { state: string | null } | null;
+};
 
-type OrderBusinessHsn = Prisma.OrderGetPayload<{
-  include: {
-    orderItems: true;
-    user: {
-      select: {
-        gstNumber: true;
-        businessName: true;
-        name: true;
-        billingAddress: { select: { stateCode: true } };
-      };
-    };
-    shippingAddress: true;
+type OrderBusinessHsn = OrderBusinessStandard & {
+  user: OrderBusinessStandard["user"] & {
+    billingAddress: { stateCode: string | null } | null;
   };
-}>;
+  shippingAddress: { stateCode: string | null } | null;
+};
 
-type OrderPersonalHsn = Prisma.OrderGetPayload<{
-  include: {
-    orderItems: true;
-    shippingAddress: true;
-    user: { select: { billingAddress: { select: { stateCode: true } } } };
-  };
-}>;
+type OrderPersonalHsn = OrderPersonalStandard & {
+  user: {
+    billingAddress: { stateCode: string | null } | null;
+  } | null;
+};
+
+function businessUserSubquery(orderByRef: AnyPgColumn) {
+  return exists(
+    dbUser
+      .select({ o: sql`1` })
+      .from(users)
+      .where(
+        and(eq(users.id, orderByRef), eq(users.isBusinessAccount, true))
+      )
+  );
+}
+
+function personalUserSubquery(orderByRef: AnyPgColumn) {
+  return exists(
+    dbUser
+      .select({ o: sql`1` })
+      .from(users)
+      .where(
+        and(
+          eq(users.id, orderByRef),
+          or(eq(users.isBusinessAccount, false), isNull(users.isBusinessAccount))
+        )
+      )
+  );
+}
 
 /** Calendar month in local server TZ: first instant to last instant of that month. */
 function getOrderDateFilterForMonthYear(month: number, year: number) {
   const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
   const end = new Date(year, month, 0, 23, 59, 59, 999);
-  return {
-    orderDate: {
-      gte: start,
-      lte: end,
-    },
-  };
+  return { start, end };
 }
 
 function parseMonthYearQuery(searchParams: URLSearchParams):
@@ -74,7 +109,12 @@ function parseMonthYearQuery(searchParams: URLSearchParams):
   | { ok: false; error: string } {
   const monthRaw = searchParams.get("month");
   const yearRaw = searchParams.get("year");
-  if (monthRaw === null || yearRaw === null || monthRaw === "" || yearRaw === "") {
+  if (
+    monthRaw === null ||
+    yearRaw === null ||
+    monthRaw === "" ||
+    yearRaw === ""
+  ) {
     return { ok: false, error: "month and year are required" };
   }
   const month = Number(monthRaw);
@@ -88,7 +128,6 @@ function parseMonthYearQuery(searchParams: URLSearchParams):
   return { ok: true, month, year };
 }
 
-/** b2b / b2c = order summaries; hsn-b2b / hsn-b2c = HSN-wise GST for that segment. */
 function parseSegment(
   searchParams: URLSearchParams
 ): "b2b" | "b2c" | "hsn-b2b" | "hsn-b2c" | null {
@@ -104,11 +143,6 @@ function parseSegment(
   return null;
 }
 
-/**
- * `orderedOfficeIds`: all invoice offices (same order as dropdown, e.g. newest first).
- * Auto-selects index 1 when there are ≥2 offices; else index 0.
- * If `requested` is a valid id in that list, use it.
- */
 function resolveB2bSellerOfficeId(
   orderedOfficeIds: string[],
   requested: string | null
@@ -121,60 +155,15 @@ function resolveB2bSellerOfficeId(
   return autoDefault;
 }
 
-const businessWhereBase = { isBusinessAccount: true as const };
-const personalWhereUser = {
-  OR: [{ isBusinessAccount: false }, { isBusinessAccount: null }],
-};
-
-const businessIncludeStandard = {
-  orderItems: true,
-  user: {
-    select: {
-      gstNumber: true,
-      businessName: true,
-      name: true,
-    },
-  },
-  shippingAddress: true,
-} as const;
-
-const businessIncludeHsn = {
-  orderItems: true,
-  user: {
-    select: {
-      gstNumber: true,
-      businessName: true,
-      name: true,
-      billingAddress: { select: { stateCode: true } },
-    },
-  },
-  shippingAddress: true,
-} as const;
-
-const personalIncludeStandard = {
-  orderItems: true,
-  shippingAddress: true,
-} as const;
-
-const personalIncludeHsn = {
-  orderItems: true,
-  shippingAddress: true,
-  user: {
-    select: {
-      billingAddress: { select: { stateCode: true } },
-    },
-  },
-} as const;
-
 async function fetchProductHsns(
   productIds: string[]
 ): Promise<Map<string, string | null>> {
   if (productIds.length === 0) return new Map();
-  const products = await productPrisma.product.findMany({
-    where: { id: { in: productIds } },
-    select: { id: true, hsnsac: true },
-  });
-  return new Map(products.map((p) => [p.id, p.hsnsac]));
+  const rows = await dbProduct
+    .select({ id: products.id, hsnsac: products.hsnsac })
+    .from(products)
+    .where(inArray(products.id, productIds));
+  return new Map(rows.map((p) => [p.id, p.hsnsac]));
 }
 
 function normalizeStateCode(code: unknown): string | null {
@@ -184,15 +173,15 @@ function normalizeStateCode(code: unknown): string | null {
 }
 
 function computeCombinedTaxTotals(
-  orders: OrderForCombinedTotals[],
-  officeStateCodeById: Map<string, unknown>
+  orderRows: OrderForCombinedTotals[],
+  officeStateCodeById: Map<string, string | null>
 ): { taxableAmount: number; igst: number; cgst: number; sgst: number } {
   let taxableAmount = 0;
   let igst = 0;
   let cgst = 0;
   let sgst = 0;
 
-  for (const order of orders) {
+  for (const order of orderRows) {
     const officeStateCode = order.invoiceOfficeId
       ? normalizeStateCode(officeStateCodeById.get(order.invoiceOfficeId))
       : null;
@@ -243,15 +232,17 @@ export async function GET(request: NextRequest) {
       );
     }
     const { month, year } = parsed;
-    const dateWhere = getOrderDateFilterForMonthYear(month, year);
+    const { start, end } = getOrderDateFilterForMonthYear(month, year);
     const segment = parseSegment(searchParams);
-    /** Tab-only refreshes omit this to skip B2B+B2C wide queries used for the combined totals strip */
     const includeTotals = searchParams.get("includeTotals") !== "false";
 
-    const allOfficesForSelect = await adminPrisma.office.findMany({
-      orderBy: { createdAt: "desc" },
-      select: { id: true, gstin: true },
-    });
+    const allOfficesForSelect = await dbAdmin
+      .select({
+        id: offices.id,
+        gstin: offices.gstin,
+      })
+      .from(offices)
+      .orderBy(desc(offices.createdAt));
     const invoiceOfficesPayload = allOfficesForSelect.map((o) => ({
       id: o.id,
       gstin: o.gstin,
@@ -264,103 +255,171 @@ export async function GET(request: NextRequest) {
       requestedSeller
     );
 
-    const officeFilter =
-      selectedInvoiceOfficeId != null
-        ? { invoiceOfficeId: selectedInvoiceOfficeId }
-        : {};
+    type OrderWhereCols = {
+      orderDate: typeof orders.orderDate;
+      orderBy: typeof orders.orderBy;
+      status: typeof orders.status;
+      invoiceOfficeId: typeof orders.invoiceOfficeId;
+    };
 
-    const businessWhere = {
-      ...dateWhere,
-      status: { not: "PENDING" as const },
-      user: businessWhereBase,
-      ...officeFilter,
-    };
-    const personalWhere = {
-      ...dateWhere,
-      status: { not: "PENDING" as const },
-      user: personalWhereUser,
-      ...officeFilter,
-    };
+    const officeEq = (o: OrderWhereCols) =>
+      selectedInvoiceOfficeId
+        ? eq(o.invoiceOfficeId, selectedInvoiceOfficeId)
+        : sql`true`;
+
+    const businessWhereCore = (o: OrderWhereCols) =>
+      and(
+        gte(o.orderDate, start),
+        lte(o.orderDate, end),
+        ne(o.status, "PENDING"),
+        businessUserSubquery(o.orderBy),
+        officeEq(o)
+      );
+
+    const personalWhereCore = (o: OrderWhereCols) =>
+      and(
+        gte(o.orderDate, start),
+        lte(o.orderDate, end),
+        ne(o.status, "PENDING"),
+        personalUserSubquery(o.orderBy),
+        officeEq(o)
+      );
 
     let businessOrdersForTotals: OrderForCombinedTotals[] = [];
     let personalOrdersForTotals: OrderForCombinedTotals[] = [];
 
-    // B2B + B2C order sets for combined tax totals (skipped on tab-only refetch)
     if (includeTotals) {
       const [bizT, persT] = await Promise.all([
-        userPrisma.order.findMany({
-          where: businessWhere,
-          select: {
+        dbUser.query.orders.findMany({
+          where: (o) => businessWhereCore(o),
+          columns: {
             invoiceOfficeId: true,
             shippingAmount: true,
+          },
+          with: {
             orderItems: true,
             user: {
-              select: { billingAddress: { select: { stateCode: true } } },
+              columns: { id: true },
+              with: {
+                billingAddress: { columns: { stateCode: true } },
+              },
             },
           },
-          orderBy: { orderDate: "desc" },
+          orderBy: (o, { desc: d }) => [d(o.orderDate)],
         }),
-        userPrisma.order.findMany({
-          where: personalWhere,
-          select: {
+        dbUser.query.orders.findMany({
+          where: (o) => personalWhereCore(o),
+          columns: {
             invoiceOfficeId: true,
             shippingAmount: true,
+          },
+          with: {
             orderItems: true,
             user: {
-              select: { billingAddress: { select: { stateCode: true } } },
+              columns: { id: true },
+              with: {
+                billingAddress: { columns: { stateCode: true } },
+              },
             },
           },
-          orderBy: { orderDate: "desc" },
+          orderBy: (o, { desc: d }) => [d(o.orderDate)],
         }),
       ]);
-      businessOrdersForTotals = bizT;
-      personalOrdersForTotals = persT;
+
+      businessOrdersForTotals = bizT as OrderForCombinedTotals[];
+      personalOrdersForTotals = persT as OrderForCombinedTotals[];
     }
 
     let businessOrders: OrderBusinessStandard[] | OrderBusinessHsn[] = [];
     let personalOrders: OrderPersonalStandard[] | OrderPersonalHsn[] = [];
 
     if (segment === "b2b") {
-      businessOrders = await userPrisma.order.findMany({
-        where: businessWhere,
-        include: businessIncludeStandard,
-        orderBy: { orderDate: "desc" },
-      });
-      personalOrders = [];
+      businessOrders = (await dbUser.query.orders.findMany({
+        where: (o) => businessWhereCore(o),
+        with: {
+          orderItems: true,
+          user: {
+            columns: {
+              gstNumber: true,
+              businessName: true,
+              name: true,
+            },
+          },
+          shippingAddress: true,
+        },
+        orderBy: (o, { desc: d }) => [d(o.orderDate)],
+      })) as OrderBusinessStandard[];
     } else if (segment === "b2c") {
-      businessOrders = [];
-      personalOrders = await userPrisma.order.findMany({
-        where: personalWhere,
-        include: personalIncludeStandard,
-        orderBy: { orderDate: "desc" },
-      });
+      personalOrders = (await dbUser.query.orders.findMany({
+        where: (o) => personalWhereCore(o),
+        with: {
+          orderItems: true,
+          shippingAddress: true,
+        },
+        orderBy: (o, { desc: d }) => [d(o.orderDate)],
+      })) as OrderPersonalStandard[];
     } else if (segment === "hsn-b2b") {
-      businessOrders = await userPrisma.order.findMany({
-        where: businessWhere,
-        include: businessIncludeHsn,
-        orderBy: { orderDate: "desc" },
-      });
-      personalOrders = [];
+      businessOrders = (await dbUser.query.orders.findMany({
+        where: (o) => businessWhereCore(o),
+        with: {
+          orderItems: true,
+          user: {
+            columns: {
+              gstNumber: true,
+              businessName: true,
+              name: true,
+            },
+            with: {
+              billingAddress: { columns: { stateCode: true } },
+            },
+          },
+          shippingAddress: true,
+        },
+        orderBy: (o, { desc: d }) => [d(o.orderDate)],
+      })) as OrderBusinessHsn[];
     } else if (segment === "hsn-b2c") {
-      businessOrders = [];
-      personalOrders = await userPrisma.order.findMany({
-        where: personalWhere,
-        include: personalIncludeHsn,
-        orderBy: { orderDate: "desc" },
-      });
+      personalOrders = (await dbUser.query.orders.findMany({
+        where: (o) => personalWhereCore(o),
+        with: {
+          orderItems: true,
+          shippingAddress: true,
+          user: {
+            columns: { id: true },
+            with: {
+              billingAddress: { columns: { stateCode: true } },
+            },
+          },
+        },
+        orderBy: (o, { desc: d }) => [d(o.orderDate)],
+      })) as OrderPersonalHsn[];
     } else {
-      [businessOrders, personalOrders] = await Promise.all([
-        userPrisma.order.findMany({
-          where: businessWhere,
-          include: businessIncludeStandard,
-          orderBy: { orderDate: "desc" },
+      const [b, p] = await Promise.all([
+        dbUser.query.orders.findMany({
+          where: (o) => businessWhereCore(o),
+          with: {
+            orderItems: true,
+            user: {
+              columns: {
+                gstNumber: true,
+                businessName: true,
+                name: true,
+              },
+            },
+            shippingAddress: true,
+          },
+          orderBy: (o, { desc: d }) => [d(o.orderDate)],
         }),
-        userPrisma.order.findMany({
-          where: personalWhere,
-          include: personalIncludeStandard,
-          orderBy: { orderDate: "desc" },
+        dbUser.query.orders.findMany({
+          where: (o) => personalWhereCore(o),
+          with: {
+            orderItems: true,
+            shippingAddress: true,
+          },
+          orderBy: (o, { desc: d }) => [d(o.orderDate)],
         }),
       ]);
+      businessOrders = b as OrderBusinessStandard[];
+      personalOrders = p as OrderPersonalStandard[];
     }
 
     const officeIds = [
@@ -372,18 +431,22 @@ export async function GET(request: NextRequest) {
           ...personalOrdersForTotals,
         ]
           .map((o) => o.invoiceOfficeId)
-          .filter((id): id is string => Boolean(id))
+          .filter((oid): oid is string => Boolean(oid))
       ),
     ];
-    const offices =
+    const officeRows =
       officeIds.length > 0
-        ? await adminPrisma.office.findMany({
-            where: { id: { in: officeIds } },
-            select: { id: true, gstin: true, stateCode: true },
-          })
+        ? await dbAdmin
+            .select({
+              id: offices.id,
+              gstin: offices.gstin,
+              stateCode: offices.stateCode,
+            })
+            .from(offices)
+            .where(inArray(offices.id, officeIds))
         : [];
     const officeStateCodeById = new Map(
-      offices.map((o) => [o.id, o.stateCode])
+      officeRows.map((o) => [o.id, o.stateCode])
     );
 
     let totals:
@@ -416,7 +479,7 @@ export async function GET(request: NextRequest) {
       ];
       const productHsnById = await fetchProductHsns(productIds);
       hsnSummary = aggregateHsnSummary(
-        ordersRaw as OrderForHsn[],
+        ordersRaw as unknown as OrderForHsn[],
         productHsnById,
         officeStateCodeById
       );
@@ -425,31 +488,31 @@ export async function GET(request: NextRequest) {
     const business = isHsnSegment
       ? []
       : (businessOrders as OrderBusinessStandard[]).map((order) => {
-            const buckets = aggregateOrderTaxBuckets(
-              order.orderItems,
-              order.shippingAmount
-            );
-            const taxBreakdown = bucketsToSortedArray(buckets);
-            const invoiceTotal =
-              order.invoiceAmount ??
-              order.totalAmount ??
-              taxBreakdown.reduce((s, r) => s + r.grossAmount, 0);
+          const buckets = aggregateOrderTaxBuckets(
+            order.orderItems,
+            order.shippingAmount
+          );
+          const taxBreakdown = bucketsToSortedArray(buckets);
+          const invoiceTotal =
+            order.invoiceAmount ??
+            order.totalAmount ??
+            taxBreakdown.reduce((s, r) => s + r.grossAmount, 0);
 
-            return {
-              orderId: order.id,
-              buyerGstin: order.user.gstNumber?.trim() || null,
-              invoiceNumber: order.InvoiceNumber,
-              orderDate: order.orderDate.toISOString(),
-              invoiceTotalRounded: Math.round(Number(invoiceTotal)),
-              taxBreakdown: taxBreakdown.map((r) => ({
-                taxPercent: r.taxPercent,
-                grossAmount: r.grossAmount,
-                taxableAmount: r.taxableAmount,
-              })),
-              customerLabel:
-                order.user.businessName?.trim() || order.user.name || "—",
-            };
-          });
+          return {
+            orderId: order.id,
+            buyerGstin: order.user.gstNumber?.trim() || null,
+            invoiceNumber: order.InvoiceNumber,
+            orderDate: order.orderDate.toISOString(),
+            invoiceTotalRounded: Math.round(Number(invoiceTotal)),
+            taxBreakdown: taxBreakdown.map((r) => ({
+              taxPercent: r.taxPercent,
+              grossAmount: r.grossAmount,
+              taxableAmount: r.taxableAmount,
+            })),
+            customerLabel:
+              order.user.businessName?.trim() || order.user.name || "—",
+          };
+        });
 
     const personalByStateTax = new Map<
       string,

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminPrisma } from "@/lib/admin-prisma";
+import { and, eq, ne } from "drizzle-orm";
+
+import { dbAdmin } from "@/lib/db";
+import { offices } from "@/lib/db/admin-schema";
 
 export async function GET(
   request: NextRequest,
@@ -7,9 +10,11 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const office = await adminPrisma.office.findUnique({
-      where: { id },
-    });
+    const [office] = await dbAdmin
+      .select()
+      .from(offices)
+      .where(eq(offices.id, id))
+      .limit(1);
 
     if (!office) {
       return NextResponse.json(
@@ -19,10 +24,11 @@ export async function GET(
     }
 
     return NextResponse.json({ success: true, data: office });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching office:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
@@ -44,9 +50,11 @@ export async function PUT(
       );
     }
 
-    const existingOffice = await adminPrisma.office.findUnique({
-      where: { id },
-    });
+    const [existingOffice] = await dbAdmin
+      .select()
+      .from(offices)
+      .where(eq(offices.id, id))
+      .limit(1);
 
     if (!existingOffice) {
       return NextResponse.json(
@@ -55,23 +63,23 @@ export async function PUT(
       );
     }
 
-    const conflictOffice = await adminPrisma.office.findFirst({
-      where: {
-        gstin,
-        id: { not: id },
-      },
-    });
+    const [conflict] = await dbAdmin
+      .select({ id: offices.id })
+      .from(offices)
+      .where(and(eq(offices.gstin, gstin), ne(offices.id, id)))
+      .limit(1);
 
-    if (conflictOffice) {
+    if (conflict) {
       return NextResponse.json(
         { success: false, error: "Office with this GSTIN already exists" },
         { status: 400 }
       );
     }
 
-    const office = await adminPrisma.office.update({
-      where: { id },
-      data: {
+    const now = new Date();
+    const [office] = await dbAdmin
+      .update(offices)
+      .set({
         gstin,
         address,
         city,
@@ -79,14 +87,24 @@ export async function PUT(
         stateCode,
         pincode: pincode || null,
         country: country || null,
-      },
-    });
+        updatedAt: now,
+      })
+      .where(eq(offices.id, id))
+      .returning();
+
+    if (!office) {
+      return NextResponse.json(
+        { success: false, error: "Update failed" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ success: true, data: office });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating office:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
@@ -99,9 +117,11 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    const existingOffice = await adminPrisma.office.findUnique({
-      where: { id },
-    });
+    const [existingOffice] = await dbAdmin
+      .select({ id: offices.id })
+      .from(offices)
+      .where(eq(offices.id, id))
+      .limit(1);
 
     if (!existingOffice) {
       return NextResponse.json(
@@ -110,18 +130,18 @@ export async function DELETE(
       );
     }
 
-    await adminPrisma.office.delete({
-      where: { id },
-    });
+    await dbAdmin.delete(offices).where(eq(offices.id, id));
 
-    return NextResponse.json({ success: true, message: "Office deleted successfully" });
-  } catch (error: any) {
+    return NextResponse.json({
+      success: true,
+      message: "Office deleted successfully",
+    });
+  } catch (error: unknown) {
     console.error("Error deleting office:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
-
-

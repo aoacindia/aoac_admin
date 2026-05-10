@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { userPrisma } from "@/lib/user-prisma";
+import { eq } from "drizzle-orm";
+
+import { dbUser } from "@/lib/db";
+import { users } from "@/lib/db/user-schema";
 import { generateCustomerPDF } from "@/lib/pdf-generator";
 
 export async function POST(
@@ -13,31 +16,27 @@ export async function POST(
 
     if (!sections || !Array.isArray(sections) || sections.length === 0) {
       return NextResponse.json(
-        { success: false, error: "Please select at least one section to download" },
+        {
+          success: false,
+          error: "Please select at least one section to download",
+        },
         { status: 400 }
       );
     }
 
-    // Fetch customer data with all related information
-    const customer = await userPrisma.user.findUnique({
-      where: { id: id },
-      include: {
+    const customer = await dbUser.query.users.findFirst({
+      where: eq(users.id, id),
+      with: {
         suspensionReasons: {
-          orderBy: {
-            suspendedAt: "desc",
-          },
+          orderBy: (sr, { desc: d }) => [d(sr.suspendedAt)],
         },
         billingAddress: true,
         addresses: {
-          orderBy: {
-            createdAt: "desc",
-          },
+          orderBy: (a, { desc: d }) => [d(a.createdAt)],
         },
         order: {
-          orderBy: {
-            orderDate: "desc",
-          },
-          include: {
+          orderBy: (o, { desc: d }) => [d(o.orderDate)],
+          with: {
             orderItems: true,
             shippingAddress: true,
           },
@@ -52,25 +51,22 @@ export async function POST(
       );
     }
 
-    // Generate PDF
     const pdfBuffer = await generateCustomerPDF(customer, sections);
 
-    // Convert Uint8Array to Buffer for NextResponse
     const buffer = Buffer.from(pdfBuffer);
 
-    // Return PDF as response
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="customer-${customer.id}-${Date.now()}.pdf"`,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error generating PDF:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
-

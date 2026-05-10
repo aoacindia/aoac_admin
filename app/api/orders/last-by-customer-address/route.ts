@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import { requireAdminApi } from "@/lib/require-admin";
-import { userPrisma } from "@/lib/user-prisma";
+import { dbUser } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   const authResult = await requireAdminApi();
@@ -23,21 +24,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const order = await userPrisma.order.findFirst({
-      where: {
-        orderBy: customerId,
-        shippingAddressId: addressId,
-      },
-      orderBy: { orderDate: "desc" },
-      select: {
+    const order = await dbUser.query.orders.findFirst({
+      where: (o, { and: andOp, eq: eqOp }) =>
+        andOp(
+          eqOp(o.orderBy, customerId),
+          eqOp(o.shippingAddressId, addressId)
+        ),
+      orderBy: (o, { desc: d }) => [d(o.orderDate)],
+      columns: {
         id: true,
         orderDate: true,
         status: true,
         paymentMethod: true,
         shippingAmount: true,
         shippingCourierName: true,
+      },
+      with: {
         orderItems: {
-          select: {
+          columns: {
             productId: true,
             quantity: true,
             price: true,
@@ -50,13 +54,16 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, data: order });
-  } catch (error: any) {
+    return NextResponse.json({ success: true, data: order ?? null });
+  } catch (error: unknown) {
     console.error("Error fetching last order by customer/address:", error);
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to fetch last order";
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to fetch last order" },
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
-

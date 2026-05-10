@@ -1,138 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { userPrisma } from "@/lib/user-prisma";
-import { adminPrisma } from "@/lib/admin-prisma";
+import { eq } from "drizzle-orm";
+
+import { dbAdmin, dbUser } from "@/lib/db";
+import { offices } from "@/lib/db/admin-schema";
+import { addresses, orderItems, orders, users } from "@/lib/db/user-schema";
+import { generateInvoiceNumber, generateOrderId, getFinancialYear, getFinancialYearStart } from "@/lib/order-helpers";
 import { requireAdminApi } from "@/lib/require-admin";
 
 const PERSONAL_ORDER_BY_USER_ID = "US2026149";
 const PERSONAL_SHIPPING_ADDRESS_ID = "cmoeietyc0001l704xuehp8rn";
-
-// Helper function to get financial year in format YYYY(YY+1)
-// Financial year in India: April 1 to March 31
-// Example: April 1, 2025 to March 31, 2026 = FY 2025-26 = "202526"
-function getFinancialYear(date: Date): string {
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1; // getMonth() returns 0-11, so add 1
-
-  if (month >= 4) {
-    const fyStart = year;
-    const fyEnd = year + 1;
-    return `${fyStart}${String(fyEnd).slice(-2)}`;
-  }
-
-  const fyStart = year - 1;
-  const fyEnd = year;
-  return `${fyStart}${String(fyEnd).slice(-2)}`;
-}
-
-function getFinancialYearStart(date: Date): Date {
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-
-  if (month >= 4) {
-    return new Date(year, 3, 1); // Month 3 = April (0-indexed)
-  }
-
-  return new Date(year - 1, 3, 1); // Month 3 = April (0-indexed)
-}
-
-async function generateInvoiceNumber(
-  invoiceType: "PI" | "TAX_INVOICE",
-  isBusinessAccount: boolean,
-  financialYear: string,
-  financialYearStart: Date,
-  invoiceOfficeStateCode?: string | number | null
-): Promise<{ invoiceNumber: string; sequenceNumber: number }> {
-  const prefix = invoiceType === "PI" ? "P" : isBusinessAccount ? "B" : "R";
-  const normalizedStateCode =
-    invoiceOfficeStateCode === null || invoiceOfficeStateCode === undefined
-      ? ""
-      : String(invoiceOfficeStateCode).trim();
-  const stateCodeSegment =
-    normalizedStateCode && normalizedStateCode !== "10" ? normalizedStateCode : "";
-  const prefixAndFY = `${prefix}${stateCodeSegment}${financialYear}`;
-
-  const lastInvoice = await userPrisma.order.findFirst({
-    where: {
-      invoiceType,
-      InvoiceNumber: {
-        startsWith: prefixAndFY,
-      },
-      orderDate: {
-        gte: financialYearStart,
-      },
-    },
-    orderBy: {
-      orderDate: "desc",
-    },
-  });
-
-  let nextSequenceNumber = 1;
-  if (lastInvoice?.InvoiceNumber) {
-    const invoiceNumber = lastInvoice.InvoiceNumber;
-    if (invoiceNumber.startsWith(prefixAndFY)) {
-      const sequenceStr = invoiceNumber.substring(prefixAndFY.length);
-      const lastSequence = parseInt(sequenceStr, 10);
-      if (!Number.isNaN(lastSequence)) {
-        nextSequenceNumber = lastSequence + 1;
-      }
-    }
-  }
-
-  return {
-    invoiceNumber: `${prefixAndFY}${nextSequenceNumber}`,
-    sequenceNumber: nextSequenceNumber,
-  };
-}
-
-async function generateOrderId(): Promise<string> {
-  const now = new Date();
-  const day = String(now.getDate()).padStart(2, "0");
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const year = String(now.getFullYear());
-  const dateStr = `${day}${month}${year}`;
-
-  const hours = String(now.getHours()).padStart(2, "0");
-  const minutes = String(now.getMinutes()).padStart(2, "0");
-  const seconds = String(now.getSeconds()).padStart(2, "0");
-  const timeStr = `${hours}${minutes}${seconds}`;
-
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const todayEnd = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    23,
-    59,
-    59,
-    999
-  );
-
-  const lastOrder = await userPrisma.order.findFirst({
-    where: {
-      orderDate: { gte: todayStart, lte: todayEnd },
-      id: { startsWith: `ODR-${dateStr}-` },
-    },
-    orderBy: { orderDate: "desc" },
-  });
-
-  let serialNumber = 1;
-  if (lastOrder?.id) {
-    const parts = lastOrder.id.split("-");
-    if (parts.length === 4 && parts[0] === "ODR") {
-      const lastSerial = parseInt(parts[3], 10);
-      if (!Number.isNaN(lastSerial)) {
-        serialNumber = lastSerial + 1;
-      }
-    }
-  }
-
-  let padding = 4;
-  if (serialNumber > 99999) padding = 6;
-  else if (serialNumber > 9999) padding = 5;
-
-  const serialStr = String(serialNumber).padStart(padding, "0");
-  return `ODR-${dateStr}-${timeStr}-${serialStr}`;
-}
 
 export async function POST(request: NextRequest) {
   const authResult = await requireAdminApi();
@@ -183,10 +59,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const invoiceOffice = await adminPrisma.office.findUnique({
-      where: { id: invoiceOfficeId },
-      select: { stateCode: true },
-    });
+    const [invoiceOffice] = await dbAdmin
+      .select({ stateCode: offices.stateCode })
+      .from(offices)
+      .where(eq(offices.id, invoiceOfficeId))
+      .limit(1);
     if (!invoiceOffice) {
       return NextResponse.json(
         { success: false, error: "Invoice office not found" },
@@ -194,21 +71,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const orderByUser = await userPrisma.user.findUnique({
-      where: { id: PERSONAL_ORDER_BY_USER_ID },
-      select: { id: true, isBusinessAccount: true },
-    });
+    const [orderByUser] = await dbUser
+      .select({ id: users.id, isBusinessAccount: users.isBusinessAccount })
+      .from(users)
+      .where(eq(users.id, PERSONAL_ORDER_BY_USER_ID))
+      .limit(1);
     if (!orderByUser) {
       return NextResponse.json(
-        { success: false, error: `User '${PERSONAL_ORDER_BY_USER_ID}' not found` },
+        {
+          success: false,
+          error: `User '${PERSONAL_ORDER_BY_USER_ID}' not found`,
+        },
         { status: 404 }
       );
     }
 
-    const personalAddress = await userPrisma.address.findUnique({
-      where: { id: PERSONAL_SHIPPING_ADDRESS_ID },
-      select: { id: true },
-    });
+    const [personalAddress] = await dbUser
+      .select({ id: addresses.id })
+      .from(addresses)
+      .where(eq(addresses.id, PERSONAL_SHIPPING_ADDRESS_ID))
+      .limit(1);
     if (!personalAddress) {
       return NextResponse.json(
         {
@@ -221,7 +103,6 @@ export async function POST(request: NextRequest) {
 
     const generatedOrderId = await generateOrderId();
 
-    // Calculate totals (same rules as /api/orders: do not round intermediate values)
     let subtotal = 0;
     let totalDiscount = 0;
     for (const item of items) {
@@ -231,7 +112,6 @@ export async function POST(request: NextRequest) {
       totalDiscount += itemDiscount * Number(item.quantity);
     }
 
-    // IMPORTANT: `price` is already discounted per unit in DB; do not subtract discount again.
     const grandTotal = subtotal;
     const roundedTotal = Math.round(grandTotal);
     const roundingOff = roundedTotal - grandTotal;
@@ -258,8 +138,10 @@ export async function POST(request: NextRequest) {
       invoiceOffice.stateCode
     );
 
-    const order = await userPrisma.order.create({
-      data: {
+    const now = new Date();
+
+    await dbUser.transaction(async (tx) => {
+      await tx.insert(orders).values({
         id: generatedOrderId,
         customOrder: true,
         orderBy: PERSONAL_ORDER_BY_USER_ID,
@@ -280,29 +162,37 @@ export async function POST(request: NextRequest) {
         InvoiceNumber: invoiceNumber,
         roundedOffAmount: roundingOff,
         invoiceAmount: roundedTotal,
-        orderItems: {
-          create: items.map((item) => ({
-            productId: item.productId,
-            quantity: parseInt(String(item.quantity), 10),
-            price: parseFloat(String(item.price)),
-            tax: parseInt(String(item.tax || 0), 10),
-            discount: parseFloat(String(item.discount || 0)),
-            customWeightItem: item.customWeightItem === true,
-            customWeight:
-              item.customWeightItem === true &&
-              item.customWeight !== undefined &&
-              item.customWeight !== null
-                ? parseFloat(String(item.customWeight))
-                : null,
-          })),
-        },
-      },
-      include: {
+        packed: false,
+        refund: false,
+      });
+
+      await tx.insert(orderItems).values(
+        items.map((item) => ({
+          orderId: generatedOrderId,
+          productId: item.productId,
+          quantity: parseInt(String(item.quantity), 10),
+          price: parseFloat(String(item.price)),
+          tax: parseInt(String(item.tax || 0), 10),
+          discount: parseFloat(String(item.discount || 0)),
+          customWeightItem: item.customWeightItem === true,
+          customWeight:
+            item.customWeightItem === true &&
+            item.customWeight !== undefined &&
+            item.customWeight !== null
+              ? parseFloat(String(item.customWeight))
+              : null,
+        }))
+      );
+    });
+
+    const order = await dbUser.query.orders.findFirst({
+      where: eq(orders.id, generatedOrderId),
+      with: {
         orderItems: true,
         shippingAddress: true,
         supplier: true,
         user: {
-          select: {
+          columns: {
             name: true,
             email: true,
             phone: true,
@@ -331,12 +221,12 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating personal order:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
-

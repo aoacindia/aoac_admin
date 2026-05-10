@@ -1,20 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { userPrisma } from "@/lib/user-prisma";
+import { desc, eq, or } from "drizzle-orm";
+
+import { dbUser } from "@/lib/db";
+import { suppliers } from "@/lib/db/user-schema";
 
 // GET all suppliers
 export async function GET(request: NextRequest) {
   try {
-    const suppliers = await userPrisma.supplier.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const rows = await dbUser
+      .select()
+      .from(suppliers)
+      .orderBy(desc(suppliers.createdAt));
 
-    return NextResponse.json({ success: true, data: suppliers });
-  } catch (error: any) {
+    return NextResponse.json({ success: true, data: rows });
+  } catch (error: unknown) {
     console.error("Error fetching suppliers:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
@@ -42,15 +45,24 @@ export async function POST(request: NextRequest) {
       pincode,
     } = body;
 
-    // Validate required fields
-    if (!type || !name || !phone || !email || !houseNo || !line1 || !city || !district || !state || !pincode) {
+    if (
+      !type ||
+      !name ||
+      !phone ||
+      !email ||
+      !houseNo ||
+      !line1 ||
+      !city ||
+      !district ||
+      !state ||
+      !pincode
+    ) {
       return NextResponse.json(
         { success: false, error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    // Validate type
     if (type !== "Individual" && type !== "Business") {
       return NextResponse.json(
         { success: false, error: "Type must be 'Individual' or 'Business'" },
@@ -58,7 +70,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If Business type, GST number is required
     if (type === "Business" && !gstNumber) {
       return NextResponse.json(
         { success: false, error: "GST Number is required for Business type" },
@@ -66,25 +77,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if email or phone already exists
-    const existingSupplier = await userPrisma.supplier.findFirst({
-      where: {
-        OR: [
-          { email },
-          { phone },
-        ],
-      },
-    });
+    const [existing] = await dbUser
+      .select({ id: suppliers.id })
+      .from(suppliers)
+      .where(or(eq(suppliers.email, email), eq(suppliers.phone, phone)))
+      .limit(1);
 
-    if (existingSupplier) {
+    if (existing) {
       return NextResponse.json(
-        { success: false, error: "Supplier with this email or phone already exists" },
+        {
+          success: false,
+          error: "Supplier with this email or phone already exists",
+        },
         { status: 400 }
       );
     }
 
-    const supplier = await userPrisma.supplier.create({
-      data: {
+    const now = new Date();
+    const [supplier] = await dbUser
+      .insert(suppliers)
+      .values({
         type,
         name,
         phone,
@@ -100,16 +112,28 @@ export async function POST(request: NextRequest) {
         stateCode: stateCode || null,
         country: country || "India",
         pincode,
-      },
-    });
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
 
-    return NextResponse.json({ success: true, data: supplier }, { status: 201 });
-  } catch (error: any) {
-    console.error("Error creating supplier:", error);
+    if (!supplier) {
+      return NextResponse.json(
+        { success: false, error: "Failed to create supplier" },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: true, data: supplier },
+      { status: 201 }
+    );
+  } catch (error: unknown) {
+    console.error("Error creating supplier:", error);
+    const message = error instanceof Error ? error.message : "Server error";
+    return NextResponse.json(
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
-

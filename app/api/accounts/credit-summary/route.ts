@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { userPrisma } from "@/lib/user-prisma";
+import { and, desc, gte, inArray, lte, sql } from "drizzle-orm";
+
+import { dbUser } from "@/lib/db";
+import { orders, orderStatusEnum } from "@/lib/db/user-schema";
 
 type SummaryRow = {
   paymentMethod: string;
@@ -15,13 +18,17 @@ export async function GET(request: NextRequest) {
     const end = searchParams.get("end"); // YYYY-MM-DD
     const statusesParam = searchParams.get("statuses"); // comma-separated
 
-    const statuses =
+    const rawStatuses =
       statusesParam
         ?.split(",")
         .map((s) => s.trim())
         .filter(Boolean) ?? ["PAID"];
 
-    // Build date range (inclusive)
+    const allowed = new Set(orderStatusEnum.enumValues);
+    const statuses = rawStatuses.filter((s): s is (typeof orderStatusEnum.enumValues)[number] =>
+      allowed.has(s as (typeof orderStatusEnum.enumValues)[number])
+    );
+
     const startDate = start ? new Date(`${start}T00:00:00.000Z`) : null;
     const endDate = end ? new Date(`${end}T23:59:59.999Z`) : null;
 
@@ -38,47 +45,32 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Note: Using raw SQL here so we can group by paymentMethod while summing
-    // COALESCE(paidAmount, invoiceAmount, totalAmount) as "credit amount".
-    const whereParts: string[] = [];
-    const values: any[] = [];
-
+    const filters = [];
     if (statuses.length > 0) {
-      whereParts.push(`status IN (${statuses.map(() => "?").join(",")})`);
-      values.push(...statuses);
+      filters.push(inArray(orders.status, statuses));
     }
-
     if (startDate) {
-      whereParts.push(`orderDate >= ?`);
-      values.push(startDate);
+      filters.push(gte(orders.orderDate, startDate));
     }
-
     if (endDate) {
-      whereParts.push(`orderDate <= ?`);
-      values.push(endDate);
+      filters.push(lte(orders.orderDate, endDate));
     }
 
-    const whereClause = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
+    const whereClause = filters.length > 0 ? and(...filters) : undefined;
 
-    const rows = await userPrisma.$queryRawUnsafe<
-      Array<{
-        paymentMethod: string | null;
-        orderCount: bigint | number;
-        creditAmount: any;
-      }>
-    >(
-      `
-      SELECT
-        paymentMethod,
-        COUNT(*) AS orderCount,
-        SUM(COALESCE(paidAmount, invoiceAmount, totalAmount)) AS creditAmount
-      FROM \`Order\`
-      ${whereClause}
-      GROUP BY paymentMethod
-      ORDER BY creditAmount DESC
-      `,
-      ...values
-    );
+    const sumExpr = sql<number>`coalesce(sum(coalesce(${orders.paidAmount}, ${orders.invoiceAmount}, ${orders.totalAmount})), 0)`;
+
+    const base = dbUser
+      .select({
+        paymentMethod: orders.paymentMethod,
+        orderCount: sql<number>`count(*)::int`,
+        creditAmount: sumExpr,
+      })
+      .from(orders)
+      .groupBy(orders.paymentMethod)
+      .orderBy(desc(sumExpr));
+
+    const rows = whereClause ? await base.where(whereClause) : await base;
 
     const data: SummaryRow[] = rows.map((r) => ({
       paymentMethod: r.paymentMethod ?? "UNKNOWN",
@@ -100,12 +92,12 @@ export async function GET(request: NextRequest) {
         totalOrders,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error building credit summary:", error);
+    const message = error instanceof Error ? error.message : "Failed to build summary";
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to build summary" },
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
-

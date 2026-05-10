@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { productPrisma } from "@/lib/product-prisma";
+import { asc, count, eq } from "drizzle-orm";
+
+import { dbProduct } from "@/lib/db";
+import { categories, products } from "@/lib/db/product-schema";
 
 // GET category by id
 export async function GET(
@@ -8,22 +11,11 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const category = await productPrisma.category.findUnique({
-      where: { id },
-      include: {
-        products: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        _count: {
-          select: {
-            products: true,
-          },
-        },
-      },
-    });
+    const [category] = await dbProduct
+      .select()
+      .from(categories)
+      .where(eq(categories.id, id))
+      .limit(1);
 
     if (!category) {
       return NextResponse.json(
@@ -32,11 +24,30 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ success: true, data: category });
-  } catch (error: any) {
+    const prods = await dbProduct
+      .select({ id: products.id, name: products.name })
+      .from(products)
+      .where(eq(products.categoryId, id))
+      .orderBy(asc(products.name));
+
+    const [cntRow] = await dbProduct
+      .select({ n: count() })
+      .from(products)
+      .where(eq(products.categoryId, id));
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...category,
+        products: prods,
+        _count: { products: Number(cntRow?.n ?? 0) },
+      },
+    });
+  } catch (error: unknown) {
     console.error("Error fetching category:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
@@ -52,23 +63,33 @@ export async function PUT(
     const body = await request.json();
     const { name } = body;
 
-    if (!name || name.trim() === "") {
+    if (!name || String(name).trim() === "") {
       return NextResponse.json(
         { success: false, error: "Category name is required" },
         { status: 400 }
       );
     }
 
-    const category = await productPrisma.category.update({
-      where: { id },
-      data: { name: name.trim() },
-    });
+    const now = new Date();
+    const [category] = await dbProduct
+      .update(categories)
+      .set({ name: String(name).trim(), updatedAt: now })
+      .where(eq(categories.id, id))
+      .returning();
+
+    if (!category) {
+      return NextResponse.json(
+        { success: false, error: "Category not found" },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({ success: true, data: category });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating category:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
@@ -81,17 +102,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    // Check if category has products
-    const category = await productPrisma.category.findUnique({
-      where: { id },
-      include: {
-        _count: {
-          select: {
-            products: true,
-          },
-        },
-      },
-    });
+    const [category] = await dbProduct
+      .select()
+      .from(categories)
+      .where(eq(categories.id, id))
+      .limit(1);
 
     if (!category) {
       return NextResponse.json(
@@ -100,30 +115,34 @@ export async function DELETE(
       );
     }
 
-    if (category._count.products > 0) {
+    const [cntRow] = await dbProduct
+      .select({ n: count() })
+      .from(products)
+      .where(eq(products.categoryId, id));
+    const n = Number(cntRow?.n ?? 0);
+
+    if (n > 0) {
       return NextResponse.json(
         {
           success: false,
-          error: `Cannot delete category. It has ${category._count.products} product(s) associated with it.`,
+          error: `Cannot delete category. It has ${n} product(s) associated with it.`,
         },
         { status: 400 }
       );
     }
 
-    await productPrisma.category.delete({
-      where: { id },
-    });
+    await dbProduct.delete(categories).where(eq(categories.id, id));
 
     return NextResponse.json({
       success: true,
       message: "Category deleted successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting category:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
-

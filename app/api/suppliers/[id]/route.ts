@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { userPrisma } from "@/lib/user-prisma";
+import { and, count, eq, ne, or } from "drizzle-orm";
+
+import { dbUser } from "@/lib/db";
+import { orders, suppliers } from "@/lib/db/user-schema";
+import type { NewSupplierRow } from "@/lib/db/user-schema";
 
 // GET supplier by id
 export async function GET(
@@ -8,9 +12,11 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supplier = await userPrisma.supplier.findUnique({
-      where: { id },
-    });
+    const [supplier] = await dbUser
+      .select()
+      .from(suppliers)
+      .where(eq(suppliers.id, id))
+      .limit(1);
 
     if (!supplier) {
       return NextResponse.json(
@@ -20,10 +26,11 @@ export async function GET(
     }
 
     return NextResponse.json({ success: true, data: supplier });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching supplier:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
@@ -55,10 +62,11 @@ export async function PUT(
       pincode,
     } = body;
 
-    // Check if supplier exists
-    const existingSupplier = await userPrisma.supplier.findUnique({
-      where: { id },
-    });
+    const [existingSupplier] = await dbUser
+      .select()
+      .from(suppliers)
+      .where(eq(suppliers.id, id))
+      .limit(1);
 
     if (!existingSupplier) {
       return NextResponse.json(
@@ -67,31 +75,27 @@ export async function PUT(
       );
     }
 
-    // Check if email or phone conflicts with another supplier
     if (email || phone) {
-      const conflictSupplier = await userPrisma.supplier.findFirst({
-        where: {
-          AND: [
-            { id: { not: id } },
-            {
-              OR: [
-                ...(email ? [{ email }] : []),
-                ...(phone ? [{ phone }] : []),
-              ],
-            },
-          ],
-        },
-      });
+      const conflictOr = [
+        ...(email ? [eq(suppliers.email, email)] : []),
+        ...(phone ? [eq(suppliers.phone, phone)] : []),
+      ];
+      if (conflictOr.length > 0) {
+        const [conflict] = await dbUser
+          .select({ id: suppliers.id })
+          .from(suppliers)
+          .where(and(ne(suppliers.id, id), or(...conflictOr)))
+          .limit(1);
 
-      if (conflictSupplier) {
-        return NextResponse.json(
-          { success: false, error: "Email or phone number already exists" },
-          { status: 400 }
-        );
+        if (conflict) {
+          return NextResponse.json(
+            { success: false, error: "Email or phone number already exists" },
+            { status: 400 }
+          );
+        }
       }
     }
 
-    // Validate type if provided
     if (type && type !== "Individual" && type !== "Business") {
       return NextResponse.json(
         { success: false, error: "Type must be 'Individual' or 'Business'" },
@@ -99,44 +103,60 @@ export async function PUT(
       );
     }
 
-    // If Business type, GST number is required
     const finalType = type || existingSupplier.type;
-    if (finalType === "Business" && !gstNumber && !existingSupplier.gstNumber) {
+    if (
+      finalType === "Business" &&
+      !gstNumber &&
+      !existingSupplier.gstNumber
+    ) {
       return NextResponse.json(
         { success: false, error: "GST Number is required for Business type" },
         { status: 400 }
       );
     }
 
-    const updateData: any = {};
-    if (type !== undefined) updateData.type = type;
-    if (name !== undefined) updateData.name = name;
-    if (phone !== undefined) updateData.phone = phone;
-    if (email !== undefined) updateData.email = email;
+    const now = new Date();
+    const updatePayload: Partial<NewSupplierRow> & { updatedAt: Date } = {
+      updatedAt: now,
+    };
+    if (type !== undefined) updatePayload.type = type;
+    if (name !== undefined) updatePayload.name = name;
+    if (phone !== undefined) updatePayload.phone = phone;
+    if (email !== undefined) updatePayload.email = email;
     if (gstNumber !== undefined) {
-      updateData.gstNumber = finalType === "Business" ? gstNumber : null;
+      updatePayload.gstNumber = finalType === "Business" ? gstNumber : null;
     }
-    if (fssaiLicense !== undefined) updateData.fssaiLicense = fssaiLicense || null;
-    if (houseNo !== undefined) updateData.houseNo = houseNo;
-    if (line1 !== undefined) updateData.line1 = line1;
-    if (line2 !== undefined) updateData.line2 = line2 || null;
-    if (city !== undefined) updateData.city = city;
-    if (district !== undefined) updateData.district = district;
-    if (state !== undefined) updateData.state = state;
-    if (stateCode !== undefined) updateData.stateCode = stateCode || null;
-    if (country !== undefined) updateData.country = country || "India";
-    if (pincode !== undefined) updateData.pincode = pincode;
+    if (fssaiLicense !== undefined)
+      updatePayload.fssaiLicense = fssaiLicense || null;
+    if (houseNo !== undefined) updatePayload.houseNo = houseNo;
+    if (line1 !== undefined) updatePayload.line1 = line1;
+    if (line2 !== undefined) updatePayload.line2 = line2 || null;
+    if (city !== undefined) updatePayload.city = city;
+    if (district !== undefined) updatePayload.district = district;
+    if (state !== undefined) updatePayload.state = state;
+    if (stateCode !== undefined) updatePayload.stateCode = stateCode || null;
+    if (country !== undefined) updatePayload.country = country || "India";
+    if (pincode !== undefined) updatePayload.pincode = pincode;
 
-    const supplier = await userPrisma.supplier.update({
-      where: { id },
-      data: updateData,
-    });
+    const [supplier] = await dbUser
+      .update(suppliers)
+      .set(updatePayload)
+      .where(eq(suppliers.id, id))
+      .returning();
+
+    if (!supplier) {
+      return NextResponse.json(
+        { success: false, error: "Update failed" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ success: true, data: supplier });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating supplier:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
@@ -150,13 +170,11 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    // Check if supplier exists
-    const supplier = await userPrisma.supplier.findUnique({
-      where: { id },
-      include: {
-        orders: true,
-      },
-    });
+    const [supplier] = await dbUser
+      .select({ id: suppliers.id })
+      .from(suppliers)
+      .where(eq(suppliers.id, id))
+      .limit(1);
 
     if (!supplier) {
       return NextResponse.json(
@@ -165,25 +183,34 @@ export async function DELETE(
       );
     }
 
-    // Check if supplier has orders
-    if (supplier.orders.length > 0) {
+    const [cntRow] = await dbUser
+      .select({ c: count() })
+      .from(orders)
+      .where(eq(orders.supplierId, id));
+    const orderCount = Number(cntRow?.c ?? 0);
+
+    if (orderCount > 0) {
       return NextResponse.json(
-        { success: false, error: "Cannot delete supplier with existing orders" },
+        {
+          success: false,
+          error: "Cannot delete supplier with existing orders",
+        },
         { status: 400 }
       );
     }
 
-    await userPrisma.supplier.delete({
-      where: { id },
-    });
+    await dbUser.delete(suppliers).where(eq(suppliers.id, id));
 
-    return NextResponse.json({ success: true, message: "Supplier deleted successfully" });
-  } catch (error: any) {
+    return NextResponse.json({
+      success: true,
+      message: "Supplier deleted successfully",
+    });
+  } catch (error: unknown) {
     console.error("Error deleting supplier:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
-

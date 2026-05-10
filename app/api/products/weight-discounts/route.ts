@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { productPrisma } from "@/lib/product-prisma";
+import { asc, eq } from "drizzle-orm";
+
 import { auth } from "@/auth";
+import { dbProduct } from "@/lib/db";
+import { productWeightDiscounts, products } from "@/lib/db/product-schema";
 
 // GET product weight discounts by productId
 export async function GET(request: NextRequest) {
@@ -29,10 +32,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verify product exists
-    const product = await productPrisma.product.findUnique({
-      where: { id: productId },
-    });
+    const [product] = await dbProduct
+      .select({ id: products.id })
+      .from(products)
+      .where(eq(products.id, productId))
+      .limit(1);
 
     if (!product) {
       return NextResponse.json(
@@ -41,31 +45,34 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const weightDiscounts = await productPrisma.productWeightDiscount.findMany({
-      where: {
-        productId,
-      },
-      orderBy: {
-        minWeight: "asc",
-      },
-    });
+    const weightDiscounts = await dbProduct
+      .select()
+      .from(productWeightDiscounts)
+      .where(eq(productWeightDiscounts.productId, productId))
+      .orderBy(asc(productWeightDiscounts.minWeight));
 
     return NextResponse.json({
       success: true,
       weightDiscounts: weightDiscounts.map((wd) => ({
         id: wd.id,
-        minWeight: wd.minWeight, // in kg (frontend will convert to grams)
+        minWeight: wd.minWeight,
         price: wd.price,
       })),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching weight discounts:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
+
+type WeightRow = {
+  minWeight?: number | string;
+  price?: number | string;
+};
 
 // POST create/update product weight discounts
 export async function POST(request: NextRequest) {
@@ -85,7 +92,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { productId, weightDiscounts } = body;
+    const { productId, weightDiscounts } = body as {
+      productId?: string;
+      weightDiscounts?: WeightRow[];
+    };
 
     if (!productId) {
       return NextResponse.json(
@@ -101,10 +111,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify product exists
-    const product = await productPrisma.product.findUnique({
-      where: { id: productId },
-    });
+    const [product] = await dbProduct
+      .select({ id: products.id })
+      .from(products)
+      .where(eq(products.id, productId))
+      .limit(1);
 
     if (!product) {
       return NextResponse.json(
@@ -113,42 +124,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Delete existing weight discounts for this product
-    await productPrisma.productWeightDiscount.deleteMany({
-      where: { productId },
-    });
-
-    // Create new weight discounts
     const validDiscounts = weightDiscounts.filter(
       (wd) =>
         wd.minWeight !== null &&
         wd.minWeight !== undefined &&
         wd.price !== null &&
         wd.price !== undefined &&
-        !isNaN(parseFloat(wd.minWeight)) &&
-        !isNaN(parseFloat(wd.price))
+        !Number.isNaN(parseFloat(String(wd.minWeight))) &&
+        !Number.isNaN(parseFloat(String(wd.price)))
     );
 
-    if (validDiscounts.length > 0) {
-      await productPrisma.productWeightDiscount.createMany({
-        data: validDiscounts.map((wd) => ({
-          productId,
-          minWeight: parseFloat(wd.minWeight), // Store in kg
-          price: parseFloat(wd.price),
-        })),
-      });
-    }
+    const now = new Date();
+
+    await dbProduct.transaction(async (tx) => {
+      await tx
+        .delete(productWeightDiscounts)
+        .where(eq(productWeightDiscounts.productId, productId));
+
+      if (validDiscounts.length > 0) {
+        await tx.insert(productWeightDiscounts).values(
+          validDiscounts.map((wd) => ({
+            productId,
+            minWeight: parseFloat(String(wd.minWeight)),
+            price: parseFloat(String(wd.price)),
+            createdAt: now,
+            updatedAt: now,
+          }))
+        );
+      }
+    });
 
     return NextResponse.json({
       success: true,
       message: "Weight discounts saved successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error saving weight discounts:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
 }
-

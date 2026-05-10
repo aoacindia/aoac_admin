@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { userPrisma } from "@/lib/user-prisma";
+import { eq } from "drizzle-orm";
+
+import { dbUser } from "@/lib/db";
+import { contacts } from "@/lib/db/user-schema";
 
 // GET a single contact by ID
 export async function GET(
@@ -9,9 +12,11 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const contact = await userPrisma.contact.findUnique({
-      where: { id },
-    });
+    const [contact] = await dbUser
+      .select()
+      .from(contacts)
+      .where(eq(contacts.id, id))
+      .limit(1);
 
     if (!contact) {
       return NextResponse.json(
@@ -24,10 +29,11 @@ export async function GET(
       success: true,
       data: contact,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching contact:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
@@ -41,29 +47,30 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    const contact = await userPrisma.contact.findUnique({
-      where: { id },
-    });
+    const [existing] = await dbUser
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(eq(contacts.id, id))
+      .limit(1);
 
-    if (!contact) {
+    if (!existing) {
       return NextResponse.json(
         { success: false, error: "Contact not found" },
         { status: 404 }
       );
     }
 
-    await userPrisma.contact.delete({
-      where: { id },
-    });
+    await dbUser.delete(contacts).where(eq(contacts.id, id));
 
     return NextResponse.json({
       success: true,
       message: "Contact deleted successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting contact:", error);
+    const message = error instanceof Error ? error.message : "Server error";
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 }
     );
   }
