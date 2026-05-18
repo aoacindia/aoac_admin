@@ -4,8 +4,11 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Modal from "@/app/components/Modal";
+import OrderActionsModal from "@/app/components/OrderActionsModal";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface OrderItem {
@@ -110,12 +113,63 @@ export default function ViewOrderPage() {
     duplicate: false,
     triplicate: false,
   });
+  const [showActionsPopup, setShowActionsPopup] = useState(false);
+  const [showSendPIPopup, setShowSendPIPopup] = useState(false);
+  const [emailAccounts, setEmailAccounts] = useState<Array<{ id: string; fromEmail: string }>>([]);
+  const [selectedEmailAccountId, setSelectedEmailAccountId] = useState("");
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [sendingPI, setSendingPI] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (orderId) {
       fetchOrder();
     }
   }, [orderId]);
+
+  useEffect(() => {
+    if (showSendPIPopup && order) {
+      fetchEmailAccounts();
+      setRecipientEmail(order.user.email);
+    }
+  }, [showSendPIPopup, order]);
+
+  const fetchEmailAccounts = async () => {
+    try {
+      const response = await fetch("/api/emails?isActive=true");
+      const data = await response.json();
+      if (data.success) {
+        setEmailAccounts(data.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching email accounts:", error);
+    }
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!order) return;
+
+    const roundedAmount = order.invoiceAmount ?? order.totalAmount ?? 0;
+    const confirmed = window.confirm(
+      `Are you sure you want to delete this order?\n\nOrder ID: ${order.id}\nRounded Amount: ₹${roundedAmount.toFixed(2)}\nBuyer: ${order.user.name}`
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/orders/${order.id}`, { method: "DELETE" });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete order");
+      }
+      router.push("/dashboard/orders");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to delete order";
+      alert("Error deleting order: " + message);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const fetchOrder = async () => {
     try {
@@ -226,19 +280,13 @@ export default function ViewOrderPage() {
             Order ID: {order.id}
           </p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-4 flex-wrap">
           <Button
-            onClick={() => setShowDownloadPopup(true)}
-            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+            onClick={() => setShowActionsPopup(true)}
+            className="px-6 py-2 bg-zinc-700 hover:bg-zinc-800 text-white rounded-lg transition-colors"
           >
-            Download Invoice PDF
+            Actions
           </Button>
-          <Link
-            href={`/dashboard/orders/${orderId}/edit`}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-center"
-          >
-            Edit Order
-          </Link>
         </div>
       </div>
 
@@ -772,6 +820,138 @@ export default function ViewOrderPage() {
           </div>
         </div>
       </div>
+
+      {/* Order Actions Popup */}
+      {showActionsPopup && order && (
+        <OrderActionsModal
+          order={order}
+          showViewButton={false}
+          onClose={() => setShowActionsPopup(false)}
+          onDownloadPdf={() => setShowDownloadPopup(true)}
+          onSendPi={() => setShowSendPIPopup(true)}
+          onDelete={handleDeleteOrder}
+          deleting={deleting}
+          onPaymentLinkGenerated={(paymentLink) => {
+            setOrder((prev) => (prev ? { ...prev, paymentLinkUrl: paymentLink } : prev));
+          }}
+        />
+      )}
+
+      {/* Send PI Popup */}
+      {showSendPIPopup && order && (
+        <Modal
+          title="Send Proforma Invoice"
+          disableClose={sendingPI}
+          onClose={() => {
+            setShowSendPIPopup(false);
+            setSelectedEmailAccountId("");
+            setRecipientEmail("");
+          }}
+        >
+          <div className="space-y-4">
+            <div>
+              <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                Select Email Account
+              </Label>
+              <Select
+                value={selectedEmailAccountId}
+                onChange={(e) => setSelectedEmailAccountId(e.target.value)}
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={sendingPI}
+              >
+                <option value="">hello@aoac.in (Default)</option>
+                {emailAccounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.fromEmail}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            <div>
+              <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                Recipient Email
+              </Label>
+              <Input
+                type="email"
+                value={recipientEmail}
+                onChange={(e) => setRecipientEmail(e.target.value)}
+                placeholder="Enter recipient email address"
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={sendingPI}
+              />
+            </div>
+
+            <div className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-lg">
+              <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-2">
+                <strong>Order Details:</strong>
+              </p>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">Order ID: {order.id}</p>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                PI Number: {order.InvoiceNumber || "N/A"}
+              </p>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                Customer: {order.user.name}
+              </p>
+            </div>
+
+            <div className="flex gap-4">
+              <Button
+                onClick={async () => {
+                  if (!recipientEmail) {
+                    alert("Please enter recipient email address");
+                    return;
+                  }
+
+                  setSendingPI(true);
+                  try {
+                    const response = await fetch(`/api/orders/${order.id}/send-pi`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        emailAccountId: selectedEmailAccountId || "hello@aoac.in",
+                        recipientEmail,
+                      }),
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                      throw new Error(data.error || "Failed to send PI email");
+                    }
+
+                    alert("PI email sent successfully!");
+                    setShowSendPIPopup(false);
+                    setSelectedEmailAccountId("");
+                    setRecipientEmail("");
+                  } catch (error: unknown) {
+                    const message =
+                      error instanceof Error ? error.message : "Failed to send PI email";
+                    alert("Error sending PI email: " + message);
+                  } finally {
+                    setSendingPI(false);
+                  }
+                }}
+                disabled={sendingPI || !recipientEmail}
+                className="flex-1 px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sendingPI ? "Sending..." : "Send Email"}
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowSendPIPopup(false);
+                  setSelectedEmailAccountId("");
+                  setRecipientEmail("");
+                }}
+                disabled={sendingPI}
+                className="px-6 py-2 bg-zinc-600 hover:bg-zinc-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Download PDF Popup */}
       {showDownloadPopup && (

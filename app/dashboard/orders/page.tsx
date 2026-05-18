@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Modal from "@/app/components/Modal";
+import OrderActionsModal from "@/app/components/OrderActionsModal";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -126,6 +127,8 @@ export default function OrdersPage() {
   const [orderForStatusEdit, setOrderForStatusEdit] = useState<Order | null>(null);
   const [newStatus, setNewStatus] = useState<string>("");
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [showActionsPopup, setShowActionsPopup] = useState(false);
+  const [selectedOrderForActions, setSelectedOrderForActions] = useState<Order | null>(null);
 
   const initialCalendar = useMemo(() => {
     const d = new Date();
@@ -943,46 +946,15 @@ export default function OrdersPage() {
                       )}
                     </TableCell>
                     <TableCell className="py-3 px-4">
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => router.push(`/dashboard/orders/${order.id}`)}
-                          className="px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
-                        >
-                          View
-                        </Button>
-                        <Button
-                          onClick={() => router.push(`/dashboard/orders/${order.id}/edit`)}
-                          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            setSelectedOrderId(order.id);
-                            setShowDownloadPopup(true);
-                          }}
-                          className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                        >
-                          Download PDF
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            setSelectedOrderForPI(order);
-                            setShowSendPIPopup(true);
-                            setSelectedEmailAccountId("");
-                          }}
-                          className="px-3 py-1 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
-                        >
-                          Send PI
-                        </Button>
-                        <Button
-                          onClick={() => handleDeleteOrder(order)}
-                          disabled={deletingOrderId === order.id}
-                          className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {deletingOrderId === order.id ? "Deleting..." : "Delete"}
-                        </Button>
-                      </div>
+                      <Button
+                        onClick={() => {
+                          setSelectedOrderForActions(order);
+                          setShowActionsPopup(true);
+                        }}
+                        className="px-3 py-1 text-sm bg-zinc-700 text-white rounded hover:bg-zinc-800 transition-colors"
+                      >
+                        Actions
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -1016,6 +988,40 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
+
+      {/* Order Actions Popup */}
+      {showActionsPopup && selectedOrderForActions && (
+        <OrderActionsModal
+          order={selectedOrderForActions}
+          onClose={() => {
+            setShowActionsPopup(false);
+            setSelectedOrderForActions(null);
+          }}
+          onDownloadPdf={() => {
+            setSelectedOrderId(selectedOrderForActions.id);
+            setShowDownloadPopup(true);
+          }}
+          onSendPi={() => {
+            setSelectedOrderForPI(selectedOrderForActions);
+            setShowSendPIPopup(true);
+            setSelectedEmailAccountId("");
+          }}
+          onDelete={() => handleDeleteOrder(selectedOrderForActions)}
+          deleting={deletingOrderId === selectedOrderForActions.id}
+          onPaymentLinkGenerated={(paymentLink) => {
+            setOrders((prev) =>
+              prev.map((o) =>
+                o.id === selectedOrderForActions.id
+                  ? { ...o, paymentLinkUrl: paymentLink }
+                  : o
+              )
+            );
+            setSelectedOrderForActions((prev) =>
+              prev ? { ...prev, paymentLinkUrl: paymentLink } : prev
+            );
+          }}
+        />
+      )}
 
       {/* Download PDF Popup */}
       {showDownloadPopup && (
