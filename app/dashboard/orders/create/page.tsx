@@ -7,6 +7,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 
+function getNowLocalDateString() {
+  const now = new Date();
+  const yyyy = String(now.getFullYear());
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function getNowLocalTimeString() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mi = String(now.getMinutes()).padStart(2, "0");
+  return `${hh}:${mi}`;
+}
+
+function buildOrderDateTime(dateYmd: string, timeHm: string): Date {
+  const [y, m, d] = dateYmd.split("-").map((v) => parseInt(v, 10));
+  const [hh, mi] = (timeHm || "00:00").split(":").map((v) => parseInt(v, 10));
+  const out = new Date();
+  out.setFullYear(y, m - 1, d);
+  out.setHours(
+    Number.isFinite(hh) ? hh : 0,
+    Number.isFinite(mi) ? mi : 0,
+    0,
+    0
+  );
+  return out;
+}
+
 interface Customer {
   id: string;
   name: string;
@@ -135,6 +164,9 @@ export default function CreateOrderPage() {
   const [deliveryCharge, setDeliveryCharge] = useState<string>("");
   const [deliveryPartner, setDeliveryPartner] = useState<string>("");
   const [deliveryPartnerName, setDeliveryPartnerName] = useState<string>("");
+  const [awsCode, setAwsCode] = useState<string>("");
+  const [orderDate, setOrderDate] = useState<string>(() => getNowLocalDateString());
+  const [orderTime, setOrderTime] = useState<string>(() => getNowLocalTimeString());
   const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [status, setStatus] = useState<string>("PENDING");
   const [lastOrder, setLastOrder] = useState<LastOrder>(null);
@@ -576,6 +608,19 @@ export default function CreateOrderPage() {
         return;
       }
 
+      if (!orderDate || !orderTime) {
+        alert("Please select order date and time");
+        setLoading(false);
+        return;
+      }
+
+      const effectiveOrderDate = buildOrderDateTime(orderDate, orderTime);
+      if (Number.isNaN(effectiveOrderDate.getTime())) {
+        alert("Invalid order date/time");
+        setLoading(false);
+        return;
+      }
+
       if (isDifferentSupplier && !selectedSupplierId) {
         alert("Please select a supplier");
         setLoading(false);
@@ -601,6 +646,8 @@ export default function CreateOrderPage() {
         deliveryCharge: deliveryCharge || null,
         deliveryPartner: deliveryPartner || null,
         deliveryPartnerName: deliveryPartner === "OTHER" ? deliveryPartnerName : null,
+        awsCode: awsCode.trim() || null,
+        orderDate: effectiveOrderDate.toISOString(),
         paymentMethod: paymentMethod || null,
         status: status || "PENDING",
       };
@@ -672,6 +719,34 @@ export default function CreateOrderPage() {
                 />
                 <span className="text-zinc-700 dark:text-zinc-300">Tax Invoice</span>
               </Label>
+            </div>
+          </div>
+
+          {/* Order Date & Time */}
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                Order Date <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                type="date"
+                value={orderDate}
+                onChange={(e) => setOrderDate(e.target.value)}
+                required
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                Order Time <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                type="time"
+                value={orderTime}
+                onChange={(e) => setOrderTime(e.target.value)}
+                required
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
             </div>
           </div>
 
@@ -1071,6 +1146,19 @@ export default function CreateOrderPage() {
                 />
               </div>
             )}
+
+            <div>
+              <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                AWB Code
+              </Label>
+              <Input
+                type="text"
+                value={awsCode}
+                onChange={(e) => setAwsCode(e.target.value)}
+                placeholder="Enter AWB / tracking code"
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
 
             <div>
               <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">

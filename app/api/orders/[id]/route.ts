@@ -154,6 +154,7 @@ export async function PUT(
       shippingId,
       awsCode,
       shippingInvoiceNumber,
+      InvoiceNumber,
       estimatedDeliveryDate,
       pickupScheduled,
       deliveredAt,
@@ -308,6 +309,26 @@ export async function PUT(
     }
     if (shippingInvoiceNumber !== undefined) {
       updateValues.shippingInvoiceNumber = shippingInvoiceNumber || null;
+    }
+    if (InvoiceNumber !== undefined) {
+      if (authResult.session.user.role !== "ADMIN") {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Only ADMIN users can change the invoice number",
+          },
+          { status: 403 }
+        );
+      }
+      const trimmedInvoiceNumber =
+        typeof InvoiceNumber === "string" ? InvoiceNumber.trim() : "";
+      if (!trimmedInvoiceNumber) {
+        return NextResponse.json(
+          { success: false, error: "Invoice number is required" },
+          { status: 400 }
+        );
+      }
+      updateValues.InvoiceNumber = trimmedInvoiceNumber;
     }
     if (estimatedDeliveryDate !== undefined) {
       updateValues.estimatedDeliveryDate = estimatedDeliveryDate || null;

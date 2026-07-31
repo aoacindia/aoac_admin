@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Modal from "@/app/components/Modal";
 import OrderActionsModal from "@/app/components/OrderActionsModal";
 import Link from "next/link";
@@ -95,6 +96,8 @@ type TabType = "business" | "personal" | "pending";
 
 export default function OrdersPage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
   const [activeTab, setActiveTab] = useState<TabType>("business");
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
@@ -126,7 +129,14 @@ export default function OrdersPage() {
   const [showStatusEditModal, setShowStatusEditModal] = useState(false);
   const [orderForStatusEdit, setOrderForStatusEdit] = useState<Order | null>(null);
   const [newStatus, setNewStatus] = useState<string>("");
+  const [statusEditAwsCode, setStatusEditAwsCode] = useState("");
+  const [statusEditDeliveryPartner, setStatusEditDeliveryPartner] = useState("");
+  const [statusEditDeliveryPartnerName, setStatusEditDeliveryPartnerName] = useState("");
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [showInvoiceEditModal, setShowInvoiceEditModal] = useState(false);
+  const [orderForInvoiceEdit, setOrderForInvoiceEdit] = useState<Order | null>(null);
+  const [newInvoiceNumber, setNewInvoiceNumber] = useState("");
+  const [updatingInvoiceNumber, setUpdatingInvoiceNumber] = useState(false);
   const [showActionsPopup, setShowActionsPopup] = useState(false);
   const [selectedOrderForActions, setSelectedOrderForActions] = useState<Order | null>(null);
 
@@ -324,20 +334,80 @@ export default function OrdersPage() {
     }
   };
 
+  const isShippedStatus = (status: string) =>
+    status === "SHIPPED" || status === "ORDER_SHIPPED_WITHOUT_PAYMENT";
+
+  const parseDeliveryPartnerFromCourier = (courierName: string | null) => {
+    if (!courierName) {
+      return { partner: "", partnerName: "" };
+    }
+    if (courierName === "BLUE_DART") {
+      return { partner: "BLUE_DART", partnerName: "" };
+    }
+    if (courierName === "DELHIVERY") {
+      return { partner: "DELHIVERY", partnerName: "" };
+    }
+    return { partner: "OTHER", partnerName: courierName };
+  };
+
+  const resetStatusEditForm = () => {
+    setShowStatusEditModal(false);
+    setOrderForStatusEdit(null);
+    setNewStatus("");
+    setStatusEditAwsCode("");
+    setStatusEditDeliveryPartner("");
+    setStatusEditDeliveryPartnerName("");
+  };
+
   const openStatusEdit = (order: Order) => {
     setOrderForStatusEdit(order);
     setNewStatus(order.status);
+    setStatusEditAwsCode(order.awsCode || "");
+    const { partner, partnerName } = parseDeliveryPartnerFromCourier(
+      order.shippingCourierName
+    );
+    setStatusEditDeliveryPartner(partner);
+    setStatusEditDeliveryPartnerName(partnerName);
     setShowStatusEditModal(true);
   };
 
   const handleUpdateStatus = async () => {
     if (!orderForStatusEdit || !newStatus) return;
+
+    if (isShippedStatus(newStatus)) {
+      if (!statusEditDeliveryPartner) {
+        alert("Please select a shipping courier");
+        return;
+      }
+      if (
+        statusEditDeliveryPartner === "OTHER" &&
+        !statusEditDeliveryPartnerName.trim()
+      ) {
+        alert("Please enter the shipping courier name");
+        return;
+      }
+      if (!statusEditAwsCode.trim()) {
+        alert("Please enter the AWB code");
+        return;
+      }
+    }
+
     setUpdatingStatus(true);
     try {
+      const payload: Record<string, string | null> = { status: newStatus };
+      if (isShippedStatus(newStatus)) {
+        payload.awsCode = statusEditAwsCode.trim();
+        payload.deliveryPartner = statusEditDeliveryPartner;
+        payload.deliveryPartnerName =
+          statusEditDeliveryPartner === "OTHER"
+            ? statusEditDeliveryPartnerName.trim()
+            : null;
+      }
+
       const response = await fetch(`/api/orders/${orderForStatusEdit.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -345,14 +415,59 @@ export default function OrdersPage() {
         throw new Error(error.error || "Failed to update status");
       }
 
-      setShowStatusEditModal(false);
-      setOrderForStatusEdit(null);
-      setNewStatus("");
+      resetStatusEditForm();
       fetchOrders(activeTab, currentPage);
     } catch (error: any) {
       alert("Error updating status: " + error.message);
     } finally {
       setUpdatingStatus(false);
+    }
+  };
+
+  const resetInvoiceEditForm = () => {
+    setShowInvoiceEditModal(false);
+    setOrderForInvoiceEdit(null);
+    setNewInvoiceNumber("");
+  };
+
+  const openInvoiceEdit = (order: Order) => {
+    if (!isAdmin) return;
+    setOrderForInvoiceEdit(order);
+    setNewInvoiceNumber(order.InvoiceNumber || "");
+    setShowInvoiceEditModal(true);
+  };
+
+  const handleUpdateInvoiceNumber = async () => {
+    if (!isAdmin || !orderForInvoiceEdit) return;
+    const trimmed = newInvoiceNumber.trim();
+    if (!trimmed) {
+      alert("Please enter an invoice number");
+      return;
+    }
+    if (trimmed === (orderForInvoiceEdit.InvoiceNumber || "")) {
+      resetInvoiceEditForm();
+      return;
+    }
+
+    setUpdatingInvoiceNumber(true);
+    try {
+      const response = await fetch(`/api/orders/${orderForInvoiceEdit.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ InvoiceNumber: trimmed }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update invoice number");
+      }
+
+      resetInvoiceEditForm();
+      fetchOrders(activeTab, currentPage);
+    } catch (error: any) {
+      alert("Error updating invoice number: " + error.message);
+    } finally {
+      setUpdatingInvoiceNumber(false);
     }
   };
 
@@ -882,18 +997,44 @@ export default function OrdersPage() {
                     </TableCell>
                     <TableCell className="py-3 px-4">
                       {order.InvoiceNumber ? (
-                        <>
-                          <div className="font-medium text-zinc-900 dark:text-zinc-100">
-                            {order.InvoiceNumber}
-                          </div>
-                          {order.invoiceType && (
-                            <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                              {order.invoiceType}
+                        <div className="flex items-start gap-1.5">
+                          <div>
+                            <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                              {order.InvoiceNumber}
                             </div>
+                            {order.invoiceType && (
+                              <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                                {order.invoiceType}
+                              </div>
+                            )}
+                          </div>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => openInvoiceEdit(order)}
+                              className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors mt-0.5"
+                              title="Change invoice number"
+                              aria-label="Change invoice number"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
                           )}
-                        </>
+                        </div>
                       ) : (
-                        <span className="text-zinc-400">No Invoice</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-zinc-400">No Invoice</span>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => openInvoiceEdit(order)}
+                              className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors"
+                              title="Set invoice number"
+                              aria-label="Set invoice number"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       )}
                     </TableCell>
                     <TableCell className="py-3 px-4">
@@ -1289,11 +1430,7 @@ export default function OrdersPage() {
         <Modal
           title="Change Order Status"
           disableClose={updatingStatus}
-          onClose={() => {
-            setShowStatusEditModal(false);
-            setOrderForStatusEdit(null);
-            setNewStatus("");
-          }}
+          onClose={resetStatusEditForm}
         >
           <div className="space-y-4">
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -1319,13 +1456,62 @@ export default function OrdersPage() {
                 ))}
               </Select>
             </div>
+            {isShippedStatus(newStatus) && (
+              <>
+                <div>
+                  <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    Shipping Courier <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={statusEditDeliveryPartner}
+                    onChange={(e) => {
+                      setStatusEditDeliveryPartner(e.target.value);
+                      if (e.target.value !== "OTHER") {
+                        setStatusEditDeliveryPartnerName("");
+                      }
+                    }}
+                    className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={updatingStatus}
+                  >
+                    <option value="">Select delivery partner</option>
+                    <option value="BLUE_DART">Blue Dart</option>
+                    <option value="DELHIVERY">Delhivery</option>
+                    <option value="OTHER">Other</option>
+                  </Select>
+                </div>
+                {statusEditDeliveryPartner === "OTHER" && (
+                  <div>
+                    <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                      Courier Name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      type="text"
+                      value={statusEditDeliveryPartnerName}
+                      onChange={(e) => setStatusEditDeliveryPartnerName(e.target.value)}
+                      placeholder="Enter courier name"
+                      disabled={updatingStatus}
+                      className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                )}
+                <div>
+                  <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    AWB Code <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="text"
+                    value={statusEditAwsCode}
+                    onChange={(e) => setStatusEditAwsCode(e.target.value)}
+                    placeholder="Enter AWB / tracking code"
+                    disabled={updatingStatus}
+                    className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </>
+            )}
             <div className="flex gap-3 justify-end pt-2">
               <Button
-                onClick={() => {
-                  setShowStatusEditModal(false);
-                  setOrderForStatusEdit(null);
-                  setNewStatus("");
-                }}
+                onClick={resetStatusEditForm}
                 disabled={updatingStatus}
                 className="px-4 py-2 bg-zinc-600 hover:bg-zinc-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -1333,10 +1519,63 @@ export default function OrdersPage() {
               </Button>
               <Button
                 onClick={handleUpdateStatus}
-                disabled={updatingStatus || newStatus === orderForStatusEdit.status}
+                disabled={
+                  updatingStatus ||
+                  (!isShippedStatus(newStatus) &&
+                    newStatus === orderForStatusEdit.status)
+                }
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {updatingStatus ? "Updating..." : "Submit"}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Change Invoice Number Modal (ADMIN only) */}
+      {isAdmin && showInvoiceEditModal && orderForInvoiceEdit && (
+        <Modal
+          title="Change Invoice Number"
+          disableClose={updatingInvoiceNumber}
+          onClose={resetInvoiceEditForm}
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Order <strong>{orderForInvoiceEdit.id}</strong> — Current invoice:{" "}
+              <strong>{orderForInvoiceEdit.InvoiceNumber || "None"}</strong>
+            </p>
+            <div>
+              <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                Invoice Number <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                type="text"
+                value={newInvoiceNumber}
+                onChange={(e) => setNewInvoiceNumber(e.target.value)}
+                placeholder="Enter invoice number"
+                disabled={updatingInvoiceNumber}
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div className="flex gap-3 justify-end pt-2">
+              <Button
+                onClick={resetInvoiceEditForm}
+                disabled={updatingInvoiceNumber}
+                className="px-4 py-2 bg-zinc-600 hover:bg-zinc-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUpdateInvoiceNumber}
+                disabled={
+                  updatingInvoiceNumber ||
+                  !newInvoiceNumber.trim() ||
+                  newInvoiceNumber.trim() === (orderForInvoiceEdit.InvoiceNumber || "")
+                }
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {updatingInvoiceNumber ? "Updating..." : "Submit"}
               </Button>
             </div>
           </div>

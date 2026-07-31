@@ -7,6 +7,39 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 
+function toLocalDateInputValue(dateString?: string | null) {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return "";
+  const yyyy = String(date.getFullYear());
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function toLocalTimeInputValue(dateString?: string | null) {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return "";
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mi = String(date.getMinutes()).padStart(2, "0");
+  return `${hh}:${mi}`;
+}
+
+function buildOrderDateTime(dateYmd: string, timeHm: string): Date {
+  const [y, m, d] = dateYmd.split("-").map((v) => parseInt(v, 10));
+  const [hh, mi] = (timeHm || "00:00").split(":").map((v) => parseInt(v, 10));
+  const out = new Date();
+  out.setFullYear(y, m - 1, d);
+  out.setHours(
+    Number.isFinite(hh) ? hh : 0,
+    Number.isFinite(mi) ? mi : 0,
+    0,
+    0
+  );
+  return out;
+}
+
 interface Customer {
   id: string;
   name: string;
@@ -151,12 +184,14 @@ export default function EditOrderPage() {
 
   const [invoiceType, setInvoiceType] = useState<"PI" | "TAX_INVOICE">("PI");
   const [invoiceDate, setInvoiceDate] = useState<string>("");
+  const [invoiceTime, setInvoiceTime] = useState<string>("");
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [selectedInvoiceOfficeId, setSelectedInvoiceOfficeId] = useState<string>("");
   const [items, setItems] = useState<OrderItem[]>([]);
   const [deliveryCharge, setDeliveryCharge] = useState<string>("");
   const [deliveryPartner, setDeliveryPartner] = useState<string>("");
   const [deliveryPartnerName, setDeliveryPartnerName] = useState<string>("");
+  const [awsCode, setAwsCode] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [status, setStatus] = useState<string>("PENDING");
 
@@ -176,17 +211,6 @@ export default function EditOrderPage() {
     }
   }, [order?.user?.id]);
 
-  const toDateInputValue = (dateString?: string | null) => {
-    if (!dateString) {
-      return "";
-    }
-    const date = new Date(dateString);
-    if (Number.isNaN(date.getTime())) {
-      return "";
-    }
-    return date.toISOString().slice(0, 10);
-  };
-
   const fetchOrder = async () => {
     try {
       setLoadingOrder(true);
@@ -199,8 +223,10 @@ export default function EditOrderPage() {
         setInvoiceType((orderData.invoiceType as "PI" | "TAX_INVOICE") || "PI");
         setSelectedAddressId(orderData.shippingAddressId || "");
         setSelectedInvoiceOfficeId(orderData.invoiceOfficeId || "");
-        setInvoiceDate(toDateInputValue(orderData.orderDate));
+        setInvoiceDate(toLocalDateInputValue(orderData.orderDate));
+        setInvoiceTime(toLocalTimeInputValue(orderData.orderDate));
         setDeliveryCharge(orderData.shippingAmount?.toString() || "");
+        setAwsCode(orderData.awsCode || "");
         setPaymentMethod(orderData.paymentMethod || "");
         setStatus(orderData.status || "PENDING");
         setIsDifferentSupplier(orderData.isDifferentSupplier || false);
@@ -491,6 +517,19 @@ export default function EditOrderPage() {
         return;
       }
 
+      if (!invoiceDate || !invoiceTime) {
+        alert("Please select invoice date and time");
+        setLoading(false);
+        return;
+      }
+
+      const effectiveOrderDate = buildOrderDateTime(invoiceDate, invoiceTime);
+      if (Number.isNaN(effectiveOrderDate.getTime())) {
+        alert("Invalid invoice date/time");
+        setLoading(false);
+        return;
+      }
+
       if (isDifferentSupplier && !selectedSupplierId) {
         alert("Please select a supplier or uncheck 'Different Supplier'");
         setLoading(false);
@@ -509,10 +548,11 @@ export default function EditOrderPage() {
           customWeight: item.customWeightGrams,
         })),
         invoiceOfficeId: selectedInvoiceOfficeId,
-        orderDate: invoiceDate || null,
+        orderDate: effectiveOrderDate.toISOString(),
         deliveryCharge: deliveryCharge || null,
         deliveryPartner: deliveryPartner || null,
         deliveryPartnerName: deliveryPartner === "OTHER" ? deliveryPartnerName : null,
+        awsCode: awsCode.trim() || null,
         paymentMethod: paymentMethod || null,
         status: status || "PENDING",
         isDifferentSupplier: isDifferentSupplier || false,
@@ -641,17 +681,31 @@ export default function EditOrderPage() {
               </Label>
             </div>
           </div>
-          <div>
-            <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-              Invoice Date <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              type="date"
-              value={invoiceDate}
-              onChange={(e) => setInvoiceDate(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                Invoice Date <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                type="date"
+                value={invoiceDate}
+                onChange={(e) => setInvoiceDate(e.target.value)}
+                required
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                Invoice Time <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                type="time"
+                value={invoiceTime}
+                onChange={(e) => setInvoiceTime(e.target.value)}
+                required
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
           </div>
           <div className="mt-6">
             <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
@@ -984,6 +1038,19 @@ export default function EditOrderPage() {
                 />
               </div>
             )}
+
+            <div>
+              <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                AWB Code
+              </Label>
+              <Input
+                type="text"
+                value={awsCode}
+                onChange={(e) => setAwsCode(e.target.value)}
+                placeholder="Enter AWB / tracking code"
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
 
             <div>
               <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">

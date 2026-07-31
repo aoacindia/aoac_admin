@@ -151,6 +151,8 @@ export async function POST(request: NextRequest) {
       supplierId,
       paymentMethod,
       status,
+      orderDate,
+      awsCode,
     } = body;
 
     if (!customerId) {
@@ -257,8 +259,15 @@ export async function POST(request: NextRequest) {
     const roundingOff = roundedTotal - grandTotal;
 
     const now = new Date();
-    const financialYear = getFinancialYear(now);
-    const financialYearStart = getFinancialYearStart(now);
+    const effectiveOrderDate = orderDate ? new Date(orderDate) : now;
+    if (Number.isNaN(effectiveOrderDate.getTime())) {
+      return NextResponse.json(
+        { success: false, error: "Invalid orderDate" },
+        { status: 400 }
+      );
+    }
+    const financialYear = getFinancialYear(effectiveOrderDate);
+    const financialYearStart = getFinancialYearStart(effectiveOrderDate);
     const isBusinessAccount = customer.isBusinessAccount === true;
 
     const { invoiceNumber, sequenceNumber } = await generateInvoiceNumber(
@@ -296,7 +305,7 @@ export async function POST(request: NextRequest) {
       await tx.insert(orders).values({
         id: generatedOrderId,
         orderBy: customer.id,
-        orderDate: now,
+        orderDate: effectiveOrderDate,
         status: (status || "PENDING") as typeof orders.$inferInsert.status,
         totalAmount: roundedTotal,
         discountAmount: totalDiscount,
@@ -307,6 +316,7 @@ export async function POST(request: NextRequest) {
           deliveryPartner === "OTHER"
             ? deliveryPartnerName
             : deliveryPartner || null,
+        awsCode: awsCode ? String(awsCode).trim() || null : null,
         invoiceOfficeId,
         isDifferentSupplier: Boolean(isDifferentSupplier),
         supplierId:
