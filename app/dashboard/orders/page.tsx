@@ -180,6 +180,7 @@ export default function OrdersPage() {
 
   const ORDER_STATUS_OPTIONS = [
     { value: "PENDING", label: "Pending" },
+    { value: "PAYMENT_PENDING", label: "Payment Pending" },
     { value: "PAID", label: "Paid" },
     { value: "PROCESSING", label: "Processing" },
     { value: "SHIPPED", label: "Shipped" },
@@ -640,12 +641,6 @@ export default function OrdersPage() {
           </div>
           <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-2">
             <Link
-              href="/dashboard/orders/create-personal"
-              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors inline-block text-center"
-            >
-              Create Personal Order
-            </Link>
-            <Link
               href="/dashboard/orders/create"
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-block text-center"
             >
@@ -853,6 +848,7 @@ export default function OrdersPage() {
             >
               <option value="">All Status</option>
               <option value="PENDING">Pending</option>
+              <option value="PAYMENT_PENDING">Payment Pending</option>
               <option value="PAID">Paid</option>
               <option value="PROCESSING">Processing</option>
               <option value="SHIPPED">Shipped</option>
