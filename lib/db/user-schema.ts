@@ -26,7 +26,7 @@ export const orderStatusEnum = pgEnum("OrderStatus", [
   "REFUNDED",
 ]);
 
-/** Application users / customers (`User` table) */
+/** Application users / customers (`User` table) — account only */
 export const users = pgTable(
   "User",
   {
@@ -36,11 +36,6 @@ export const users = pgTable(
     suspended: boolean("suspended").notNull().default(false),
     suspended_number: integer("suspended_number").notNull().default(0),
     terminated: boolean("terminated").notNull().default(false),
-    isBusinessAccount: boolean("isBusinessAccount").default(false),
-    businessName: text("businessName"),
-    gstNumber: text("gstNumber"),
-    hasAdditionalTradeName: boolean("hasAdditionalTradeName").default(false),
-    additionalTradeName: text("additionalTradeName"),
     phone: text("phone").notNull(),
     password: text("password"),
     createdAt: timestamp("createdAt", {
@@ -55,6 +50,36 @@ export const users = pgTable(
     }).notNull(),
   },
   (table) => [uniqueIndex("User_email_key").on(table.email), uniqueIndex("User_phone_key").on(table.phone)]
+);
+
+/** Businesses belonging to a user (many per account) */
+export const businesses = pgTable(
+  "Business",
+  {
+    id: text("id").primaryKey(),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    businessName: text("businessName").notNull(),
+    gstNumber: text("gstNumber"),
+    hasAdditionalTradeName: boolean("hasAdditionalTradeName").notNull().default(false),
+    additionalTradeName: text("additionalTradeName"),
+    createdAt: timestamp("createdAt", {
+      precision: 3,
+      mode: "date",
+    })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", {
+      precision: 3,
+      mode: "date",
+    }).notNull(),
+  },
+  (t) => [
+    index("Business_userId_idx").on(t.userId),
+    index("Business_businessName_idx").on(t.businessName),
+    index("Business_gstNumber_idx").on(t.gstNumber),
+  ]
 );
 
 /** Storefront OTP verification (distinct from admin DB) */
@@ -193,6 +218,8 @@ export const orders = pgTable(
     orderBy: text("orderBy")
       .notNull()
       .references(() => users.id),
+    businessId: text("businessId").references(() => businesses.id),
+    isBillToSameAsShipping: boolean("isBillToSameAsShipping").notNull().default(true),
     orderDate: timestamp("orderDate", { precision: 3, mode: "date" }).notNull().defaultNow(),
     status: orderStatusEnum("status").notNull().default("PENDING"),
     totalAmount: doublePrecision("totalAmount").notNull(),
@@ -238,6 +265,7 @@ export const orders = pgTable(
   },
   (t) => [
     index("Order_orderBy_idx").on(t.orderBy),
+    index("Order_businessId_idx").on(t.businessId),
     index("Order_status_idx").on(t.status),
     index("Order_supplierId_idx").on(t.supplierId),
   ]
@@ -355,15 +383,16 @@ export const suspensionReasons = pgTable(
   ]
 );
 
+/** Billing address is 1:1 with a business */
 export const billingAddresses = pgTable(
   "BillingAddress",
   {
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
-    userId: text("userId")
+    businessId: text("businessId")
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => businesses.id, { onDelete: "cascade" }),
     houseNo: text("houseNo").notNull(),
     line1: text("line1").notNull(),
     line2: text("line2"),
@@ -379,24 +408,30 @@ export const billingAddresses = pgTable(
     updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" }).notNull(),
   },
   (t) => [
-    uniqueIndex("BillingAddress_userId_key").on(t.userId),
-    index("BillingAddress_userId_idx").on(t.userId),
+    uniqueIndex("BillingAddress_businessId_key").on(t.businessId),
+    index("BillingAddress_businessId_idx").on(t.businessId),
   ]
 );
 
 /* ---- Relations (for db.query.* helpers) ---- */
 
-export const usersRelations = relations(users, ({ many, one }) => ({
+export const usersRelations = relations(users, ({ many }) => ({
   cart: many(carts),
   bulkCart: many(bulkCarts),
   addresses: many(addresses),
+  businesses: many(businesses),
   order: many(orders),
   passwordReset: many(passwordResets),
   suspensionReasons: many(suspensionReasons),
+}));
+
+export const businessesRelations = relations(businesses, ({ one, many }) => ({
+  user: one(users, { fields: [businesses.userId], references: [users.id] }),
   billingAddress: one(billingAddresses, {
-    fields: [users.id],
-    references: [billingAddresses.userId],
+    fields: [businesses.id],
+    references: [billingAddresses.businessId],
   }),
+  orders: many(orders),
 }));
 
 export const cartsRelations = relations(carts, ({ one }) => ({
@@ -418,6 +453,10 @@ export const suppliersRelations = relations(suppliers, ({ many }) => ({
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
   user: one(users, { fields: [orders.orderBy], references: [users.id] }),
+  business: one(businesses, {
+    fields: [orders.businessId],
+    references: [businesses.id],
+  }),
   shippingAddress: one(addresses, {
     fields: [orders.shippingAddressId],
     references: [addresses.id],
@@ -439,13 +478,18 @@ export const suspensionReasonsRelations = relations(suspensionReasons, ({ one })
 }));
 
 export const billingAddressesRelations = relations(billingAddresses, ({ one }) => ({
-  user: one(users, { fields: [billingAddresses.userId], references: [users.id] }),
+  business: one(businesses, {
+    fields: [billingAddresses.businessId],
+    references: [businesses.id],
+  }),
 }));
 
 /* ---- Inferred types ---- */
 
 export type UserRow = typeof users.$inferSelect;
 export type NewUserRow = typeof users.$inferInsert;
+export type BusinessRow = typeof businesses.$inferSelect;
+export type NewBusinessRow = typeof businesses.$inferInsert;
 export type OrderRow = typeof orders.$inferSelect;
 export type NewOrderRow = typeof orders.$inferInsert;
 export type OrderItemRow = typeof orderItems.$inferSelect;

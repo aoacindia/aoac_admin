@@ -5,8 +5,9 @@ import { users } from "@/lib/db/user-schema";
 
 export type UserDb = typeof dbUser;
 
-export function getIdPrefix(isBusinessAccount: boolean) {
-  return isBusinessAccount ? "BS" : "US";
+/** User accounts always use US prefix (businesses use BZ via business-id.ts). */
+export function getIdPrefix(_isBusinessAccount?: boolean) {
+  return "US";
 }
 
 export function formatUserId(prefix: string, year: number, sequence: number) {
@@ -23,11 +24,10 @@ function parseSequence(id: string, prefix: string, year: number) {
 }
 
 export async function getMaxSequence(db: UserDb, prefix: string, year: number) {
-  const expectedPrefix = `${prefix}-${year}-`;
   const existing = await db
     .select({ id: users.id })
     .from(users)
-    .where(like(users.id, `${expectedPrefix}%`));
+    .where(like(users.id, `${prefix}${year}%`));
 
   let maxSequence = 0;
   for (const row of existing) {
@@ -41,9 +41,9 @@ export async function getMaxSequence(db: UserDb, prefix: string, year: number) {
 
 export async function generateNextUserId(
   db: UserDb,
-  isBusinessAccount: boolean
+  _isBusinessAccount?: boolean
 ): Promise<string> {
-  const prefix = getIdPrefix(isBusinessAccount);
+  const prefix = getIdPrefix();
   const year = new Date().getFullYear();
   let sequence = await getMaxSequence(db, prefix, year);
   let userId = "";

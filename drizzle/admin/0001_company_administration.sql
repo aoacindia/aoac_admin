@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS "CompanyAdministration" (
+	"id" text PRIMARY KEY NOT NULL,
+	"companyName" text DEFAULT '' NOT NULL,
+	"addressLine" text DEFAULT '' NOT NULL,
+	"city" text DEFAULT '' NOT NULL,
+	"district" text DEFAULT '' NOT NULL,
+	"state" text DEFAULT '' NOT NULL,
+	"stateCode" text DEFAULT '' NOT NULL,
+	"pincode" text DEFAULT '' NOT NULL,
+	"country" text DEFAULT 'India' NOT NULL,
+	"uin" text DEFAULT '' NOT NULL,
+	"pan" text DEFAULT '' NOT NULL,
+	"tin" text DEFAULT '' NOT NULL,
+	"panDocumentPath" text,
+	"tinDocumentPath" text,
+	"certificateOfIncorporationPath" text,
+	"memorandumOfAssociationPath" text,
+	"articlesOfAssociationPath" text,
+	"createdAt" timestamp(3) DEFAULT now() NOT NULL,
+	"updatedAt" timestamp(3) NOT NULL
+);

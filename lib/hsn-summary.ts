@@ -27,14 +27,14 @@ export type OrderForHsn = {
   invoiceOfficeId: string | null;
   shippingAmount: number | null;
   shippingAddress: { stateCode?: string | null } | null;
-  user?: { billingAddress?: { stateCode?: string | null } | null } | null;
+  business?: { billingAddress?: { stateCode?: string | null } | null } | null;
   orderItems: OrderItemWithProduct[];
 };
 
 function placeOfSupplyStateCode(order: OrderForHsn): string {
   return (
     order.shippingAddress?.stateCode?.trim() ||
-    order.user?.billingAddress?.stateCode?.trim() ||
+    order.business?.billingAddress?.stateCode?.trim() ||
     ""
   );
 }

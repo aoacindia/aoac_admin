@@ -3,13 +3,12 @@ import {
   and,
   desc,
   eq,
-  exists,
   gte,
   inArray,
+  isNotNull,
   isNull,
   lte,
   ne,
-  or,
   sql,
 } from "drizzle-orm";
 
@@ -22,15 +21,14 @@ import { requireAdminApi } from "@/lib/require-admin";
 import { dbAdmin, dbProduct, dbUser } from "@/lib/db";
 import { offices } from "@/lib/db/admin-schema";
 import { products } from "@/lib/db/product-schema";
-import { orders, users } from "@/lib/db/user-schema";
+import { orders } from "@/lib/db/user-schema";
 import type { OrderItemRow } from "@/lib/db/user-schema";
-import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
 type OrderForCombinedTotals = {
   invoiceOfficeId: string | null;
   shippingAmount: number | null;
   orderItems: OrderItemRow[];
-  user: {
+  business: {
     billingAddress: { stateCode: string | null } | null;
   } | null;
 };
@@ -45,10 +43,12 @@ type OrderBusinessStandard = {
   InvoiceNumber: string | null;
   orderDate: Date;
   user: {
-    gstNumber: string | null;
-    businessName: string | null;
     name: string;
   };
+  business: {
+    gstNumber: string | null;
+    businessName: string | null;
+  } | null;
 };
 
 type OrderPersonalStandard = {
@@ -60,42 +60,17 @@ type OrderPersonalStandard = {
 };
 
 type OrderBusinessHsn = OrderBusinessStandard & {
-  user: OrderBusinessStandard["user"] & {
+  business: (OrderBusinessStandard["business"] & {
     billingAddress: { stateCode: string | null } | null;
-  };
+  }) | null;
   shippingAddress: { stateCode: string | null } | null;
 };
 
 type OrderPersonalHsn = OrderPersonalStandard & {
-  user: {
+  business: {
     billingAddress: { stateCode: string | null } | null;
   } | null;
 };
-
-function businessUserSubquery(orderByRef: AnyPgColumn) {
-  return exists(
-    dbUser
-      .select({ o: sql`1` })
-      .from(users)
-      .where(
-        and(eq(users.id, orderByRef), eq(users.isBusinessAccount, true))
-      )
-  );
-}
-
-function personalUserSubquery(orderByRef: AnyPgColumn) {
-  return exists(
-    dbUser
-      .select({ o: sql`1` })
-      .from(users)
-      .where(
-        and(
-          eq(users.id, orderByRef),
-          or(eq(users.isBusinessAccount, false), isNull(users.isBusinessAccount))
-        )
-      )
-  );
-}
 
 /** Calendar month in local server TZ: first instant to last instant of that month. */
 function getOrderDateFilterForMonthYear(month: number, year: number) {
@@ -186,7 +161,7 @@ function computeCombinedTaxTotals(
       ? normalizeStateCode(officeStateCodeById.get(order.invoiceOfficeId))
       : null;
     const supplyStateCode = normalizeStateCode(
-      order.user?.billingAddress?.stateCode
+      order.business?.billingAddress?.stateCode
     );
     const isIntraState =
       officeStateCode !== null &&
@@ -257,7 +232,7 @@ export async function GET(request: NextRequest) {
 
     type OrderWhereCols = {
       orderDate: typeof orders.orderDate;
-      orderBy: typeof orders.orderBy;
+      businessId: typeof orders.businessId;
       status: typeof orders.status;
       invoiceOfficeId: typeof orders.invoiceOfficeId;
     };
@@ -272,7 +247,7 @@ export async function GET(request: NextRequest) {
         gte(o.orderDate, start),
         lte(o.orderDate, end),
         ne(o.status, "PENDING"),
-        businessUserSubquery(o.orderBy),
+        isNotNull(o.businessId),
         officeEq(o)
       );
 
@@ -281,7 +256,7 @@ export async function GET(request: NextRequest) {
         gte(o.orderDate, start),
         lte(o.orderDate, end),
         ne(o.status, "PENDING"),
-        personalUserSubquery(o.orderBy),
+        isNull(o.businessId),
         officeEq(o)
       );
 
@@ -298,7 +273,7 @@ export async function GET(request: NextRequest) {
           },
           with: {
             orderItems: true,
-            user: {
+            business: {
               columns: { id: true },
               with: {
                 billingAddress: { columns: { stateCode: true } },
@@ -315,7 +290,7 @@ export async function GET(request: NextRequest) {
           },
           with: {
             orderItems: true,
-            user: {
+            business: {
               columns: { id: true },
               with: {
                 billingAddress: { columns: { stateCode: true } },
@@ -340,9 +315,13 @@ export async function GET(request: NextRequest) {
           orderItems: true,
           user: {
             columns: {
+              name: true,
+            },
+          },
+          business: {
+            columns: {
               gstNumber: true,
               businessName: true,
-              name: true,
             },
           },
           shippingAddress: true,
@@ -365,9 +344,13 @@ export async function GET(request: NextRequest) {
           orderItems: true,
           user: {
             columns: {
+              name: true,
+            },
+          },
+          business: {
+            columns: {
               gstNumber: true,
               businessName: true,
-              name: true,
             },
             with: {
               billingAddress: { columns: { stateCode: true } },
@@ -383,7 +366,7 @@ export async function GET(request: NextRequest) {
         with: {
           orderItems: true,
           shippingAddress: true,
-          user: {
+          business: {
             columns: { id: true },
             with: {
               billingAddress: { columns: { stateCode: true } },
@@ -400,9 +383,13 @@ export async function GET(request: NextRequest) {
             orderItems: true,
             user: {
               columns: {
+                name: true,
+              },
+            },
+            business: {
+              columns: {
                 gstNumber: true,
                 businessName: true,
-                name: true,
               },
             },
             shippingAddress: true,
@@ -500,7 +487,7 @@ export async function GET(request: NextRequest) {
 
           return {
             orderId: order.id,
-            buyerGstin: order.user.gstNumber?.trim() || null,
+            buyerGstin: order.business?.gstNumber?.trim() || null,
             invoiceNumber: order.InvoiceNumber,
             orderDate: order.orderDate.toISOString(),
             invoiceTotalRounded: Math.round(Number(invoiceTotal)),
@@ -510,7 +497,7 @@ export async function GET(request: NextRequest) {
               taxableAmount: r.taxableAmount,
             })),
             customerLabel:
-              order.user.businessName?.trim() || order.user.name || "—",
+              order.business?.businessName?.trim() || order.user.name || "—",
           };
         });
 

@@ -1,7 +1,7 @@
 import type { SQL } from "drizzle-orm";
-import { and, eq, gte, ilike, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { and, eq, gte, ilike, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 
-import { orders, orderStatusEnum, users } from "@/lib/db/user-schema";
+import { businesses, orders, orderStatusEnum, users } from "@/lib/db/user-schema";
 
 const ORDER_STATUSES = orderStatusEnum.enumValues;
 
@@ -12,7 +12,10 @@ function toOrderStatuses(vals: string[]): OrderStatusValue[] {
   return vals.filter((s): s is OrderStatusValue => set.has(s));
 }
 
-/** Drizzle JOIN-friendly conditions for `/api/orders` list filters (paired with joined `users`). */
+/**
+ * Drizzle JOIN-friendly conditions for `/api/orders` list filters.
+ * Expects orders INNER JOIN users, LEFT JOIN businesses.
+ */
 export function buildOrdersListConditionsDrizzle(params: {
   orderType: string | null;
   status: string | null;
@@ -29,11 +32,6 @@ export function buildOrdersListConditionsDrizzle(params: {
   const statusList = toOrderStatuses(rawStatusesInput);
 
   const singleRaw = params.status?.trim();
-
-  const userTypePersonal = or(
-    eq(users.isBusinessAccount, false),
-    isNull(users.isBusinessAccount)
-  );
 
   if (statusList.length > 0) {
     clauses.push(inArray(orders.status, statusList));
@@ -71,9 +69,9 @@ export function buildOrdersListConditionsDrizzle(params: {
   const searchTrim = params.search?.trim();
   let userTypeClause: SQL | undefined;
   if (params.orderType === "business") {
-    userTypeClause = eq(users.isBusinessAccount, true);
+    userTypeClause = isNotNull(orders.businessId);
   } else if (params.orderType === "personal") {
-    userTypeClause = userTypePersonal;
+    userTypeClause = isNull(orders.businessId);
   }
 
   if (searchTrim) {
@@ -81,7 +79,7 @@ export function buildOrdersListConditionsDrizzle(params: {
     const userMatch = or(
       ilike(users.name, needle),
       ilike(users.email, needle),
-      ilike(users.businessName, needle)
+      ilike(businesses.businessName, needle)
     );
     const userScoped =
       userTypeClause !== undefined ? and(userTypeClause, userMatch)! : userMatch;

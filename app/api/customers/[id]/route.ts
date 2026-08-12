@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, desc, eq, ne, or } from "drizzle-orm";
+import { and, eq, ne, or } from "drizzle-orm";
 
 import { dbUser } from "@/lib/db";
-import { billingAddresses, users } from "@/lib/db/user-schema";
+import { users } from "@/lib/db/user-schema";
 
 // GET customer by id
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -17,7 +17,10 @@ export async function GET(
         suspensionReasons: {
           orderBy: (sr, { desc: d }) => [d(sr.suspendedAt)],
         },
-        billingAddress: true,
+        businesses: {
+          with: { billingAddress: true },
+          orderBy: (b, { asc: a }) => [a(b.createdAt)],
+        },
         addresses: {
           orderBy: (a, { desc: d }) => [d(a.createdAt)],
         },
@@ -26,6 +29,9 @@ export async function GET(
           with: {
             orderItems: true,
             shippingAddress: true,
+            business: {
+              with: { billingAddress: true },
+            },
           },
         },
       },
@@ -49,7 +55,7 @@ export async function GET(
   }
 }
 
-// PUT update customer
+// PUT update customer account fields only (businesses managed via /businesses)
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -57,17 +63,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const {
-      name,
-      email,
-      phone,
-      isBusinessAccount,
-      businessName,
-      gstNumber,
-      hasAdditionalTradeName,
-      additionalTradeName,
-      billingAddress,
-    } = body;
+    const { name, email, phone } = body;
 
     const [existingCustomer] = await dbUser
       .select()
@@ -110,82 +106,16 @@ export async function PUT(
     if (name !== undefined) updateValues.name = name;
     if (email !== undefined) updateValues.email = email;
     if (phone !== undefined) updateValues.phone = phone;
-    if (isBusinessAccount !== undefined) {
-      updateValues.isBusinessAccount = isBusinessAccount;
-    }
 
-    const isBiz =
-      isBusinessAccount !== undefined
-        ? Boolean(isBusinessAccount)
-        : Boolean(existingCustomer.isBusinessAccount);
-
-    if (businessName !== undefined) {
-      updateValues.businessName = isBiz ? businessName : null;
-    }
-    if (gstNumber !== undefined) {
-      updateValues.gstNumber = isBiz ? gstNumber : null;
-    }
-    if (hasAdditionalTradeName !== undefined) {
-      updateValues.hasAdditionalTradeName = isBiz
-        ? Boolean(hasAdditionalTradeName)
-        : false;
-    }
-    if (additionalTradeName !== undefined) {
-      updateValues.additionalTradeName =
-        isBiz && hasAdditionalTradeName ? additionalTradeName : null;
-    }
-
-    await dbUser.transaction(async (tx) => {
-      if (!isBiz) {
-        await tx.delete(billingAddresses).where(eq(billingAddresses.userId, id));
-      } else if (billingAddress) {
-        const [existingBilling] = await tx
-          .select({ id: billingAddresses.id })
-          .from(billingAddresses)
-          .where(eq(billingAddresses.userId, id))
-          .limit(1);
-
-        if (existingBilling) {
-          await tx
-            .update(billingAddresses)
-            .set({
-              houseNo: billingAddress.houseNo,
-              line1: billingAddress.line1,
-              line2: billingAddress.line2 || null,
-              city: billingAddress.city,
-              district: billingAddress.district,
-              state: billingAddress.state,
-              stateCode: billingAddress.stateCode || null,
-              country: billingAddress.country || "India",
-              pincode: billingAddress.pincode,
-              updatedAt: now,
-            })
-            .where(eq(billingAddresses.userId, id));
-        } else {
-          await tx.insert(billingAddresses).values({
-            userId: id,
-            houseNo: billingAddress.houseNo,
-            line1: billingAddress.line1,
-            line2: billingAddress.line2 || null,
-            city: billingAddress.city,
-            district: billingAddress.district,
-            state: billingAddress.state,
-            stateCode: billingAddress.stateCode || null,
-            country: billingAddress.country || "India",
-            pincode: billingAddress.pincode,
-            createdAt: now,
-            updatedAt: now,
-          });
-        }
-      }
-
-      await tx.update(users).set(updateValues).where(eq(users.id, id));
-    });
+    await dbUser.update(users).set(updateValues).where(eq(users.id, id));
 
     const customer = await dbUser.query.users.findFirst({
       where: eq(users.id, id),
       with: {
-        billingAddress: true,
+        businesses: {
+          with: { billingAddress: true },
+          orderBy: (b, { asc: a }) => [a(b.createdAt)],
+        },
         suspensionReasons: {
           orderBy: (sr, { desc: d }) => [d(sr.suspendedAt)],
         },

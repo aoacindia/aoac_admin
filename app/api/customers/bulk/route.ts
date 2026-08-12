@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { inArray, or } from "drizzle-orm";
 
+import { generateNextBusinessId } from "@/lib/business-id";
 import { dbUser } from "@/lib/db";
-import { billingAddresses, users } from "@/lib/db/user-schema";
+import { billingAddresses, businesses, users } from "@/lib/db/user-schema";
 import { formatUserId, getIdPrefix, getMaxSequence } from "@/lib/user-id";
 
 type RawBulkRecord = {
@@ -131,16 +132,8 @@ function toNormalizedRecord(record: RawBulkRecord): NormalizedRecord {
 async function buildPreviewRows(records: RawBulkRecord[]) {
   const normalized = records.map(toNormalizedRecord);
   const year = new Date().getFullYear();
-
-  const businessPrefix = getIdPrefix(true);
-  const individualPrefix = getIdPrefix(false);
-  const [businessStart, individualStart] = await Promise.all([
-    getMaxSequence(dbUser, businessPrefix, year),
-    getMaxSequence(dbUser, individualPrefix, year),
-  ]);
-
-  let businessSequence = businessStart;
-  let individualSequence = individualStart;
+  const prefix = getIdPrefix();
+  let sequence = await getMaxSequence(dbUser, prefix, year);
 
   const emailMap = new Map<string, number[]>();
   const phoneMap = new Map<string, number[]>();
@@ -211,9 +204,7 @@ async function buildPreviewRows(records: RawBulkRecord[]) {
       }
     }
 
-    const prefix = getIdPrefix(record.isBusinessAccount);
-    const sequence =
-      prefix === businessPrefix ? ++businessSequence : ++individualSequence;
+    sequence += 1;
     const expectedId = formatUserId(prefix, year, sequence);
 
     return {
@@ -266,30 +257,41 @@ export async function POST(request: NextRequest) {
           email: row.data.email,
           phone: row.data.phone,
           password: null,
-          isBusinessAccount: row.data.isBusinessAccount,
-          businessName: row.data.businessName,
-          gstNumber: row.data.gstNumber,
-          hasAdditionalTradeName: row.data.hasAdditionalTradeName,
-          additionalTradeName: row.data.additionalTradeName,
           createdAt: now,
           updatedAt: now,
         });
 
-        if (row.data.isBusinessAccount && row.data.billingAddress) {
-          await tx.insert(billingAddresses).values({
+        if (row.data.isBusinessAccount && row.data.businessName) {
+          const businessId = await generateNextBusinessId(
+            tx as unknown as typeof dbUser
+          );
+          await tx.insert(businesses).values({
+            id: businessId,
             userId: row.expectedId,
-            houseNo: row.data.billingAddress.houseNo,
-            line1: row.data.billingAddress.line1,
-            line2: row.data.billingAddress.line2,
-            city: row.data.billingAddress.city,
-            district: row.data.billingAddress.district,
-            state: row.data.billingAddress.state,
-            stateCode: row.data.billingAddress.stateCode,
-            country: row.data.billingAddress.country,
-            pincode: row.data.billingAddress.pincode,
+            businessName: row.data.businessName,
+            gstNumber: row.data.gstNumber,
+            hasAdditionalTradeName: row.data.hasAdditionalTradeName,
+            additionalTradeName: row.data.additionalTradeName,
             createdAt: now,
             updatedAt: now,
           });
+
+          if (row.data.billingAddress) {
+            await tx.insert(billingAddresses).values({
+              businessId,
+              houseNo: row.data.billingAddress.houseNo,
+              line1: row.data.billingAddress.line1,
+              line2: row.data.billingAddress.line2,
+              city: row.data.billingAddress.city,
+              district: row.data.billingAddress.district,
+              state: row.data.billingAddress.state,
+              stateCode: row.data.billingAddress.stateCode,
+              country: row.data.billingAddress.country,
+              pincode: row.data.billingAddress.pincode,
+              createdAt: now,
+              updatedAt: now,
+            });
+          }
         }
       }
     });
@@ -310,4 +312,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

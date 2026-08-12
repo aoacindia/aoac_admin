@@ -41,7 +41,7 @@ export async function POST(
         suspensionReasons: {
           orderBy: (sr, { desc: d }) => [d(sr.suspendedAt)],
         },
-        billingAddress: true,
+        businesses: { with: { billingAddress: true } },
       },
     });
 

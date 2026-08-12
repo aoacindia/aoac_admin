@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { dbAdmin, dbProduct, dbUser } from "@/lib/db";
 import { offices } from "@/lib/db/admin-schema";
 import { products } from "@/lib/db/product-schema";
 import {
+  businesses,
   orderItems,
   orders,
-  users,
 } from "@/lib/db/user-schema";
 import {
   generateInvoiceNumber,
@@ -15,6 +15,24 @@ import {
   getFinancialYearStart,
 } from "@/lib/order-helpers";
 import { requireAdminApi } from "@/lib/require-admin";
+
+const orderUserColumns = {
+  id: true,
+  name: true,
+  email: true,
+  phone: true,
+} as const;
+
+const orderBusinessWith = {
+  columns: {
+    id: true,
+    businessName: true,
+    gstNumber: true,
+    hasAdditionalTradeName: true,
+    additionalTradeName: true,
+  },
+  with: { billingAddress: true },
+} as const;
 
 // GET order by id
 export async function GET(
@@ -34,17 +52,8 @@ export async function GET(
     const order = await dbUser.query.orders.findFirst({
       where: eq(orders.id, id),
       with: {
-        user: {
-          columns: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            businessName: true,
-            gstNumber: true,
-            isBusinessAccount: true,
-          },
-        },
+        user: { columns: orderUserColumns },
+        business: orderBusinessWith,
         shippingAddress: true,
         orderItems: true,
         supplier: true,
@@ -163,6 +172,8 @@ export async function PUT(
       refundReceipt,
       refundArn,
       refundCreatedAt,
+      businessId,
+      isBillToSameAsShipping,
     } = body;
 
     const [existingOrder] = await dbUser
@@ -171,6 +182,7 @@ export async function PUT(
         invoiceOfficeId: orders.invoiceOfficeId,
         shippingAmount: orders.shippingAmount,
         userId: orders.orderBy,
+        businessId: orders.businessId,
       })
       .from(orders)
       .where(eq(orders.id, id))
@@ -183,18 +195,39 @@ export async function PUT(
       );
     }
 
-    const [userRow] = await dbUser
-      .select({ isBusinessAccount: users.isBusinessAccount })
-      .from(users)
-      .where(eq(users.id, existingOrder.userId))
-      .limit(1);
-
-    const userForOrder = userRow ?? {
-      isBusinessAccount: false as boolean | null,
-    };
-
     type OrderPatch = Partial<typeof orders.$inferInsert>;
     const updateValues: OrderPatch = {};
+
+    if (businessId !== undefined) {
+      if (businessId === null || businessId === "") {
+        updateValues.businessId = null;
+      } else {
+        const [business] = await dbUser
+          .select({ id: businesses.id })
+          .from(businesses)
+          .where(
+            and(
+              eq(businesses.id, businessId),
+              eq(businesses.userId, existingOrder.userId)
+            )
+          )
+          .limit(1);
+        if (!business) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "Business not found or does not belong to customer",
+            },
+            { status: 404 }
+          );
+        }
+        updateValues.businessId = business.id;
+      }
+    }
+
+    if (isBillToSameAsShipping !== undefined) {
+      updateValues.isBillToSameAsShipping = Boolean(isBillToSameAsShipping);
+    }
 
     if (items && Array.isArray(items) && items.length > 0) {
       let subtotal = 0;
@@ -387,7 +420,11 @@ export async function PUT(
         const financialYear = getFinancialYear(nowInv);
         const financialYearStart = getFinancialYearStart(nowInv);
 
-        const isBusinessAccount = userForOrder.isBusinessAccount === true;
+        const effectiveBusinessId =
+          updateValues.businessId !== undefined
+            ? updateValues.businessId
+            : existingOrder.businessId;
+        const isBusiness = Boolean(effectiveBusinessId);
         const effectiveInvoiceOfficeId =
           invoiceOfficeId !== undefined
             ? invoiceOfficeId
@@ -404,7 +441,7 @@ export async function PUT(
 
         const inv = await generateInvoiceNumber(
           invoiceType,
-          isBusinessAccount,
+          isBusiness,
           financialYear,
           financialYearStart,
           officeStateCode
@@ -445,16 +482,8 @@ export async function PUT(
       const updatedOrder = await dbUser.query.orders.findFirst({
         where: eq(orders.id, id),
         with: {
-          user: {
-            columns: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true,
-              businessName: true,
-              gstNumber: true,
-            },
-          },
+          user: { columns: orderUserColumns },
+          business: orderBusinessWith,
           shippingAddress: true,
           orderItems: true,
           supplier: true,
@@ -469,16 +498,8 @@ export async function PUT(
     const order = await dbUser.query.orders.findFirst({
       where: eq(orders.id, id),
       with: {
-        user: {
-          columns: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            businessName: true,
-            gstNumber: true,
-          },
-        },
+        user: { columns: orderUserColumns },
+        business: orderBusinessWith,
         shippingAddress: true,
         orderItems: true,
         supplier: true,

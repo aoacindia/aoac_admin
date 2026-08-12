@@ -3,7 +3,7 @@ import { and, count, desc, eq } from "drizzle-orm";
 
 import { buildOrdersListConditionsDrizzle } from "@/lib/build-orders-list-where";
 import { dbUser } from "@/lib/db";
-import { orders, users } from "@/lib/db/user-schema";
+import { businesses, orders, users } from "@/lib/db/user-schema";
 
 type ListParams = {
   orderType: string | null;
@@ -15,7 +15,7 @@ type ListParams = {
 };
 
 /**
- * Shared join filter for admin order list + month summary (same semantics as legacy Prisma where).
+ * Shared join filter for admin order list + month summary.
  */
 export function ordersListJoinWhere(params: ListParams): SQL | undefined {
   return buildOrdersListConditionsDrizzle(params);
@@ -26,7 +26,8 @@ export async function countOrdersListDrizzle(params: ListParams): Promise<number
   const q = dbUser
     .select({ c: count() })
     .from(orders)
-    .innerJoin(users, eq(orders.orderBy, users.id));
+    .innerJoin(users, eq(orders.orderBy, users.id))
+    .leftJoin(businesses, eq(orders.businessId, businesses.id));
   const [row] = cond ? await q.where(cond) : await q;
   return Number(row?.c ?? 0);
 }
@@ -42,6 +43,7 @@ export async function selectOrderIdsPageDrizzle(
     .select({ id: orders.id })
     .from(orders)
     .innerJoin(users, eq(orders.orderBy, users.id))
+    .leftJoin(businesses, eq(orders.businessId, businesses.id))
     .orderBy(desc(orders.orderDate))
     .limit(limit)
     .offset(offset);
@@ -70,6 +72,7 @@ export async function selectOrdersSummariesForMonthDrizzle(
       shippingAmount: orders.shippingAmount,
     })
     .from(orders)
-    .innerJoin(users, eq(orders.orderBy, users.id));
+    .innerJoin(users, eq(orders.orderBy, users.id))
+    .leftJoin(businesses, eq(orders.businessId, businesses.id));
   return cond ? await base.where(cond) : await base;
 }

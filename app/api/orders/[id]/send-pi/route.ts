@@ -62,27 +62,36 @@ function generatePIEmailHTML(order: any, bank: any, invoiceOffice: any): string 
     : "620 G Flr, Ganga Bihar, Anisabad, Phulwari, Patna - 800002, Bihar, India";
   const companyGstin = invoiceOffice?.gstin || "10ABECA4299B1Z4";
   
-  const isBusinessAccount = Boolean(order.user.isBusinessAccount);
+  const isBusiness = Boolean(order.businessId ?? order.business);
+  const business = order.business;
   const businessSuffix =
-    isBusinessAccount && order.user.hasAdditionalTradeName && order.user.additionalTradeName
-      ? ` (${order.user.additionalTradeName})`
+    isBusiness && business?.hasAdditionalTradeName && business?.additionalTradeName
+      ? ` (${business.additionalTradeName})`
       : "";
-  const businessDisplayName = isBusinessAccount && order.user.businessName
-    ? `${order.user.businessName}${businessSuffix}`
+  const businessDisplayName = isBusiness && business?.businessName
+    ? `${business.businessName}${businessSuffix}`
     : order.user.name;
-  const contactPersonLine = isBusinessAccount ? `Contact Person: ${order.user.name}` : "";
+  const contactPersonLine = isBusiness ? `Contact Person: ${order.user.name}` : "";
 
-  const billingAddress = order.user.billingAddress
-    ? formatAddress(order.user.billingAddress)
-    : "N/A";
+  const billingAddressObj = business?.billingAddress ?? null;
   const shippingAddress = order.shippingAddress
     ? formatAddress(order.shippingAddress)
     : "N/A";
-
   const shippingContactLine =
-    isBusinessAccount && order.shippingAddress?.name
+    isBusiness && order.shippingAddress?.name
       ? `Contact Person: ${order.shippingAddress.name}`
       : "";
+  const billSameAsShipping = order.isBillToSameAsShipping !== false;
+  const billedAddressText =
+    isBusiness && !billSameAsShipping && billingAddressObj
+      ? formatAddress(billingAddressObj)
+      : shippingAddress;
+  const billedContactLine =
+    isBusiness && !billSameAsShipping ? contactPersonLine : shippingContactLine;
+  const billedPhone =
+    isBusiness && !billSameAsShipping
+      ? order.user.phone
+      : order.shippingAddress?.phone;
 
   // Calculate totals
   let subtotal = 0;
@@ -90,8 +99,8 @@ function generatePIEmailHTML(order: any, bank: any, invoiceOffice: any): string 
   let totalTax = 0;
   
   // Resolve place of supply (same logic as PDF generator)
-  const placeOfSupplyState = order.shippingAddress?.state || order.user.billingAddress?.state || "";
-  const placeOfSupplyStateCode = order.shippingAddress?.stateCode || order.user.billingAddress?.stateCode || "";
+  const placeOfSupplyState = order.shippingAddress?.state || billingAddressObj?.state || "";
+  const placeOfSupplyStateCode = order.shippingAddress?.stateCode || billingAddressObj?.stateCode || "";
   const companyStateCode = invoiceOffice?.stateCode || "";
   const isIntraStateSupply =
     Boolean(companyStateCode) &&
@@ -342,10 +351,10 @@ function generatePIEmailHTML(order: any, bank: any, invoiceOffice: any): string 
           <div class="address-title">Billed To</div>
           <div>
             <strong>${businessDisplayName}</strong><br>
-            ${contactPersonLine ? `${contactPersonLine}<br>` : ""}
-            ${billingAddress}<br>
-            Phone: ${order.user.phone}<br>
-            GSTIN: ${order.user.gstNumber || "-"}
+            ${billedContactLine ? `${billedContactLine}<br>` : ""}
+            ${billedAddressText}<br>
+            ${billedPhone ? `Phone: ${billedPhone}<br>` : ""}
+            GSTIN: ${business?.gstNumber || "-"}
           </div>
         </div>
         <div class="address-box">
@@ -355,7 +364,7 @@ function generatePIEmailHTML(order: any, bank: any, invoiceOffice: any): string 
             ${shippingContactLine ? `${shippingContactLine}<br>` : ""}
             ${shippingAddress}<br>
             ${order.shippingAddress ? `Phone: ${order.shippingAddress.phone}<br>` : ""}
-            GSTIN: ${order.user.gstNumber || "-"}
+            GSTIN: ${business?.gstNumber || "-"}
           </div>
         </div>
       </div>
@@ -480,9 +489,13 @@ export async function POST(
             name: true,
             email: true,
             phone: true,
+          },
+        },
+        business: {
+          columns: {
+            id: true,
             businessName: true,
             gstNumber: true,
-            isBusinessAccount: true,
             hasAdditionalTradeName: true,
             additionalTradeName: true,
           },

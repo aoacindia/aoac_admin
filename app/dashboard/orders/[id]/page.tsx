@@ -42,9 +42,14 @@ interface Customer {
   name: string;
   email: string;
   phone: string;
-  businessName: string | null;
+}
+
+interface OrderBusiness {
+  id: string;
+  businessName: string;
   gstNumber: string | null;
-  isBusinessAccount: boolean | null;
+  hasAdditionalTradeName?: boolean;
+  additionalTradeName?: string | null;
 }
 
 interface Order {
@@ -91,8 +96,11 @@ interface Order {
   // Supplier Details
   isDifferentSupplier: boolean | null;
   supplierId: string | null;
+  businessId?: string | null;
+  isBillToSameAsShipping?: boolean;
   // Relations
   user: Customer;
+  business?: OrderBusiness | null;
   shippingAddress: Address | null;
   orderItems: OrderItem[];
 }
@@ -462,23 +470,23 @@ export default function ViewOrderPage() {
             </Label>
             <p className="text-zinc-900 dark:text-zinc-100 font-medium">{order.user.phone}</p>
           </div>
-          {order.user.businessName && (
+          {order.business?.businessName && (
             <div>
               <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
                 Business Name
               </Label>
               <p className="text-zinc-900 dark:text-zinc-100 font-medium">
-                {order.user.businessName}
+                {order.business.businessName}
               </p>
             </div>
           )}
-          {order.user.gstNumber && (
+          {order.business?.gstNumber && (
             <div>
               <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
                 GST Number
               </Label>
               <p className="text-zinc-900 dark:text-zinc-100 font-medium">
-                {order.user.gstNumber}
+                {order.business.gstNumber}
               </p>
             </div>
           )}
@@ -487,9 +495,19 @@ export default function ViewOrderPage() {
               Account Type
             </Label>
             <p className="text-zinc-900 dark:text-zinc-100 font-medium">
-              {order.user.isBusinessAccount ? "Business" : "Personal"}
+              {order.business ? "Business" : "Personal"}
             </p>
           </div>
+          {order.isBillToSameAsShipping != null && (
+            <div>
+              <Label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">
+                Bill To Same As Shipping
+              </Label>
+              <p className="text-zinc-900 dark:text-zinc-100 font-medium">
+                {order.isBillToSameAsShipping ? "Yes" : "No"}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

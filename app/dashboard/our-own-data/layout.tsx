@@ -2,7 +2,10 @@ import { redirect } from "next/navigation";
 import DashboardShell from "@/app/components/DashboardShell";
 import { auth } from "@/auth";
 
-const menuItems = [{ label: "Offices", href: "/dashboard/our-own-data/offices" }];
+const menuItems = [
+  { label: "Offices", href: "/dashboard/our-own-data/offices" },
+  { label: "Administration", href: "/dashboard/our-own-data/administration" },
+];
 
 export default async function OurOwnDataLayout({
   children,

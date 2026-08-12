@@ -27,6 +27,15 @@ interface BillingAddress {
   pincode: string;
 }
 
+interface Business {
+  id: string;
+  businessName: string;
+  gstNumber: string | null;
+  hasAdditionalTradeName: boolean;
+  additionalTradeName: string | null;
+  billingAddress?: BillingAddress | null;
+}
+
 interface Address {
   id: string;
   type: string;
@@ -101,6 +110,7 @@ interface Order {
   refundCreatedAt: string | null;
   orderItems: OrderItem[];
   shippingAddress: ShippingAddress | null;
+  business?: Business | null;
 }
 
 interface Customer {
@@ -111,15 +121,10 @@ interface Customer {
   suspended: boolean;
   suspended_number: number;
   terminated: boolean;
-  isBusinessAccount: boolean | null;
-  businessName: string | null;
-  gstNumber: string | null;
-  hasAdditionalTradeName: boolean | null;
-  additionalTradeName: string | null;
+  businesses: Business[];
   createdAt: string;
   updatedAt: string;
   suspensionReasons: SuspensionReason[];
-  billingAddress: BillingAddress | null;
   addresses: Address[];
   order: Order[];
 }
@@ -143,6 +148,8 @@ export default function CustomerDetailsPage() {
     { id: 'addresses', label: 'Addresses' },
     { id: 'orders', label: 'Orders' },
   ];
+
+  const isBusinessCustomer = (customer?.businesses?.length ?? 0) > 0;
 
   useEffect(() => {
     fetchCustomer();
@@ -209,7 +216,10 @@ export default function CustomerDetailsPage() {
             Customer Details
           </h1>
           <p className="text-zinc-600 dark:text-zinc-400">
-            Complete information about {customer.isBusinessAccount && customer.businessName ? customer.businessName : customer.name}
+            Complete information about{" "}
+            {(customer.businesses?.length ?? 0) > 0 && customer.businesses[0]?.businessName
+              ? customer.businesses[0].businessName
+              : customer.name}
           </p>
         </div>
         <div className="flex gap-4">
@@ -271,7 +281,7 @@ export default function CustomerDetailsPage() {
               Account Type
             </Label>
             <p className="text-zinc-900 dark:text-zinc-100 font-medium mt-1">
-              {customer.isBusinessAccount ? (
+              {(customer.businesses?.length ?? 0) > 0 ? (
                 <span className="inline-block px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded">
                   Business
                 </span>
@@ -321,62 +331,70 @@ export default function CustomerDetailsPage() {
         </div>
       </div>
 
-      {/* Business Information */}
-      {customer.isBusinessAccount && (
+      {/* Businesses */}
+      {(customer.businesses?.length ?? 0) > 0 && (
         <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md border border-zinc-200 dark:border-zinc-800 p-4 md:p-6 mb-6">
           <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
-            Business Information
+            Businesses ({customer.businesses.length})
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div>
-              <Label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                Business Name
-              </Label>
-              <p className="text-zinc-900 dark:text-zinc-100 font-medium mt-1">
-                {customer.businessName || "N/A"}
-              </p>
-            </div>
-            <div>
-              <Label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                GST Number
-              </Label>
-              <p className="text-zinc-900 dark:text-zinc-100 font-medium mt-1">
-                {customer.gstNumber || "N/A"}
-              </p>
-            </div>
-            {customer.hasAdditionalTradeName && (
-              <div>
-                <Label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                  Additional Trade Name
-                </Label>
-                <p className="text-zinc-900 dark:text-zinc-100 font-medium mt-1">
-                  {customer.additionalTradeName || "N/A"}
-                </p>
+          <div className="space-y-6">
+            {customer.businesses.map((business) => (
+              <div
+                key={business.id}
+                className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
+                  <div>
+                    <Label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                      Business Name
+                    </Label>
+                    <p className="text-zinc-900 dark:text-zinc-100 font-medium mt-1">
+                      {business.businessName || "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                      GST Number
+                    </Label>
+                    <p className="text-zinc-900 dark:text-zinc-100 font-medium mt-1">
+                      {business.gstNumber || "N/A"}
+                    </p>
+                  </div>
+                  {business.hasAdditionalTradeName && (
+                    <div>
+                      <Label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                        Additional Trade Name
+                      </Label>
+                      <p className="text-zinc-900 dark:text-zinc-100 font-medium mt-1">
+                        {business.additionalTradeName || "N/A"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                {business.billingAddress && (
+                  <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
+                    <Label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                      Billing Address
+                    </Label>
+                    <div className="text-zinc-900 dark:text-zinc-100 mt-1">
+                      <p className="mb-1">
+                        {business.billingAddress.houseNo}, {business.billingAddress.line1}
+                      </p>
+                      {business.billingAddress.line2 && (
+                        <p className="mb-1">{business.billingAddress.line2}</p>
+                      )}
+                      <p className="mb-1">
+                        {business.billingAddress.city}, {business.billingAddress.district},{" "}
+                        {business.billingAddress.state}
+                      </p>
+                      <p>
+                        {business.billingAddress.country} - {business.billingAddress.pincode}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Billing Address */}
-      {customer.isBusinessAccount && customer.billingAddress && (
-        <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md border border-zinc-200 dark:border-zinc-800 p-4 md:p-6 mb-6">
-          <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
-            Billing Address
-          </h2>
-          <div className="text-zinc-900 dark:text-zinc-100">
-            <p className="mb-2">
-              {customer.billingAddress.houseNo}, {customer.billingAddress.line1}
-            </p>
-            {customer.billingAddress.line2 && (
-              <p className="mb-2">{customer.billingAddress.line2}</p>
-            )}
-            <p className="mb-2">
-              {customer.billingAddress.city}, {customer.billingAddress.district}, {customer.billingAddress.state}
-            </p>
-            <p className="mb-2">
-              {customer.billingAddress.country} - {customer.billingAddress.pincode}
-            </p>
+            ))}
           </div>
         </div>
       )}
@@ -577,10 +595,10 @@ export default function CustomerDetailsPage() {
             </p>
             <div className="space-y-3">
               {availableSections.map((section) => {
-                // Skip business info and billing address if not a business account
+                // Skip business info and billing address if no businesses
                 if (
                   (section.id === 'businessInfo' || section.id === 'billingAddress') &&
-                  !customer.isBusinessAccount
+                  !isBusinessCustomer
                 ) {
                   return null;
                 }

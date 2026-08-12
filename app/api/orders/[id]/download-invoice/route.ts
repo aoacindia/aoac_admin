@@ -44,9 +44,13 @@ export async function POST(
             name: true,
             email: true,
             phone: true,
+          },
+        },
+        business: {
+          columns: {
+            id: true,
             businessName: true,
             gstNumber: true,
-            isBusinessAccount: true,
             hasAdditionalTradeName: true,
             additionalTradeName: true,
           },

@@ -38,8 +38,12 @@ interface Customer {
   name: string;
   email: string;
   phone: string;
-  businessName?: string;
-  gstNumber?: string;
+}
+
+interface OrderBusiness {
+  id: string;
+  businessName: string;
+  gstNumber?: string | null;
 }
 
 interface Order {
@@ -86,8 +90,11 @@ interface Order {
   // Supplier Details
   isDifferentSupplier: boolean | null;
   supplierId: string | null;
+  businessId?: string | null;
+  isBillToSameAsShipping?: boolean;
   // Relations
   user: Customer;
+  business?: OrderBusiness | null;
   shippingAddress: Address | null;
   orderItems: OrderItem[];
 }
@@ -478,7 +485,7 @@ export default function OrdersPage() {
       `Order ID: ${order.id}`,
       `Rounded Amount: ₹${roundedAmount.toFixed(2)}`,
       `Buyer: ${order.user.name}`,
-      order.user.businessName ? `Business Name: ${order.user.businessName}` : null,
+      order.business?.businessName ? `Business Name: ${order.business.businessName}` : null,
     ]
       .filter(Boolean)
       .join("\n");
@@ -1037,9 +1044,9 @@ export default function OrdersPage() {
                       <div className="font-medium text-zinc-900 dark:text-zinc-100">
                         {order.user.name}
                       </div>
-                      {order.user.businessName && (
+                      {order.business?.businessName && (
                         <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                          {order.user.businessName}
+                          {order.business.businessName}
                         </div>
                       )}
                       <div className="text-xs text-zinc-500 dark:text-zinc-400">

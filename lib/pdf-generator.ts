@@ -118,15 +118,17 @@ interface Customer {
   suspended: boolean;
   suspended_number: number;
   terminated: boolean;
-  isBusinessAccount: boolean | null;
-  businessName: string | null;
-  gstNumber: string | null;
-  hasAdditionalTradeName: boolean | null;
-  additionalTradeName: string | null;
   createdAt: Date;
   updatedAt: Date;
   suspensionReasons: SuspensionReason[];
-  billingAddress: BillingAddress | null;
+  businesses?: Array<{
+    id?: string;
+    businessName: string;
+    gstNumber: string | null;
+    hasAdditionalTradeName?: boolean | null;
+    additionalTradeName: string | null;
+    billingAddress: BillingAddress | null;
+  }>;
   addresses: Address[];
   order: Order[];
 }
@@ -163,8 +165,37 @@ function drawPageBorder(ctx: PdfContext) {
 function formatValue(value: unknown): string {
   if (value === null || value === undefined) return '';
   if (value instanceof Date) return value.toLocaleString();
+  if (typeof value === 'boolean') return '';
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
+}
+
+function isEmptyDisplayValue(value: unknown): boolean {
+  if (value === null || value === undefined) return true;
+  if (typeof value === 'boolean') return true;
+  if (typeof value === 'string' && value.trim() === '') return true;
+  if (Array.isArray(value) && value.length === 0) return true;
+  return false;
+}
+
+function shouldSkipFieldKey(key: string): boolean {
+  const leaf = (key.includes('.') ? key.split('.').pop()! : key).replace(/\[\d+\]/g, '');
+  const normalized = leaf.toLowerCase();
+  return (
+    normalized === 'id' ||
+    normalized === 'createdat' ||
+    normalized === 'updatedat'
+  );
+}
+
+function humanizeKey(key: string): string {
+  return key
+    .replace(/\[\d+\]/g, (m) => ` ${m}`)
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[._]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function flattenObject(
@@ -174,22 +205,27 @@ function flattenObject(
   const rows: Array<{ key: string; value: string }> = [];
 
   Object.entries(obj).forEach(([key, value]) => {
+    if (shouldSkipFieldKey(key)) return;
+    if (isEmptyDisplayValue(value)) return;
+
     const fullKey = prefix ? `${prefix}.${key}` : key;
+    if (shouldSkipFieldKey(fullKey)) return;
+
     if (value instanceof Date) {
-      rows.push({ key: fullKey, value: value.toLocaleString() });
+      rows.push({ key: humanizeKey(fullKey), value: value.toLocaleString() });
       return;
     }
     if (Array.isArray(value)) {
-      if (value.length === 0) {
-        rows.push({ key: fullKey, value: '' });
-        return;
-      }
       value.forEach((item, index) => {
+        if (isEmptyDisplayValue(item)) return;
         const arrayKey = `${fullKey}[${index}]`;
         if (item && typeof item === 'object' && !(item instanceof Date)) {
           rows.push(...flattenObject(item as Record<string, unknown>, arrayKey));
-        } else {
-          rows.push({ key: arrayKey, value: formatValue(item) });
+        } else if (typeof item !== 'boolean') {
+          const formatted = formatValue(item);
+          if (formatted.trim() !== '') {
+            rows.push({ key: humanizeKey(arrayKey), value: formatted });
+          }
         }
       });
       return;
@@ -198,7 +234,10 @@ function flattenObject(
       rows.push(...flattenObject(value as Record<string, unknown>, fullKey));
       return;
     }
-    rows.push({ key: fullKey, value: formatValue(value) });
+    if (typeof value === 'boolean') return;
+    const formatted = formatValue(value);
+    if (formatted.trim() === '') return;
+    rows.push({ key: humanizeKey(fullKey), value: formatted });
   });
 
   return rows;
@@ -209,7 +248,29 @@ function toPdfY(ctx: PdfContext, yFromTop: number, fontSize: number): number {
 }
 
 function truncateText(text: string, maxWidth: number, font: PDFFont, fontSize: number): string {
-  throw new Error('truncateText() WAS CALLED AT RUNTIME');
+  const value = text ?? '';
+  if (!value) return '';
+  if (maxWidth <= 0) return '';
+  if (font.widthOfTextAtSize(value, fontSize) <= maxWidth) return value;
+
+  const ellipsis = '...';
+  const ellipsisWidth = font.widthOfTextAtSize(ellipsis, fontSize);
+  if (ellipsisWidth >= maxWidth) return '';
+
+  let low = 0;
+  let high = value.length;
+  let best = '';
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const candidate = value.slice(0, mid) + ellipsis;
+    if (font.widthOfTextAtSize(candidate, fontSize) <= maxWidth) {
+      best = candidate;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+  return best || ellipsis;
 }
 
 function drawTextLine(
@@ -584,22 +645,211 @@ export function printKeyValue(
   return nextY + ROW_HEIGHT;
 }
 
+type SectionColor = {
+  headerBg: ReturnType<typeof rgb>;
+  headerText: ReturnType<typeof rgb>;
+  boxBg: ReturnType<typeof rgb>;
+  border: ReturnType<typeof rgb>;
+  label: ReturnType<typeof rgb>;
+  value: ReturnType<typeof rgb>;
+};
+
+const SECTION_COLORS: Record<string, SectionColor> = {
+  'Report Info': {
+    headerBg: rgb(0.16, 0.39, 0.7),
+    headerText: rgb(1, 1, 1),
+    boxBg: rgb(0.93, 0.96, 1),
+    border: rgb(0.45, 0.62, 0.88),
+    label: rgb(0.2, 0.3, 0.45),
+    value: rgb(0.1, 0.12, 0.18),
+  },
+  'Customer Info': {
+    headerBg: rgb(0.05, 0.45, 0.4),
+    headerText: rgb(1, 1, 1),
+    boxBg: rgb(0.92, 0.98, 0.96),
+    border: rgb(0.35, 0.7, 0.62),
+    label: rgb(0.15, 0.35, 0.32),
+    value: rgb(0.1, 0.12, 0.18),
+  },
+  'Business Info': {
+    headerBg: rgb(0.72, 0.45, 0.08),
+    headerText: rgb(1, 1, 1),
+    boxBg: rgb(1, 0.97, 0.9),
+    border: rgb(0.9, 0.7, 0.35),
+    label: rgb(0.45, 0.3, 0.05),
+    value: rgb(0.1, 0.12, 0.18),
+  },
+  'Billing Address': {
+    headerBg: rgb(0.35, 0.28, 0.65),
+    headerText: rgb(1, 1, 1),
+    boxBg: rgb(0.95, 0.94, 1),
+    border: rgb(0.65, 0.58, 0.9),
+    label: rgb(0.28, 0.22, 0.5),
+    value: rgb(0.1, 0.12, 0.18),
+  },
+  'Suspension History': {
+    headerBg: rgb(0.7, 0.22, 0.28),
+    headerText: rgb(1, 1, 1),
+    boxBg: rgb(1, 0.94, 0.94),
+    border: rgb(0.9, 0.55, 0.58),
+    label: rgb(0.5, 0.15, 0.2),
+    value: rgb(0.1, 0.12, 0.18),
+  },
+  Addresses: {
+    headerBg: rgb(0.1, 0.45, 0.62),
+    headerText: rgb(1, 1, 1),
+    boxBg: rgb(0.92, 0.97, 1),
+    border: rgb(0.4, 0.7, 0.85),
+    label: rgb(0.12, 0.35, 0.48),
+    value: rgb(0.1, 0.12, 0.18),
+  },
+  Orders: {
+    headerBg: rgb(0.42, 0.25, 0.58),
+    headerText: rgb(1, 1, 1),
+    boxBg: rgb(0.97, 0.94, 1),
+    border: rgb(0.7, 0.55, 0.88),
+    label: rgb(0.32, 0.18, 0.45),
+    value: rgb(0.1, 0.12, 0.18),
+  },
+};
+
+const DEFAULT_SECTION_COLOR: SectionColor = {
+  headerBg: rgb(0.25, 0.3, 0.4),
+  headerText: rgb(1, 1, 1),
+  boxBg: rgb(0.97, 0.97, 0.98),
+  border: rgb(0.7, 0.72, 0.78),
+  label: rgb(0.3, 0.32, 0.38),
+  value: rgb(0.1, 0.12, 0.18),
+};
+
 function printSection(
   ctx: PdfContext,
   title: string,
   rows: Array<{ key: string; value: string }>,
   startY: number
 ): number {
-  let y = ensureSpace(ctx, startY, 24);
+  const visibleRows = rows.filter((row) => row.value.trim() !== '');
+  if (visibleRows.length === 0) return startY;
 
-  drawTextLine(ctx, title, ctx.margin, y, SECTION_TITLE_SIZE);
-  y += 18;
+  const colors = SECTION_COLORS[title] || DEFAULT_SECTION_COLOR;
+  const boxWidth = ctx.pageWidth - ctx.margin * 2;
+  const paddingX = 10;
+  const paddingY = 8;
+  const headerHeight = 18;
+  const lineGap = 3;
+  const labelWidth = Math.floor(boxWidth * 0.32);
+  const valueWidth = boxWidth - paddingX * 2 - labelWidth - 8;
+  const contentFontSize = BODY_FONT_SIZE;
+  const lineHeight = contentFontSize + lineGap;
+  const gapAfter = 10;
+  const maxBoxBottom = () => ctx.pageHeight - ctx.margin;
 
-  rows.forEach((row) => {
-    y = printKeyValue(ctx, row.key, row.value, y);
+  type PreparedRow = { key: string; valueLines: string[]; height: number };
+  const prepared: PreparedRow[] = visibleRows.map((row) => {
+    const valueLines = wrapText(row.value, valueWidth, ctx.font, contentFontSize);
+    return {
+      key: row.key,
+      valueLines,
+      height: Math.max(lineHeight, valueLines.length * lineHeight),
+    };
   });
 
-  return y + 6;
+  let y = startY;
+  let rowIndex = 0;
+  let part = 0;
+
+  while (rowIndex < prepared.length) {
+    const available = maxBoxBottom() - y;
+    const minNeeded = headerHeight + paddingY * 2 + lineHeight + gapAfter;
+    if (available < minNeeded) {
+      addPage(ctx);
+      y = ctx.margin + 10;
+    }
+
+    const boxTop = y;
+    const maxContentBottom = maxBoxBottom() - paddingY;
+    const contentStart = boxTop + headerHeight + paddingY;
+    let contentY = contentStart;
+    const pageRows: PreparedRow[] = [];
+
+    while (rowIndex < prepared.length) {
+      const row = prepared[rowIndex]!;
+      if (contentY + row.height > maxContentBottom && pageRows.length > 0) {
+        break;
+      }
+      // Single oversized row: still place it (may clip rarely) rather than infinite-loop
+      pageRows.push(row);
+      contentY += row.height + 4;
+      rowIndex += 1;
+      if (contentY > maxContentBottom) break;
+    }
+
+    const contentHeight = pageRows.reduce((sum, row) => sum + row.height + 4, 0);
+    const boxHeight = headerHeight + paddingY * 2 + contentHeight;
+    const boxBottomPdfY = ctx.pageHeight - boxTop - boxHeight;
+    const sectionTitle = part > 0 ? `${title} (continued)` : title;
+
+    ctx.page.drawRectangle({
+      x: ctx.margin,
+      y: boxBottomPdfY,
+      width: boxWidth,
+      height: boxHeight,
+      color: colors.boxBg,
+      borderWidth: 1.2,
+      borderColor: colors.border,
+    });
+
+    ctx.page.drawRectangle({
+      x: ctx.margin,
+      y: ctx.pageHeight - boxTop - headerHeight,
+      width: boxWidth,
+      height: headerHeight,
+      color: colors.headerBg,
+    });
+
+    drawTextLine(
+      ctx,
+      sectionTitle,
+      ctx.margin + paddingX,
+      boxTop + 5,
+      SECTION_TITLE_SIZE + 1,
+      ctx.boldFont,
+      colors.headerText
+    );
+
+    let drawY = contentStart;
+    for (const row of pageRows) {
+      const keyText = truncateText(row.key, labelWidth - 4, ctx.boldFont, contentFontSize);
+      drawTextLine(
+        ctx,
+        keyText,
+        ctx.margin + paddingX,
+        drawY,
+        contentFontSize,
+        ctx.boldFont,
+        colors.label
+      );
+
+      row.valueLines.forEach((line, index) => {
+        drawTextLine(
+          ctx,
+          line,
+          ctx.margin + paddingX + labelWidth + 8,
+          drawY + index * lineHeight,
+          contentFontSize,
+          ctx.font,
+          colors.value
+        );
+      });
+
+      drawY += row.height + 4;
+    }
+
+    y = boxTop + boxHeight + gapAfter;
+    part += 1;
+  }
+
+  return y;
 }
 
 async function createPdfBuffer(build: (ctx: PdfContext) => void | Promise<void>): Promise<Uint8Array> {
@@ -628,6 +878,45 @@ async function createPdfBuffer(build: (ctx: PdfContext) => void | Promise<void>)
   return new Uint8Array(pdfBytes);
 }
 
+function formatAddressLine(
+  address: {
+    type?: string | null;
+    name?: string | null;
+    phone?: string | null;
+    houseNo?: string | null;
+    line1?: string | null;
+    line2?: string | null;
+    city?: string | null;
+    district?: string | null;
+    state?: string | null;
+    stateCode?: string | null;
+    country?: string | null;
+    pincode?: string | null;
+  } | null | undefined
+): string {
+  if (!address) return '';
+  const parts = [
+    address.type ? String(address.type) : '',
+    address.name ? String(address.name) : '',
+    address.phone ? String(address.phone) : '',
+    address.houseNo ? String(address.houseNo) : '',
+    address.line1 ? String(address.line1) : '',
+    address.line2 ? String(address.line2) : '',
+    address.city ? String(address.city) : '',
+    address.district ? String(address.district) : '',
+    address.state
+      ? address.stateCode
+        ? `${address.state} (${address.stateCode})`
+        : String(address.state)
+      : '',
+    address.pincode ? String(address.pincode) : '',
+    address.country ? String(address.country) : '',
+  ]
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return parts.join(', ');
+}
+
 export async function generateCustomerPDF(
   customer: Customer,
   sections: string[]
@@ -651,7 +940,6 @@ export async function generateCustomerPDF(
         ctx,
         'Customer Info',
         flattenObject({
-          id: customer.id,
           name: customer.name,
           email: customer.email,
           phone: customer.phone,
@@ -660,56 +948,90 @@ export async function generateCustomerPDF(
             : customer.suspended
             ? `Suspended (${customer.suspended_number} time(s))`
             : 'Active',
-          accountType: customer.isBusinessAccount ? 'Business' : 'Personal'
+          accountType:
+            customer.businesses && customer.businesses.length > 0
+              ? 'Business'
+              : 'Personal'
         }),
         y
       );
     }
 
-    if (sections.includes('businessInfo') && customer.isBusinessAccount) {
+    if (
+      sections.includes('businessInfo') &&
+      customer.businesses &&
+      customer.businesses.length > 0
+    ) {
+      for (const [index, business] of customer.businesses.entries()) {
+        y = printSection(
+          ctx,
+          customer.businesses.length > 1
+            ? `Business Info (${index + 1})`
+            : 'Business Info',
+          flattenObject({
+            businessName: business.businessName,
+            gstNumber: business.gstNumber,
+            additionalTradeName: business.additionalTradeName
+          }),
+          y
+        );
+      }
+    }
+
+    if (sections.includes('billingAddress') && customer.businesses) {
+      for (const [index, business] of customer.businesses.entries()) {
+        if (!business.billingAddress) continue;
+        const billingLine = formatAddressLine(business.billingAddress);
+        if (billingLine) {
+          y = printSection(
+            ctx,
+            customer.businesses.length > 1
+              ? `Billing Address (${business.businessName || index + 1})`
+              : 'Billing Address',
+            [{ key: 'Address', value: billingLine }],
+            y
+          );
+        }
+      }
+    }
+
+    if (sections.includes('suspensionHistory') && customer.suspensionReasons.length) {
       y = printSection(
         ctx,
-        'Business Info',
+        'Suspension History',
         flattenObject({
-          businessName: customer.businessName,
-          gstNumber: customer.gstNumber,
-          hasAdditionalTradeName: customer.hasAdditionalTradeName,
-          additionalTradeName: customer.additionalTradeName
+          suspensionReasons: customer.suspensionReasons as unknown as Record<string, unknown>,
         }),
         y
       );
     }
 
-    if (sections.includes('billingAddress')) {
-      y = printSection(
+    if (sections.includes('addresses') && customer.addresses.length) {
+      const addressRows = customer.addresses
+        .map((address, index) => {
+          const line = formatAddressLine(address);
+          if (!line) return null;
+          return {
+            key: `Address ${index + 1}`,
+            value: line,
+          };
+        })
+        .filter((row): row is { key: string; value: string } => row !== null);
+
+      if (addressRows.length > 0) {
+        y = printSection(ctx, 'Addresses', addressRows, y);
+      }
+    }
+
+    if (sections.includes('orders') && customer.order.length) {
+      printSection(
         ctx,
-        'Billing Address',
-        customer.billingAddress
-          ? flattenObject(customer.billingAddress as unknown as Record<string, unknown>)
-          : [{ key: 'billingAddress', value: '' }],
+        'Orders',
+        flattenObject({
+          orders: customer.order as unknown as Record<string, unknown>,
+        }),
         y
       );
-    }
-
-    if (sections.includes('suspensionHistory')) {
-      const rows = customer.suspensionReasons.length
-        ? flattenObject({ suspensionReasons: customer.suspensionReasons as unknown as Record<string, unknown> })
-        : [{ key: 'suspensionReasons', value: '' }];
-      y = printSection(ctx, 'Suspension History', rows, y);
-    }
-
-    if (sections.includes('addresses')) {
-      const rows = customer.addresses.length
-        ? flattenObject({ addresses: customer.addresses as unknown as Record<string, unknown> })
-        : [{ key: 'addresses', value: '' }];
-      y = printSection(ctx, 'Addresses', rows, y);
-    }
-
-    if (sections.includes('orders')) {
-      const rows = customer.order.length
-        ? flattenObject({ orders: customer.order as unknown as Record<string, unknown> })
-        : [{ key: 'orders', value: '' }];
-      printSection(ctx, 'Orders', rows, y);
     }
   });
 }
@@ -758,14 +1080,18 @@ interface InvoiceOrder {
   // Supplier Details
   isDifferentSupplier: boolean | null;
   supplierId: string | null;
+  businessId?: string | null;
+  isBillToSameAsShipping?: boolean | null;
   user: {
     id: string;
     name: string;
     email: string;
     phone: string;
+  };
+  business?: {
+    id?: string;
     businessName: string | null;
     gstNumber: string | null;
-    isBusinessAccount: boolean | null;
     hasAdditionalTradeName: boolean | null;
     additionalTradeName: string | null;
     billingAddress: {
@@ -779,7 +1105,7 @@ interface InvoiceOrder {
       country: string;
       pincode: string;
     } | null;
-  };
+  } | null;
   shippingAddress: {
     id: string;
     name: string;
@@ -834,8 +1160,9 @@ const INVOICE_COPY_LABELS: Record<InvoiceCopyType, string> = {
 };
 
 function resolvePlaceOfSupply(order: InvoiceOrder) {
-  const state = order.shippingAddress?.state || order.user.billingAddress?.state || '';
-  const stateCode = order.shippingAddress?.stateCode || order.user.billingAddress?.stateCode || '';
+  const billingAddress = order.business?.billingAddress;
+  const state = order.shippingAddress?.state || billingAddress?.state || '';
+  const stateCode = order.shippingAddress?.stateCode || billingAddress?.stateCode || '';
   return { state, stateCode };
 }
 
@@ -1052,18 +1379,21 @@ export async function generateInvoicePDF(
     const tableWidth = ctx.pageWidth - ctx.margin * 2;
     const columnGap = 12;
     const columnWidth = (tableWidth - columnGap) / 2;
-    const isBusinessAccount = Boolean(order.user.isBusinessAccount);
+    const isBusiness = Boolean(order.businessId ?? order.business);
+    const business = order.business;
+    const billSameAsShipping = order.isBillToSameAsShipping !== false;
     const businessSuffix =
-      isBusinessAccount && order.user.hasAdditionalTradeName && order.user.additionalTradeName
-        ? ` (${order.user.additionalTradeName})`
+      isBusiness && business?.hasAdditionalTradeName && business?.additionalTradeName
+        ? ` (${business.additionalTradeName})`
         : '';
-    const businessDisplayName = isBusinessAccount && order.user.businessName
-      ? `${order.user.businessName}${businessSuffix}`
+    const businessDisplayName = isBusiness && business?.businessName
+      ? `${business.businessName}${businessSuffix}`
       : order.user.name;
-    const contactPersonLine = isBusinessAccount ? `Contact Person: ${order.user.name}` : '';
+    const contactPersonLine = isBusiness ? `Contact Person: ${order.user.name}` : '';
+    const billingAddress = business?.billingAddress ?? null;
 
     const shippingContactLine =
-      isBusinessAccount && order.shippingAddress?.name ? `Contact Person: ${order.shippingAddress.name}` : '';
+      isBusiness && order.shippingAddress?.name ? `Contact Person: ${order.shippingAddress.name}` : '';
     const shippedLines = [
       businessDisplayName,
       shippingContactLine,
@@ -1081,7 +1411,7 @@ export async function generateInvoicePDF(
             .join(', ')
         : '',
       order.shippingAddress ? `Phone: ${order.shippingAddress.phone}` : '',
-      `GSTIN: ${order.user.gstNumber || '-'}`
+      `GSTIN: ${business?.gstNumber || '-'}`
     ]
       .filter(Boolean)
       .map((line) => ({
@@ -1089,32 +1419,33 @@ export async function generateInvoicePDF(
         bold: line === businessDisplayName || line.startsWith('Phone:')
       }));
 
-    const billedLines = isBusinessAccount
-      ? [
-          businessDisplayName,
-          contactPersonLine,
-          order.user.billingAddress
-            ? [order.user.billingAddress.houseNo, order.user.billingAddress.line1, order.user.billingAddress.line2]
-                .filter(Boolean)
-                .join(', ')
-            : '',
-          order.user.billingAddress
-            ? [order.user.billingAddress.city, order.user.billingAddress.district].filter(Boolean).join(', ')
-            : '',
-          order.user.billingAddress
-            ? [order.user.billingAddress.state, order.user.billingAddress.country, order.user.billingAddress.pincode]
-                .filter(Boolean)
-                .join(', ')
-            : '',
-          `Phone: ${order.user.phone}`,
-          `GSTIN: ${order.user.gstNumber || '-'}`
-        ]
-          .filter(Boolean)
-          .map((line) => ({
-            text: line,
-            bold: line === businessDisplayName || line.startsWith('Phone:')
-          }))
-      : shippedLines;
+    const billedLines =
+      isBusiness && !billSameAsShipping
+        ? [
+            businessDisplayName,
+            contactPersonLine,
+            billingAddress
+              ? [billingAddress.houseNo, billingAddress.line1, billingAddress.line2]
+                  .filter(Boolean)
+                  .join(', ')
+              : '',
+            billingAddress
+              ? [billingAddress.city, billingAddress.district].filter(Boolean).join(', ')
+              : '',
+            billingAddress
+              ? [billingAddress.state, billingAddress.country, billingAddress.pincode]
+                  .filter(Boolean)
+                  .join(', ')
+              : '',
+            `Phone: ${order.user.phone}`,
+            `GSTIN: ${business?.gstNumber || '-'}`
+          ]
+            .filter(Boolean)
+            .map((line) => ({
+              text: line,
+              bold: line === businessDisplayName || line.startsWith('Phone:')
+            }))
+        : shippedLines;
 
     const addressPadding = 6;
     const addressInnerWidth = columnWidth - addressPadding * 2;

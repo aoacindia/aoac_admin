@@ -1,0 +1,16 @@
+# Deny directory listing and block direct access to config + uploads
+Options -Indexes
+
+<Files "config.php">
+  Require all denied
+</Files>
+
+<Files "config.sample.php">
+  Require all denied
+</Files>
+
+# Block direct HTTP access to uploaded files — serve only via api.php?action=get
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^uploads/ - [F,L]
+</IfModule>

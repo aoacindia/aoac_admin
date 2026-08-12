@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import {
   parseMonthYearParams,
@@ -7,7 +7,14 @@ import {
 } from "@/lib/build-orders-list-where";
 import { dbAdmin, dbUser } from "@/lib/db";
 import { offices } from "@/lib/db/admin-schema";
-import { addresses, orderItems, orders, suppliers, users } from "@/lib/db/user-schema";
+import {
+  addresses,
+  businesses,
+  orderItems,
+  orders,
+  suppliers,
+  users,
+} from "@/lib/db/user-schema";
 import {
   generateInvoiceNumber,
   generateOrderId,
@@ -19,6 +26,24 @@ import {
   selectOrderIdsPageDrizzle,
 } from "@/lib/orders-list-drizzle";
 import { requireAdminApi } from "@/lib/require-admin";
+
+const orderUserColumns = {
+  id: true,
+  name: true,
+  email: true,
+  phone: true,
+} as const;
+
+const orderBusinessWith = {
+  columns: {
+    id: true,
+    businessName: true,
+    gstNumber: true,
+    hasAdditionalTradeName: true,
+    additionalTradeName: true,
+  },
+  with: { billingAddress: true },
+} as const;
 
 // GET all orders
 export async function GET(request: NextRequest) {
@@ -77,17 +102,8 @@ export async function GET(request: NextRequest) {
     const fullOrders = await dbUser.query.orders.findMany({
       where: inArray(orders.id, ids),
       with: {
-        user: {
-          columns: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            businessName: true,
-            gstNumber: true,
-            isBusinessAccount: true,
-          },
-        },
+        user: { columns: orderUserColumns },
+        business: orderBusinessWith,
         shippingAddress: true,
         orderItems: true,
         supplier: true,
@@ -141,6 +157,8 @@ export async function POST(request: NextRequest) {
     const {
       customerId,
       addressId,
+      businessId,
+      isBillToSameAsShipping,
       items,
       deliveryCharge,
       deliveryPartner,
@@ -211,7 +229,7 @@ export async function POST(request: NextRequest) {
     }
 
     const [customer] = await dbUser
-      .select({ id: users.id, isBusinessAccount: users.isBusinessAccount })
+      .select({ id: users.id })
       .from(users)
       .where(eq(users.id, customerId))
       .limit(1);
@@ -221,6 +239,28 @@ export async function POST(request: NextRequest) {
         { success: false, error: "Customer not found" },
         { status: 404 }
       );
+    }
+
+    let resolvedBusinessId: string | null = null;
+    if (businessId) {
+      const [business] = await dbUser
+        .select({ id: businesses.id })
+        .from(businesses)
+        .where(
+          and(eq(businesses.id, businessId), eq(businesses.userId, customerId))
+        )
+        .limit(1);
+
+      if (!business) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Business not found or does not belong to customer",
+          },
+          { status: 404 }
+        );
+      }
+      resolvedBusinessId = business.id;
     }
 
     const [address] = await dbUser
@@ -268,11 +308,11 @@ export async function POST(request: NextRequest) {
     }
     const financialYear = getFinancialYear(effectiveOrderDate);
     const financialYearStart = getFinancialYearStart(effectiveOrderDate);
-    const isBusinessAccount = customer.isBusinessAccount === true;
+    const isBusiness = Boolean(resolvedBusinessId);
 
     const { invoiceNumber, sequenceNumber } = await generateInvoiceNumber(
       invoiceType,
-      isBusinessAccount,
+      isBusiness,
       financialYear,
       financialYearStart,
       invoiceOffice.stateCode
@@ -301,10 +341,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const billToSame =
+      isBillToSameAsShipping === undefined
+        ? true
+        : Boolean(isBillToSameAsShipping);
+
     await dbUser.transaction(async (tx) => {
       await tx.insert(orders).values({
         id: generatedOrderId,
         orderBy: customer.id,
+        businessId: resolvedBusinessId,
+        isBillToSameAsShipping: billToSame,
         orderDate: effectiveOrderDate,
         status: (status || "PENDING") as typeof orders.$inferInsert.status,
         totalAmount: roundedTotal,
@@ -353,15 +400,8 @@ export async function POST(request: NextRequest) {
         orderItems: true,
         shippingAddress: true,
         supplier: true,
-        user: {
-          columns: {
-            name: true,
-            email: true,
-            phone: true,
-            businessName: true,
-            gstNumber: true,
-          },
-        },
+        user: { columns: orderUserColumns },
+        business: orderBusinessWith,
       },
     });
 

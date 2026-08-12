@@ -9,13 +9,29 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
+interface Business {
+  id: string;
+  businessName: string;
+  gstNumber?: string | null;
+  billingAddress?: {
+    houseNo: string;
+    line1: string;
+    line2: string | null;
+    city: string;
+    district: string;
+    state: string;
+    stateCode: string | null;
+    country: string;
+    pincode: string;
+  } | null;
+}
+
 interface User {
   id: string;
   name: string;
   email: string;
   phone: string;
-  isBusinessAccount: boolean | null;
-  businessName: string | null;
+  businesses?: Business[];
 }
 
 interface Address {
@@ -240,17 +256,17 @@ export default function AddressesPage() {
       name: user.name,
       phone: user.phone,
     }));
+    const primaryBusiness = user.businesses?.[0];
     setCustomerSearchQuery(
-      user.isBusinessAccount && user.businessName
-        ? `${user.businessName} (${user.name})`
+      primaryBusiness
+        ? `${primaryBusiness.businessName} (${user.name})`
         : user.name
     );
     setCustomerSearchResults([]);
     setCustomerSearchHasRun(false);
     setCustomerSearchError(null);
 
-    // Fetch billing address if it's a business account
-    if (user.isBusinessAccount) {
+    if ((user.businesses?.length ?? 0) > 0) {
       await fetchBillingAddress(user.id);
     } else {
       setBillingAddress(null);
@@ -298,8 +314,9 @@ export default function AddressesPage() {
       const response = await fetch(`/api/customers/${userId}`);
       const data = await response.json();
 
-      if (data.success && data.data.billingAddress) {
-        setBillingAddress(data.data.billingAddress);
+      const primaryBilling = data.data?.businesses?.[0]?.billingAddress;
+      if (data.success && primaryBilling) {
+        setBillingAddress(primaryBilling);
       } else {
         setBillingAddress(null);
       }
@@ -526,11 +543,11 @@ export default function AddressesPage() {
                   >
                     <TableCell className="py-3 px-4">
                       <div className="font-medium text-zinc-900 dark:text-zinc-100">
-                        {address.user.isBusinessAccount && address.user.businessName
-                          ? address.user.businessName
+                        {address.user.businesses?.[0]?.businessName
+                          ? address.user.businesses[0].businessName
                           : address.user.name}
                       </div>
-                      {address.user.isBusinessAccount && address.user.businessName && (
+                      {address.user.businesses?.[0]?.businessName && (
                         <div className="text-xs text-zinc-500 dark:text-zinc-400">
                           {address.user.name}
                         </div>
@@ -641,8 +658,8 @@ export default function AddressesPage() {
                           className="w-full text-left px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
                         >
                           <div className="font-medium text-zinc-900 dark:text-zinc-100">
-                            {user.isBusinessAccount && user.businessName
-                              ? `${user.businessName} (${user.name})`
+                            {user.businesses?.[0]?.businessName
+                              ? `${user.businesses[0].businessName} (${user.name})`
                               : user.name}
                           </div>
                           <div className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -656,8 +673,8 @@ export default function AddressesPage() {
                   {selectedCustomer && (
                     <p className="text-sm text-emerald-600 dark:text-emerald-400">
                       Selected customer:{" "}
-                      {selectedCustomer.isBusinessAccount && selectedCustomer.businessName
-                        ? `${selectedCustomer.businessName} (${selectedCustomer.name})`
+                      {selectedCustomer.businesses?.[0]?.businessName
+                        ? `${selectedCustomer.businesses[0].businessName} (${selectedCustomer.name})`
                         : selectedCustomer.name}
                     </p>
                   )}
@@ -697,7 +714,7 @@ export default function AddressesPage() {
                       </div>
                     ) : (
                       <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                        {selectedCustomer?.isBusinessAccount
+                        {(selectedCustomer?.businesses?.length ?? 0) > 0
                           ? "No billing address found for this business"
                           : ""}
                       </p>
@@ -936,8 +953,8 @@ export default function AddressesPage() {
               <div className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-lg">
                 <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-1">Customer</p>
                 <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                  {editingAddress.user.isBusinessAccount && editingAddress.user.businessName
-                    ? `${editingAddress.user.businessName} (${editingAddress.user.name})`
+                  {editingAddress.user.businesses?.[0]?.businessName
+                    ? `${editingAddress.user.businesses[0].businessName} (${editingAddress.user.name})`
                     : editingAddress.user.name}
                 </p>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">{editingAddress.user.email}</p>

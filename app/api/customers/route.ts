@@ -2,15 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   and,
   count,
-  desc,
   eq,
+  exists,
   ilike,
   isNull,
   or,
+  sql,
 } from "drizzle-orm";
 
+import { generateNextBusinessId } from "@/lib/business-id";
 import { dbUser } from "@/lib/db";
-import { billingAddresses, users } from "@/lib/db/user-schema";
+import { billingAddresses, businesses, users } from "@/lib/db/user-schema";
 import { generateNextUserId } from "@/lib/user-id";
 
 // GET all customers
@@ -27,13 +29,11 @@ export async function GET(request: NextRequest) {
     const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 10;
 
     const userWhereCallback = (
-      // Drizzle relational `where` passes the selected table's column map, not `PgTable`.
       u: {
+        id: typeof users.id;
         name: typeof users.name;
         email: typeof users.email;
         phone: typeof users.phone;
-        businessName: typeof users.businessName;
-        gstNumber: typeof users.gstNumber;
         suspended: typeof users.suspended;
         terminated: typeof users.terminated;
       },
@@ -43,9 +43,11 @@ export async function GET(request: NextRequest) {
         ilike: typeof ilike;
         or: typeof or;
         isNull: typeof isNull;
+        exists: typeof exists;
+        sql: typeof sql;
       }
     ) => {
-      const { and: andOp, eq: eqOp, ilike: il, or: orOp, isNull: isN } = ops;
+      const { and: andOp, eq: eqOp, ilike: il, or: orOp, exists: existsOp, sql: sqlOp } = ops;
       const parts = [];
       const searchTerm = search?.trim();
 
@@ -53,7 +55,20 @@ export async function GET(request: NextRequest) {
         if (searchMode === "prefix") {
           const needle = `${searchTerm}%`;
           parts.push(
-            orOp(il(u.name, needle), il(u.businessName, needle))
+            orOp(
+              il(u.name, needle),
+              existsOp(
+                dbUser
+                  .select({ x: sqlOp`1` })
+                  .from(businesses)
+                  .where(
+                    and(
+                      eq(businesses.userId, u.id),
+                      ilike(businesses.businessName, needle)
+                    )
+                  )
+              )
+            )
           );
         } else {
           const needle = `%${searchTerm}%`;
@@ -62,8 +77,20 @@ export async function GET(request: NextRequest) {
               il(u.name, needle),
               il(u.email, needle),
               il(u.phone, needle),
-              il(u.businessName, needle),
-              il(u.gstNumber, needle)
+              existsOp(
+                dbUser
+                  .select({ x: sqlOp`1` })
+                  .from(businesses)
+                  .where(
+                    and(
+                      eq(businesses.userId, u.id),
+                      or(
+                        ilike(businesses.businessName, needle),
+                        ilike(businesses.gstNumber, needle)
+                      )
+                    )
+                  )
+              )
             )
           );
         }
@@ -85,6 +112,8 @@ export async function GET(request: NextRequest) {
       ilike,
       or,
       isNull,
+      exists,
+      sql,
     });
 
     const countBase = dbUser.select({ c: count() }).from(users);
@@ -93,18 +122,19 @@ export async function GET(request: NextRequest) {
       : await countBase;
     const total = Number(totalRow?.c ?? 0);
 
-    const bizFilter = baseWhere
-      ? and(baseWhere, eq(users.isBusinessAccount, true))
-      : eq(users.isBusinessAccount, true);
+    const hasBusiness = exists(
+      dbUser
+        .select({ x: sql`1` })
+        .from(businesses)
+        .where(eq(businesses.userId, users.id))
+    );
+    const noBusiness = sql`NOT (${hasBusiness})`;
+
+    const bizFilter = baseWhere ? and(baseWhere, hasBusiness) : hasBusiness;
     const [bizRow] = await dbUser.select({ c: count() }).from(users).where(bizFilter);
     const businessCount = Number(bizRow?.c ?? 0);
 
-    const personalFilter = baseWhere
-      ? and(
-          baseWhere,
-          or(eq(users.isBusinessAccount, false), isNull(users.isBusinessAccount))
-        )
-      : or(eq(users.isBusinessAccount, false), isNull(users.isBusinessAccount));
+    const personalFilter = baseWhere ? and(baseWhere, noBusiness) : noBusiness;
     const [persRow] = await dbUser
       .select({ c: count() })
       .from(users)
@@ -112,12 +142,16 @@ export async function GET(request: NextRequest) {
     const personalCount = Number(persRow?.c ?? 0);
 
     const customers = await dbUser.query.users.findMany({
-      where: userWhereCallback,
+      // Use pre-built SQL (includes business EXISTS search); relational ops lack exists/sql.
+      where: baseWhere ? () => baseWhere : undefined,
       with: {
         suspensionReasons: {
           orderBy: (sr, { desc: d }) => [d(sr.suspendedAt)],
         },
-        billingAddress: true,
+        businesses: {
+          with: { billingAddress: true },
+          orderBy: (b, { asc: a }) => [a(b.createdAt)],
+        },
       },
       orderBy: (u, { desc: d }) => [d(u.createdAt)],
       limit: safeLimit,
@@ -146,7 +180,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST create new customer
+// POST create new customer (optional first business)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -160,6 +194,7 @@ export async function POST(request: NextRequest) {
       hasAdditionalTradeName,
       additionalTradeName,
       billingAddress,
+      business,
     } = body;
 
     if (!name || !email || !phone) {
@@ -182,9 +217,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const isBusiness = Boolean(isBusinessAccount);
-    const userId = await generateNextUserId(dbUser, isBusiness);
+    const businessPayload = business ?? (
+      isBusinessAccount || businessName
+        ? {
+            businessName,
+            gstNumber,
+            hasAdditionalTradeName,
+            additionalTradeName,
+            billingAddress,
+          }
+        : null
+    );
 
+    const wantsBusiness = Boolean(
+      businessPayload &&
+        (businessPayload.businessName || isBusinessAccount)
+    );
+
+    if (wantsBusiness && !businessPayload?.businessName) {
+      return NextResponse.json(
+        { success: false, error: "Business name is required" },
+        { status: 400 }
+      );
+    }
+
+    const userId = await generateNextUserId(dbUser);
     const now = new Date();
 
     await dbUser.transaction(async (tx) => {
@@ -194,39 +251,50 @@ export async function POST(request: NextRequest) {
         email,
         phone,
         password: null,
-        isBusinessAccount: isBusiness,
-        businessName: isBusiness ? businessName : null,
-        gstNumber: isBusiness ? gstNumber : null,
-        hasAdditionalTradeName: isBusiness
-          ? Boolean(hasAdditionalTradeName)
-          : false,
-        additionalTradeName:
-          isBusiness && hasAdditionalTradeName ? additionalTradeName : null,
         createdAt: now,
         updatedAt: now,
       });
 
-      if (isBusiness && billingAddress) {
-        await tx.insert(billingAddresses).values({
+      if (wantsBusiness && businessPayload) {
+        const businessId = await generateNextBusinessId(tx as unknown as typeof dbUser);
+        await tx.insert(businesses).values({
+          id: businessId,
           userId,
-          houseNo: billingAddress.houseNo,
-          line1: billingAddress.line1,
-          line2: billingAddress.line2 || null,
-          city: billingAddress.city,
-          district: billingAddress.district,
-          state: billingAddress.state,
-          stateCode: billingAddress.stateCode || null,
-          country: billingAddress.country || "India",
-          pincode: billingAddress.pincode,
+          businessName: businessPayload.businessName,
+          gstNumber: businessPayload.gstNumber || null,
+          hasAdditionalTradeName: Boolean(businessPayload.hasAdditionalTradeName),
+          additionalTradeName: businessPayload.hasAdditionalTradeName
+            ? businessPayload.additionalTradeName || null
+            : null,
           createdAt: now,
           updatedAt: now,
         });
+
+        if (businessPayload.billingAddress) {
+          const ba = businessPayload.billingAddress;
+          await tx.insert(billingAddresses).values({
+            businessId,
+            houseNo: ba.houseNo,
+            line1: ba.line1,
+            line2: ba.line2 || null,
+            city: ba.city,
+            district: ba.district,
+            state: ba.state,
+            stateCode: ba.stateCode || null,
+            country: ba.country || "India",
+            pincode: ba.pincode,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
       }
     });
 
     const customer = await dbUser.query.users.findFirst({
       where: eq(users.id, userId),
-      with: { billingAddress: true },
+      with: {
+        businesses: { with: { billingAddress: true } },
+      },
     });
 
     if (!customer) {

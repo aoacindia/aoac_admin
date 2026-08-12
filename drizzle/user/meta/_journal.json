@@ -8,6 +8,13 @@
       "when": 1778351697863,
       "tag": "0000_normal_hitman",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1778500000000,
+      "tag": "0001_user_business_split",
+      "breakpoints": true
     }
   ]
 }

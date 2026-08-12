@@ -2,15 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, eq, ne } from "drizzle-orm";
 
 import { dbUser } from "@/lib/db";
-import { addresses, users } from "@/lib/db/user-schema";
+import { addresses, businesses, users } from "@/lib/db/user-schema";
 
 const userListCols = {
   id: users.id,
   name: users.name,
   email: users.email,
   phone: users.phone,
-  isBusinessAccount: users.isBusinessAccount,
-  businessName: users.businessName,
 } as const;
 
 // GET address by id
@@ -37,9 +35,18 @@ export async function GET(
       );
     }
 
+    const [biz] = await dbUser
+      .select({ id: businesses.id })
+      .from(businesses)
+      .where(eq(businesses.userId, row.user.id))
+      .limit(1);
+
     return NextResponse.json({
       success: true,
-      data: { ...row.address, user: row.user },
+      data: {
+        ...row.address,
+        user: { ...row.user, hasBusiness: Boolean(biz) },
+      },
     });
   } catch (error: unknown) {
     console.error("Error fetching address:", error);
@@ -133,7 +140,15 @@ export async function PUT(
         .where(eq(users.id, addr.userId))
         .limit(1);
 
-      return u ? { ...addr, user: u } : null;
+      if (!u) return null;
+
+      const [biz] = await tx
+        .select({ id: businesses.id })
+        .from(businesses)
+        .where(eq(businesses.userId, addr.userId))
+        .limit(1);
+
+      return { ...addr, user: { ...u, hasBusiness: Boolean(biz) } };
     });
 
     if (!updated) {

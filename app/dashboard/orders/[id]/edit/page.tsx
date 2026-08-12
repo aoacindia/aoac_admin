@@ -45,7 +45,12 @@ interface Customer {
   name: string;
   email: string;
   phone: string;
-  businessName?: string;
+}
+
+interface OrderBusiness {
+  id: string;
+  businessName: string;
+  gstNumber?: string | null;
 }
 
 interface Address {
@@ -146,8 +151,11 @@ interface OrderData {
   // Supplier Details
   isDifferentSupplier: boolean | null;
   supplierId: string | null;
+  businessId?: string | null;
+  isBillToSameAsShipping?: boolean;
   // Relations
   user: Customer;
+  business?: OrderBusiness | null;
   shippingAddress: Address | null;
   shippingAddressId: string | null;
   orderItems: Array<{
@@ -639,12 +647,12 @@ export default function EditOrderPage() {
               </Label>
               <p className="text-zinc-900 dark:text-zinc-100">{order.user.email}</p>
             </div>
-            {order.user.businessName && (
+            {order.business?.businessName && (
               <div>
                 <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                   Business Name
                 </Label>
-                <p className="text-zinc-900 dark:text-zinc-100">{order.user.businessName}</p>
+                <p className="text-zinc-900 dark:text-zinc-100">{order.business.businessName}</p>
               </div>
             )}
           </div>

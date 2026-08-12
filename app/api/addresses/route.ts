@@ -1,17 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, desc, eq, ilike, or } from "drizzle-orm";
+import { and, desc, eq, exists, ilike, inArray, or, sql } from "drizzle-orm";
 
 import { dbUser } from "@/lib/db";
-import { addresses, users } from "@/lib/db/user-schema";
+import { addresses, businesses, users } from "@/lib/db/user-schema";
 
 const userListCols = {
   id: users.id,
   name: users.name,
   email: users.email,
   phone: users.phone,
-  isBusinessAccount: users.isBusinessAccount,
-  businessName: users.businessName,
 } as const;
+
+function businessNameExists(needle: string) {
+  return exists(
+    dbUser
+      .select({ o: sql`1` })
+      .from(businesses)
+      .where(
+        and(eq(businesses.userId, users.id), ilike(businesses.businessName, needle))
+      )
+  );
+}
+
+async function usersWithBusinessFlag(
+  userRows: Array<{ id: string; name: string; email: string; phone: string }>
+) {
+  if (userRows.length === 0) return [];
+  const userIds = [...new Set(userRows.map((u) => u.id))];
+  const bizRows = await dbUser
+    .select({ userId: businesses.userId })
+    .from(businesses)
+    .where(inArray(businesses.userId, userIds));
+  const hasBiz = new Set(bizRows.map((b) => b.userId));
+  return userRows.map((u) => ({
+    ...u,
+    hasBusiness: hasBiz.has(u.id),
+  }));
+}
 
 // GET all addresses with search
 export async function GET(request: NextRequest) {
@@ -34,7 +59,7 @@ export async function GET(request: NextRequest) {
           ilike(addresses.district, needle),
           ilike(addresses.state, needle),
           ilike(addresses.city, needle),
-          or(ilike(users.name, needle), ilike(users.businessName, needle))
+          or(ilike(users.name, needle), businessNameExists(needle))
         )
       );
     } else {
@@ -51,7 +76,7 @@ export async function GET(request: NextRequest) {
         filters.push(ilike(users.name, `%${userName}%`));
       }
       if (businessName) {
-        filters.push(ilike(users.businessName, `%${businessName}%`));
+        filters.push(businessNameExists(`%${businessName}%`));
       }
     }
 
@@ -67,10 +92,11 @@ export async function GET(request: NextRequest) {
       .orderBy(desc(addresses.createdAt));
 
     const rows = whereClause ? await q.where(whereClause) : await q;
-
+    const usersFlagged = await usersWithBusinessFlag(rows.map((r) => r.user));
+    const byId = new Map(usersFlagged.map((u) => [u.id, u]));
     const data = rows.map((r) => ({
       ...r.address,
-      user: r.user,
+      user: byId.get(r.user.id)!,
     }));
 
     return NextResponse.json({ success: true, data });
@@ -179,7 +205,18 @@ export async function POST(request: NextRequest) {
         .where(eq(users.id, userId))
         .limit(1);
 
-      return { ...row, user: u };
+      if (!u) return null;
+
+      const [biz] = await tx
+        .select({ id: businesses.id })
+        .from(businesses)
+        .where(eq(businesses.userId, userId))
+        .limit(1);
+
+      return {
+        ...row,
+        user: { ...u, hasBusiness: Boolean(biz) },
+      };
     });
 
     if (!inserted || !inserted.user) {

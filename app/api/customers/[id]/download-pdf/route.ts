@@ -30,7 +30,9 @@ export async function POST(
         suspensionReasons: {
           orderBy: (sr, { desc: d }) => [d(sr.suspendedAt)],
         },
-        billingAddress: true,
+        businesses: {
+          with: { billingAddress: true },
+        },
         addresses: {
           orderBy: (a, { desc: d }) => [d(a.createdAt)],
         },
@@ -39,6 +41,13 @@ export async function POST(
           with: {
             orderItems: true,
             shippingAddress: true,
+            business: {
+              columns: {
+                id: true,
+                businessName: true,
+                gstNumber: true,
+              },
+            },
           },
         },
       },

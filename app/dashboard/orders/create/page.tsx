@@ -41,8 +41,11 @@ interface Customer {
   name: string;
   email: string;
   phone: string;
-  businessName?: string;
-  gstNumber?: string | null;
+  businesses?: Array<{
+    id: string;
+    businessName: string;
+    gstNumber?: string | null;
+  }>;
 }
 
 interface Address {
@@ -137,6 +140,8 @@ export default function CreateOrderPage() {
 
   const [invoiceType, setInvoiceType] = useState<"PI" | "TAX_INVOICE">("PI");
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string>("");
+  const [isBillToSameAsShipping, setIsBillToSameAsShipping] = useState(true);
   const [customerSearch, setCustomerSearch] = useState<string>("");
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [selectedInvoiceOfficeId, setSelectedInvoiceOfficeId] = useState<string>("");
@@ -187,8 +192,20 @@ export default function CreateOrderPage() {
     } else {
       setAddresses([]);
       setSelectedAddressId("");
+      setSelectedBusinessId("");
     }
   }, [selectedCustomerId]);
+
+  // Keep business selection valid for the selected customer
+  useEffect(() => {
+    if (!selectedCustomerId) return;
+    const customer = customers.find((c) => c.id === selectedCustomerId);
+    const businesses = customer?.businesses || [];
+    setSelectedBusinessId((prev) => {
+      if (prev && businesses.some((b) => b.id === prev)) return prev;
+      return businesses[0]?.id || "";
+    });
+  }, [selectedCustomerId, customers]);
 
   // Fetch last order when both customer and address are selected
   useEffect(() => {
@@ -631,6 +648,8 @@ export default function CreateOrderPage() {
         invoiceType,
         invoiceOfficeId: selectedInvoiceOfficeId,
         customerId: selectedCustomerId,
+        businessId: selectedBusinessId || null,
+        isBillToSameAsShipping,
         addressId: selectedAddressId,
         isDifferentSupplier: isDifferentSupplier || false,
         supplierId: isDifferentSupplier ? selectedSupplierId : null,
@@ -811,17 +830,65 @@ export default function CreateOrderPage() {
               className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">Select a customer</option>
-              {customers.map((customer) => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.name}
-                  {customer.businessName ? ` (${customer.businessName})` : ""}
-                  {customer.gstNumber ? ` - GST: ${customer.gstNumber}` : ""}
-                </option>
-              ))}
+              {customers.map((customer) => {
+                const primaryBusiness = customer.businesses?.[0];
+                return (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.name}
+                    {primaryBusiness?.businessName
+                      ? ` (${primaryBusiness.businessName})`
+                      : ""}
+                    {primaryBusiness?.gstNumber
+                      ? ` - GST: ${primaryBusiness.gstNumber}`
+                      : ""}
+                  </option>
+                );
+              })}
             </Select>
             {loadingCustomers && (
               <p className="text-sm text-zinc-500 mt-1">Loading customers...</p>
             )}
+          </div>
+
+          {/* Business Selection */}
+          {selectedCustomerId &&
+            (customers.find((c) => c.id === selectedCustomerId)?.businesses?.length ??
+              0) > 0 && (
+              <div className="mb-6">
+                <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                  Business (optional)
+                </Label>
+                <Select
+                  value={selectedBusinessId}
+                  onChange={(e) => setSelectedBusinessId(e.target.value)}
+                  className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">No business / personal</option>
+                  {(
+                    customers.find((c) => c.id === selectedCustomerId)?.businesses ||
+                    []
+                  ).map((business) => (
+                    <option key={business.id} value={business.id}>
+                      {business.businessName}
+                      {business.gstNumber ? ` - GST: ${business.gstNumber}` : ""}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            )}
+
+          <div className="mb-6">
+            <Label className="flex items-center space-x-2 cursor-pointer">
+              <Input
+                type="checkbox"
+                checked={isBillToSameAsShipping}
+                onChange={(e) => setIsBillToSameAsShipping(e.target.checked)}
+                className="w-4 h-4 text-blue-600 border-zinc-300 rounded focus:ring-blue-500"
+              />
+              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Bill to same as shipping address
+              </span>
+            </Label>
           </div>
 
           {/* Supplier Selection */}

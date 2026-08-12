@@ -35,6 +35,15 @@ interface BillingAddress {
   pincode: string;
 }
 
+interface Business {
+  id: string;
+  businessName: string;
+  gstNumber: string | null;
+  hasAdditionalTradeName: boolean;
+  additionalTradeName: string | null;
+  billingAddress?: BillingAddress | null;
+}
+
 interface Customer {
   id: string;
   name: string;
@@ -43,12 +52,9 @@ interface Customer {
   suspended: boolean;
   suspended_number: number;
   terminated: boolean;
-  isBusinessAccount: boolean | null;
-  businessName: string | null;
-  gstNumber: string | null;
+  businesses: Business[];
   createdAt: string;
   suspensionReasons: SuspensionReason[];
-  billingAddress: BillingAddress | null;
 }
 
 export default function CustomersPage() {
@@ -341,13 +347,16 @@ export default function CustomersPage() {
                     className="border-b border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800"
                   >
                     <TableCell className="py-3 px-4">
-                      {customer.isBusinessAccount && customer.businessName ? (
+                      {(customer.businesses?.length ?? 0) > 0 && customer.businesses[0]?.businessName ? (
                         <>
                           <div className="font-medium text-zinc-900 dark:text-zinc-100">
-                            {customer.businessName}
+                            {customer.businesses[0].businessName}
                           </div>
                           <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
                             {customer.name}
+                            {(customer.businesses?.length ?? 0) > 1 && (
+                              <span> · {customer.businesses.length} businesses</span>
+                            )}
                           </div>
                         </>
                       ) : (
@@ -368,7 +377,7 @@ export default function CustomersPage() {
                       {customer.phone}
                     </TableCell>
                     <TableCell className="py-3 px-4">
-                      {customer.isBusinessAccount ? (
+                      {(customer.businesses?.length ?? 0) > 0 ? (
                         <span className="inline-block px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded">
                           Business
                         </span>

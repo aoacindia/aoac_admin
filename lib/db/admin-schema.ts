@@ -84,6 +84,34 @@ export const offices = pgTable(
   (t) => [uniqueIndex("Office_gstin_key").on(t.gstin)]
 );
 
+/** Company legal / administration profile (singleton row in practice) */
+export const companyAdministration = pgTable("CompanyAdministration", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => createId()),
+  companyName: text("companyName").notNull().default(""),
+  addressLine: text("addressLine").notNull().default(""),
+  city: text("city").notNull().default(""),
+  district: text("district").notNull().default(""),
+  state: text("state").notNull().default(""),
+  stateCode: text("stateCode").notNull().default(""),
+  pincode: text("pincode").notNull().default(""),
+  country: text("country").notNull().default("India"),
+  uin: text("uin").notNull().default(""),
+  pan: text("pan").notNull().default(""),
+  tin: text("tin").notNull().default(""),
+  /** Relative paths on internalfiles.aoac.in (not public URLs) */
+  panDocumentPath: text("panDocumentPath"),
+  tinDocumentPath: text("tinDocumentPath"),
+  certificateOfIncorporationPath: text("certificateOfIncorporationPath"),
+  memorandumOfAssociationPath: text("memorandumOfAssociationPath"),
+  articlesOfAssociationPath: text("articlesOfAssociationPath"),
+  createdAt: timestamp("createdAt", { precision: 3, mode: "date" })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" }).notNull(),
+});
+
 export const accounts = pgTable("Account", {
   id: text("id")
     .primaryKey()
@@ -174,6 +202,8 @@ export type AdminUserRow = typeof adminUsers.$inferSelect;
 export type NewAdminUserRow = typeof adminUsers.$inferInsert;
 export type OfficeRow = typeof offices.$inferSelect;
 export type NewOfficeRow = typeof offices.$inferInsert;
+export type CompanyAdministrationRow = typeof companyAdministration.$inferSelect;
+export type NewCompanyAdministrationRow = typeof companyAdministration.$inferInsert;
 export type AccountRow = typeof accounts.$inferSelect;
 export type NewAccountRow = typeof accounts.$inferInsert;
 export type EmailAccountRow = typeof emailAccounts.$inferSelect;
