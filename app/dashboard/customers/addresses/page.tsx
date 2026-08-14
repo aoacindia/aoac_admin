@@ -519,6 +519,9 @@ export default function AddressesPage() {
                     Type
                   </TableHead>
                   <TableHead className="text-left py-3 px-4 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                    Phone
+                  </TableHead>
+                  <TableHead className="text-left py-3 px-4 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
                     Address
                   </TableHead>
                   <TableHead className="text-left py-3 px-4 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
@@ -558,6 +561,9 @@ export default function AddressesPage() {
                     </TableCell>
                     <TableCell className="py-3 px-4 text-zinc-600 dark:text-zinc-400">
                       {address.type}
+                    </TableCell>
+                    <TableCell className="py-3 px-4 text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
+                      {address.phone || "-"}
                     </TableCell>
                     <TableCell className="py-3 px-4">
                       <div className="text-zinc-900 dark:text-zinc-100">
