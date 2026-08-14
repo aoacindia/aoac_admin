@@ -201,6 +201,7 @@ export default function EditOrderPage() {
   const [deliveryPartnerName, setDeliveryPartnerName] = useState<string>("");
   const [awsCode, setAwsCode] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<string>("");
+  const [paidAmount, setPaidAmount] = useState<string>("");
   const [status, setStatus] = useState<string>("PENDING");
 
   // Fetch order data
@@ -236,6 +237,11 @@ export default function EditOrderPage() {
         setDeliveryCharge(orderData.shippingAmount?.toString() || "");
         setAwsCode(orderData.awsCode || "");
         setPaymentMethod(orderData.paymentMethod || "");
+        setPaidAmount(
+          orderData.paidAmount != null && Number.isFinite(Number(orderData.paidAmount))
+            ? String(orderData.paidAmount)
+            : ""
+        );
         setStatus(orderData.status || "PENDING");
         setIsDifferentSupplier(orderData.isDifferentSupplier || false);
         setSelectedSupplierId(orderData.supplierId || "");
@@ -544,6 +550,12 @@ export default function EditOrderPage() {
         return;
       }
 
+      if (paidAmount.trim() !== "" && !Number.isFinite(Number(paidAmount))) {
+        alert("Please enter a valid paid amount");
+        setLoading(false);
+        return;
+      }
+
       const payload: any = {
         addressId: selectedAddressId,
         items: items.map((item) => ({
@@ -562,6 +574,7 @@ export default function EditOrderPage() {
         deliveryPartnerName: deliveryPartner === "OTHER" ? deliveryPartnerName : null,
         awsCode: awsCode.trim() || null,
         paymentMethod: paymentMethod || null,
+        paidAmount: paidAmount.trim() === "" ? null : paidAmount.trim(),
         status: status || "PENDING",
         isDifferentSupplier: isDifferentSupplier || false,
         supplierId: isDifferentSupplier ? selectedSupplierId : null,
@@ -1074,6 +1087,21 @@ export default function EditOrderPage() {
                 <option value="Bank Transfer">Bank Transfer</option>
                 <option value="PG_RZP">PG_RZP</option>
               </Select>
+            </div>
+
+            <div>
+              <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                Paid Amount
+              </Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={paidAmount}
+                onChange={(e) => setPaidAmount(e.target.value)}
+                placeholder="0.00"
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
             </div>
 
             <div>

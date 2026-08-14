@@ -36,17 +36,17 @@ function buildOrderDateTime(dateYmd: string, timeHm: string): Date {
   return out;
 }
 
-interface Customer {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  businesses?: Array<{
-    id: string;
-    businessName: string;
-    gstNumber?: string | null;
-  }>;
-}
+type OrderCustomerOption = {
+  key: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userPhone: string;
+  businessId: string | null;
+  businessName: string | null;
+  gstNumber: string | null;
+  label: string;
+};
 
 interface Address {
   id: string;
@@ -127,7 +127,10 @@ type LastOrder = {
 export default function CreateOrderPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerOptions, setCustomerOptions] = useState<OrderCustomerOption[]>([]);
+  const [linkedBusinesses, setLinkedBusinesses] = useState<
+    Array<{ id: string; businessName: string; gstNumber?: string | null }>
+  >([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -141,6 +144,9 @@ export default function CreateOrderPage() {
   const [invoiceType, setInvoiceType] = useState<"PI" | "TAX_INVOICE">("PI");
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [selectedBusinessId, setSelectedBusinessId] = useState<string>("");
+  const [selectedPickerKey, setSelectedPickerKey] = useState<string>("");
+  /** null = not asked yet; true = link a business; false = personal only */
+  const [wantLinkBusiness, setWantLinkBusiness] = useState<boolean | null>(null);
   const [isBillToSameAsShipping, setIsBillToSameAsShipping] = useState(true);
   const [customerSearch, setCustomerSearch] = useState<string>("");
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
@@ -173,39 +179,33 @@ export default function CreateOrderPage() {
   const [orderDate, setOrderDate] = useState<string>(() => getNowLocalDateString());
   const [orderTime, setOrderTime] = useState<string>(() => getNowLocalTimeString());
   const [paymentMethod, setPaymentMethod] = useState<string>("");
+  const [paidAmount, setPaidAmount] = useState<string>("");
   const [status, setStatus] = useState<string>("PENDING");
   const [lastOrder, setLastOrder] = useState<LastOrder>(null);
   const [loadingLastOrder, setLoadingLastOrder] = useState(false);
 
-  // Fetch customers on mount
+  // Fetch customer/business options on mount
   useEffect(() => {
-    fetchCustomers();
+    fetchCustomerOptions();
     fetchProducts();
     fetchSuppliers();
     fetchOffices();
   }, []);
 
-  // Fetch addresses when customer is selected
+  // Fetch addresses + businesses when customer is selected
   useEffect(() => {
     if (selectedCustomerId) {
       fetchAddresses(selectedCustomerId);
+      fetchLinkedBusinesses(selectedCustomerId);
     } else {
       setAddresses([]);
+      setLinkedBusinesses([]);
       setSelectedAddressId("");
       setSelectedBusinessId("");
+      setSelectedPickerKey("");
+      setWantLinkBusiness(null);
     }
   }, [selectedCustomerId]);
-
-  // Keep business selection valid for the selected customer
-  useEffect(() => {
-    if (!selectedCustomerId) return;
-    const customer = customers.find((c) => c.id === selectedCustomerId);
-    const businesses = customer?.businesses || [];
-    setSelectedBusinessId((prev) => {
-      if (prev && businesses.some((b) => b.id === prev)) return prev;
-      return businesses[0]?.id || "";
-    });
-  }, [selectedCustomerId, customers]);
 
   // Fetch last order when both customer and address are selected
   useEffect(() => {
@@ -217,23 +217,95 @@ export default function CreateOrderPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCustomerId, selectedAddressId]);
 
-  const fetchCustomers = async (search?: string) => {
+  const fetchCustomerOptions = async (search?: string) => {
     try {
       setLoadingCustomers(true);
       const trimmedSearch = search?.trim();
-      const url = trimmedSearch
-        ? `/api/customers?search=${encodeURIComponent(trimmedSearch)}`
-        : "/api/customers";
-      const response = await fetch(url);
+      const params = new URLSearchParams({ limit: "50" });
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+      const response = await fetch(`/api/orders/customer-search?${params}`);
       const data = await response.json();
       if (data.success) {
-        setCustomers(data.data);
+        setCustomerOptions(data.data);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
       console.error("Error fetching customers:", error);
-      alert("Error fetching customers: " + error.message);
+      alert("Error fetching customers: " + message);
     } finally {
       setLoadingCustomers(false);
+    }
+  };
+
+  const handlePickerChange = (key: string) => {
+    setSelectedPickerKey(key);
+    if (!key) {
+      setSelectedCustomerId("");
+      setSelectedBusinessId("");
+      setWantLinkBusiness(null);
+      return;
+    }
+    const option = customerOptions.find((o) => o.key === key);
+    if (!option) return;
+    setSelectedCustomerId(option.userId);
+    if (option.businessId) {
+      // Searched/selected a business directly — link it
+      setSelectedBusinessId(option.businessId);
+      setWantLinkBusiness(true);
+    } else {
+      // Searched/selected a user — do not auto-link business; ask first
+      setSelectedBusinessId("");
+      setWantLinkBusiness(null);
+    }
+  };
+
+  const handleWantLinkBusiness = (want: boolean) => {
+    setWantLinkBusiness(want);
+    if (!want) {
+      setSelectedBusinessId("");
+      if (selectedCustomerId) {
+        setSelectedPickerKey(`personal:${selectedCustomerId}`);
+      }
+    }
+  };
+
+  const handleBusinessOverride = (businessId: string) => {
+    setSelectedBusinessId(businessId);
+    if (!selectedCustomerId) return;
+    if (businessId) {
+      setWantLinkBusiness(true);
+      setSelectedPickerKey(`business:${businessId}`);
+    } else {
+      setSelectedPickerKey(`personal:${selectedCustomerId}`);
+    }
+  };
+
+  const fetchLinkedBusinesses = async (customerId: string) => {
+    try {
+      const response = await fetch(`/api/customers/${customerId}/businesses`);
+      const data = await response.json();
+      if (data.success) {
+        const list = (data.data || []).map(
+          (b: { id: string; businessName: string; gstNumber?: string | null }) => ({
+            id: b.id,
+            businessName: b.businessName,
+            gstNumber: b.gstNumber,
+          })
+        );
+        setLinkedBusinesses(list);
+        // If user was selected (no business yet) and has no businesses → personal only
+        setWantLinkBusiness((prev) => {
+          if (prev === true && selectedBusinessId) return true; // already linked from search
+          if (list.length === 0) return false;
+          // Keep existing Yes/No answer; otherwise leave as null so we ask
+          return prev;
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching linked businesses:", error);
+      setLinkedBusinesses([]);
     }
   };
 
@@ -601,6 +673,21 @@ export default function CreateOrderPage() {
         return;
       }
 
+      if (
+        linkedBusinesses.length > 0 &&
+        wantLinkBusiness === null
+      ) {
+        alert("Please choose whether to link a business to this order");
+        setLoading(false);
+        return;
+      }
+
+      if (wantLinkBusiness === true && !selectedBusinessId) {
+        alert("Please select a business to link to this order");
+        setLoading(false);
+        return;
+      }
+
       if (!selectedAddressId) {
         alert("Please select an address");
         setLoading(false);
@@ -644,6 +731,12 @@ export default function CreateOrderPage() {
         return;
       }
 
+      if (paidAmount.trim() !== "" && !Number.isFinite(Number(paidAmount))) {
+        alert("Please enter a valid paid amount");
+        setLoading(false);
+        return;
+      }
+
       const payload = {
         invoiceType,
         invoiceOfficeId: selectedInvoiceOfficeId,
@@ -668,6 +761,7 @@ export default function CreateOrderPage() {
         awsCode: awsCode.trim() || null,
         orderDate: effectiveOrderDate.toISOString(),
         paymentMethod: paymentMethod || null,
+        paidAmount: paidAmount.trim() === "" ? null : paidAmount.trim(),
         status: status || "PENDING",
       };
 
@@ -795,79 +889,123 @@ export default function CreateOrderPage() {
             )}
           </div>
 
-          {/* Customer Selection */}
+          {/* Customer / Business Selection */}
           <div className="mb-6">
             <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-              Customer <span className="text-red-500">*</span>
+              Customer / Business <span className="text-red-500">*</span>
             </Label>
             <div className="flex flex-col md:flex-row gap-2 mb-2">
               <Input
                 value={customerSearch}
                 onChange={(e) => setCustomerSearch(e.target.value)}
-                placeholder="Search by name, business name, or GST number"
+                placeholder="Search by user name, business name, or GST number"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    fetchCustomers(customerSearch);
+                    fetchCustomerOptions(customerSearch);
                   }
                 }}
                 className="w-full"
               />
               <Button
                 type="button"
-                onClick={() => fetchCustomers(customerSearch)}
+                onClick={() => fetchCustomerOptions(customerSearch)}
                 disabled={loadingCustomers}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
-                Find Customer
+                Search
               </Button>
             </div>
             <Select
-              value={selectedCustomerId}
-              onChange={(e) => setSelectedCustomerId(e.target.value)}
+              value={selectedPickerKey}
+              onChange={(e) => handlePickerChange(e.target.value)}
               required
               disabled={loadingCustomers}
               className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">Select a customer</option>
-              {customers.map((customer) => {
-                const primaryBusiness = customer.businesses?.[0];
-                return (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.name}
-                    {primaryBusiness?.businessName
-                      ? ` (${primaryBusiness.businessName})`
-                      : ""}
-                    {primaryBusiness?.gstNumber
-                      ? ` - GST: ${primaryBusiness.gstNumber}`
-                      : ""}
-                  </option>
-                );
-              })}
+              <option value="">Select customer or business</option>
+              {customerOptions.map((option) => (
+                <option key={option.key} value={option.key}>
+                  {option.label}
+                </option>
+              ))}
             </Select>
             {loadingCustomers && (
-              <p className="text-sm text-zinc-500 mt-1">Loading customers...</p>
+              <p className="text-sm text-zinc-500 mt-1">Searching...</p>
+            )}
+            {selectedCustomerId && (
+              <p className="text-sm text-zinc-500 mt-1">
+                Linked user:{" "}
+                {customerOptions.find((o) => o.key === selectedPickerKey)?.userName ||
+                  customerOptions.find((o) => o.userId === selectedCustomerId)?.userName ||
+                  selectedCustomerId}
+                {selectedBusinessId
+                  ? ` · Business: ${
+                      linkedBusinesses.find((b) => b.id === selectedBusinessId)
+                        ?.businessName ||
+                      customerOptions.find((o) => o.businessId === selectedBusinessId)
+                        ?.businessName ||
+                      selectedBusinessId
+                    }`
+                  : " · Personal order"}
+              </p>
             )}
           </div>
 
-          {/* Business Selection */}
+          {/* Ask before linking a business when user was selected by name */}
           {selectedCustomerId &&
-            (customers.find((c) => c.id === selectedCustomerId)?.businesses?.length ??
-              0) > 0 && (
+            linkedBusinesses.length > 0 &&
+            wantLinkBusiness === null && (
+              <div className="mb-6 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 p-4">
+                <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-3">
+                  This user has {linkedBusinesses.length} linked business
+                  {linkedBusinesses.length === 1 ? "" : "es"}. Do you want to link a
+                  business to this order?
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => handleWantLinkBusiness(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Yes, link a business
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handleWantLinkBusiness(false)}
+                  >
+                    No, personal order
+                  </Button>
+                </div>
+              </div>
+            )}
+
+          {/* Business picker — only after user says Yes */}
+          {selectedCustomerId &&
+            linkedBusinesses.length > 0 &&
+            wantLinkBusiness === true && (
               <div className="mb-6">
-                <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                  Business (optional)
-                </Label>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Select business <span className="text-red-500">*</span>
+                  </Label>
+                  <button
+                    type="button"
+                    className="text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 underline"
+                    onClick={() => handleWantLinkBusiness(false)}
+                  >
+                    Use personal instead
+                  </button>
+                </div>
                 <Select
                   value={selectedBusinessId}
-                  onChange={(e) => setSelectedBusinessId(e.target.value)}
+                  onChange={(e) => handleBusinessOverride(e.target.value)}
+                  required
                   className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">No business / personal</option>
-                  {(
-                    customers.find((c) => c.id === selectedCustomerId)?.businesses ||
-                    []
-                  ).map((business) => (
+                  <option value="">Select a business</option>
+                  {linkedBusinesses.map((business) => (
                     <option key={business.id} value={business.id}>
                       {business.businessName}
                       {business.gstNumber ? ` - GST: ${business.gstNumber}` : ""}
@@ -1241,6 +1379,21 @@ export default function CreateOrderPage() {
                 <option value="Bank Transfer">Bank Transfer</option>
                 <option value="PG_RZP">PG_RZP</option>
               </Select>
+            </div>
+
+            <div>
+              <Label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                Paid Amount
+              </Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={paidAmount}
+                onChange={(e) => setPaidAmount(e.target.value)}
+                placeholder="0.00"
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
             </div>
 
             <div>

@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   and,
   count,
+  desc,
   eq,
   exists,
   ilike,
-  isNull,
+  inArray,
   or,
   sql,
+  type SQL,
 } from "drizzle-orm";
 
 import { generateNextBusinessId } from "@/lib/business-id";
@@ -28,93 +30,70 @@ export async function GET(request: NextRequest) {
     const safePage = Number.isFinite(page) && page > 0 ? page : 1;
     const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 10;
 
-    const userWhereCallback = (
-      u: {
-        id: typeof users.id;
-        name: typeof users.name;
-        email: typeof users.email;
-        phone: typeof users.phone;
-        suspended: typeof users.suspended;
-        terminated: typeof users.terminated;
-      },
-      ops: {
-        and: typeof and;
-        eq: typeof eq;
-        ilike: typeof ilike;
-        or: typeof or;
-        isNull: typeof isNull;
-        exists: typeof exists;
-        sql: typeof sql;
-      }
-    ) => {
-      const { and: andOp, eq: eqOp, ilike: il, or: orOp, exists: existsOp, sql: sqlOp } = ops;
-      const parts = [];
-      const searchTerm = search?.trim();
+    const searchTerm = search?.trim();
+    let matchingBusinessUserIds: string[] = [];
+
+    // Resolve business-name / GST matches to userIds first (avoids EXISTS alias bug
+    // in drizzle relational queries where "User" is aliased as "users").
+    if (searchTerm) {
+      const needle =
+        searchMode === "prefix" ? `${searchTerm}%` : `%${searchTerm}%`;
+      const bizMatch =
+        searchMode === "prefix"
+          ? ilike(businesses.businessName, needle)
+          : or(
+              ilike(businesses.businessName, needle),
+              ilike(businesses.gstNumber, needle)
+            );
+      const bizRows = await dbUser
+        .selectDistinct({ userId: businesses.userId })
+        .from(businesses)
+        .where(bizMatch!);
+      matchingBusinessUserIds = bizRows.map((r) => r.userId);
+    }
+
+    const buildUserFilters = (
+      u: typeof users = users
+    ): SQL | undefined => {
+      const parts: SQL[] = [];
 
       if (searchTerm) {
+        const needle =
+          searchMode === "prefix" ? `${searchTerm}%` : `%${searchTerm}%`;
         if (searchMode === "prefix") {
-          const needle = `${searchTerm}%`;
           parts.push(
-            orOp(
-              il(u.name, needle),
-              existsOp(
-                dbUser
-                  .select({ x: sqlOp`1` })
-                  .from(businesses)
-                  .where(
-                    and(
-                      eq(businesses.userId, u.id),
-                      ilike(businesses.businessName, needle)
-                    )
-                  )
-              )
-            )
+            or(
+              ilike(u.name, needle),
+              matchingBusinessUserIds.length > 0
+                ? inArray(u.id, matchingBusinessUserIds)
+                : sql`false`
+            )!
           );
         } else {
-          const needle = `%${searchTerm}%`;
           parts.push(
-            orOp(
-              il(u.name, needle),
-              il(u.email, needle),
-              il(u.phone, needle),
-              existsOp(
-                dbUser
-                  .select({ x: sqlOp`1` })
-                  .from(businesses)
-                  .where(
-                    and(
-                      eq(businesses.userId, u.id),
-                      or(
-                        ilike(businesses.businessName, needle),
-                        ilike(businesses.gstNumber, needle)
-                      )
-                    )
-                  )
-              )
-            )
+            or(
+              ilike(u.name, needle),
+              ilike(u.email, needle),
+              ilike(u.phone, needle),
+              matchingBusinessUserIds.length > 0
+                ? inArray(u.id, matchingBusinessUserIds)
+                : sql`false`
+            )!
           );
         }
       }
 
       if (suspended !== null && suspended !== undefined) {
-        parts.push(eqOp(u.suspended, suspended === "true"));
+        parts.push(eq(u.suspended, suspended === "true"));
       }
       if (terminated !== null && terminated !== undefined) {
-        parts.push(eqOp(u.terminated, terminated === "true"));
+        parts.push(eq(u.terminated, terminated === "true"));
       }
 
-      return parts.length > 0 ? andOp(...parts) : undefined;
+      return parts.length > 0 ? and(...parts) : undefined;
     };
 
-    const baseWhere = userWhereCallback(users, {
-      and,
-      eq,
-      ilike,
-      or,
-      isNull,
-      exists,
-      sql,
-    });
+    const baseWhere = buildUserFilters(users);
 
     const countBase = dbUser.select({ c: count() }).from(users);
     const [totalRow] = baseWhere
@@ -141,26 +120,39 @@ export async function GET(request: NextRequest) {
       .where(personalFilter);
     const personalCount = Number(persRow?.c ?? 0);
 
-    const customers = await dbUser.query.users.findMany({
-      // Use pre-built SQL (includes business EXISTS search); relational ops lack exists/sql.
-      where: baseWhere ? () => baseWhere : undefined,
-      with: {
-        suspensionReasons: {
-          orderBy: (sr, { desc: d }) => [d(sr.suspendedAt)],
-        },
-        businesses: {
-          with: { billingAddress: true },
-          orderBy: (b, { asc: a }) => [a(b.createdAt)],
-        },
-      },
-      orderBy: (u, { desc: d }) => [d(u.createdAt)],
-      limit: safeLimit,
-      offset: (safePage - 1) * safeLimit,
-    });
+    // Page IDs with plain select (correct table refs), then hydrate relations.
+    const idQuery = dbUser
+      .select({ id: users.id })
+      .from(users)
+      .orderBy(desc(users.createdAt))
+      .limit(safeLimit)
+      .offset((safePage - 1) * safeLimit);
+    const idRows = baseWhere ? await idQuery.where(baseWhere) : await idQuery;
+    const pageIds = idRows.map((r) => r.id);
+
+    const customers =
+      pageIds.length === 0
+        ? []
+        : await dbUser.query.users.findMany({
+            where: (u, { inArray: inArr }) => inArr(u.id, pageIds),
+            with: {
+              suspensionReasons: {
+                orderBy: (sr, { desc: d }) => [d(sr.suspendedAt)],
+              },
+              businesses: {
+                with: { billingAddress: true },
+                orderBy: (b, { asc: a }) => [a(b.createdAt)],
+              },
+            },
+          });
+
+    // Preserve createdAt desc order from the id page query
+    const byId = new Map(customers.map((c) => [c.id, c]));
+    const ordered = pageIds.map((id) => byId.get(id)).filter(Boolean);
 
     return NextResponse.json({
       success: true,
-      data: customers,
+      data: ordered,
       meta: {
         total,
         businessCount,

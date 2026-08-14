@@ -168,6 +168,7 @@ export async function POST(request: NextRequest) {
       isDifferentSupplier,
       supplierId,
       paymentMethod,
+      paidAmount,
       status,
       orderDate,
       awsCode,
@@ -346,6 +347,19 @@ export async function POST(request: NextRequest) {
         ? true
         : Boolean(isBillToSameAsShipping);
 
+    const parsedPaidAmount =
+      paidAmount !== undefined &&
+      paidAmount !== null &&
+      String(paidAmount).trim() !== ""
+        ? parseFloat(String(paidAmount))
+        : null;
+    if (parsedPaidAmount !== null && !Number.isFinite(parsedPaidAmount)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid paid amount" },
+        { status: 400 }
+      );
+    }
+
     await dbUser.transaction(async (tx) => {
       await tx.insert(orders).values({
         id: generatedOrderId,
@@ -356,6 +370,7 @@ export async function POST(request: NextRequest) {
         status: (status || "PENDING") as typeof orders.$inferInsert.status,
         totalAmount: roundedTotal,
         discountAmount: totalDiscount,
+        paidAmount: parsedPaidAmount,
         shippingAddressId: addressId,
         shippingAmount:
           deliveryChargeAmount > 0 ? deliveryChargeAmount : null,

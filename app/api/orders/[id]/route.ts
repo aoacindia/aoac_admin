@@ -310,10 +310,18 @@ export async function PUT(
     }
 
     if (paidAmount !== undefined) {
-      updateValues.paidAmount =
-        paidAmount !== null && paidAmount !== ""
-          ? parseFloat(String(paidAmount))
-          : null;
+      if (paidAmount === null || paidAmount === "") {
+        updateValues.paidAmount = null;
+      } else {
+        const parsed = parseFloat(String(paidAmount));
+        if (!Number.isFinite(parsed)) {
+          return NextResponse.json(
+            { success: false, error: "Invalid paid amount" },
+            { status: 400 }
+          );
+        }
+        updateValues.paidAmount = parsed;
+      }
     }
     if (r_orderId !== undefined) {
       updateValues.r_orderId = r_orderId || null;
