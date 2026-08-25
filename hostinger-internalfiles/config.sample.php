@@ -7,7 +7,7 @@ return [
     // Must match INTERNAL_FILES_API_KEY in the Next.js admin .env
     'api_key' => 'REPLACE_WITH_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS',
 
-    // 10 MB
+    // 10 MB (client compresses larger files down to this before upload)
     'max_upload_bytes' => 10 * 1024 * 1024,
 
     // mime => extension

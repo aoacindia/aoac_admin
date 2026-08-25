@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { INDIAN_STATES } from "@/lib/indian-states";
 import { COMPANY_DOC_FIELDS, type CompanyDocPathKey } from "@/lib/company-administration-docs";
+import {
+  compressFileForUpload,
+  type CompressPhase,
+} from "@/lib/compress-for-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,6 +56,8 @@ export default function AdministrationPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const [uploadPhase, setUploadPhase] = useState<CompressPhase>("idle");
+  const [uploadPhaseMessage, setUploadPhaseMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -119,9 +125,18 @@ export default function AdministrationPage() {
   const handleUpload = async (uploadKey: string, fieldKey: CompanyDocPathKey, file: File | null) => {
     if (!file) return;
     setUploadingKey(uploadKey);
+    setUploadPhase("idle");
+    setUploadPhaseMessage("");
     try {
+      const { file: readyFile } = await compressFileForUpload(file, (p) => {
+        setUploadPhase(p.phase);
+        setUploadPhaseMessage(p.message || "");
+      });
+      setUploadPhase("uploading");
+      setUploadPhaseMessage("Uploading…");
+
       const body = new FormData();
-      body.append("file", file);
+      body.append("file", readyFile);
       body.append("uploadKey", uploadKey);
       const res = await fetch("/api/company-administration/upload", {
         method: "POST",
@@ -137,6 +152,8 @@ export default function AdministrationPage() {
       alert(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploadingKey(null);
+      setUploadPhase("idle");
+      setUploadPhaseMessage("");
     }
   };
 
@@ -144,6 +161,15 @@ export default function AdministrationPage() {
     if (!path) return;
     window.open(
       `/api/company-administration/file?path=${encodeURIComponent(path)}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  };
+
+  const handleDownloadFile = (path: string | null) => {
+    if (!path) return;
+    window.open(
+      `/api/company-administration/file?path=${encodeURIComponent(path)}&disposition=attachment`,
       "_blank",
       "noopener,noreferrer"
     );
@@ -343,7 +369,8 @@ export default function AdministrationPage() {
             Documents
           </h2>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            PDF, JPG, PNG, or WEBP — max 10 MB each. Files are stored on internalfiles.aoac.in.
+            PDF, JPG, PNG, or WEBP — larger files are auto-compressed to 10 MB or
+            below before upload. Files are stored on internalfiles.aoac.in.
           </p>
           <div className="space-y-5">
             {COMPANY_DOC_FIELDS.map((field) => {
@@ -368,7 +395,13 @@ export default function AdministrationPage() {
                   />
                   <div className="flex flex-wrap items-center gap-3 text-sm">
                     {busy ? (
-                      <span className="text-zinc-500">Uploading…</span>
+                      <span className="text-amber-600 dark:text-amber-400">
+                        {uploadPhase === "compressing"
+                          ? uploadPhaseMessage || "Compressing…"
+                          : uploadPhase === "uploading"
+                            ? "Uploading…"
+                            : "Preparing…"}
+                      </span>
                     ) : path ? (
                       <>
                         <span className="text-zinc-600 dark:text-zinc-400 truncate max-w-md">
@@ -380,6 +413,13 @@ export default function AdministrationPage() {
                           className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
                         >
                           View
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => handleDownloadFile(path)}
+                          className="px-3 py-1 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                        >
+                          Download
                         </Button>
                         <Button
                           type="button"

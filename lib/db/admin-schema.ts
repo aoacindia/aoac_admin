@@ -84,6 +84,46 @@ export const offices = pgTable(
   (t) => [uniqueIndex("Office_gstin_key").on(t.gstin)]
 );
 
+/** Documents uploaded per office (stored on internalfiles.aoac.in) */
+export const officeDocuments = pgTable(
+  "OfficeDocument",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    officeId: text("officeId")
+      .notNull()
+      .references(() => offices.id, { onDelete: "cascade" }),
+    /** RENT_AGREEMENT | GST_CERTIFICATE | UTILITY_BILL | REGISTRY_OF_BUSINESS_PLACE | CUSTOM */
+    docType: text("docType").notNull(),
+    /** Display name; required for CUSTOM, mirrors label for fixed types */
+    name: text("name").notNull(),
+    filePath: text("filePath").notNull(),
+    originalFilename: text("originalFilename"),
+    mimeType: text("mimeType"),
+    fileSize: integer("fileSize"),
+    createdAt: timestamp("createdAt", { precision: 3, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" }).notNull(),
+  },
+  (t) => [
+    index("OfficeDocument_officeId_idx").on(t.officeId),
+    index("OfficeDocument_docType_idx").on(t.docType),
+  ]
+);
+
+export const officesRelations = relations(offices, ({ many }) => ({
+  documents: many(officeDocuments),
+}));
+
+export const officeDocumentsRelations = relations(officeDocuments, ({ one }) => ({
+  office: one(offices, {
+    fields: [officeDocuments.officeId],
+    references: [offices.id],
+  }),
+}));
+
 /** Company legal / administration profile (singleton row in practice) */
 export const companyAdministration = pgTable("CompanyAdministration", {
   id: text("id")
@@ -202,6 +242,8 @@ export type AdminUserRow = typeof adminUsers.$inferSelect;
 export type NewAdminUserRow = typeof adminUsers.$inferInsert;
 export type OfficeRow = typeof offices.$inferSelect;
 export type NewOfficeRow = typeof offices.$inferInsert;
+export type OfficeDocumentRow = typeof officeDocuments.$inferSelect;
+export type NewOfficeDocumentRow = typeof officeDocuments.$inferInsert;
 export type CompanyAdministrationRow = typeof companyAdministration.$inferSelect;
 export type NewCompanyAdministrationRow = typeof companyAdministration.$inferInsert;
 export type AccountRow = typeof accounts.$inferSelect;

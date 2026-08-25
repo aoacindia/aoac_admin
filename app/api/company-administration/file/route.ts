@@ -16,6 +16,10 @@ export async function GET(request: NextRequest) {
   }
 
   const path = request.nextUrl.searchParams.get("path") || "";
+  const disposition =
+    request.nextUrl.searchParams.get("disposition") === "attachment"
+      ? "attachment"
+      : "inline";
   if (!isSafeInternalPath(path)) {
     return NextResponse.json(
       { success: false, error: "Invalid path" },
@@ -29,7 +33,7 @@ export async function GET(request: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": file.contentType,
-        "Content-Disposition": `inline; filename="${encodeURIComponent(file.filename)}"`,
+        "Content-Disposition": `${disposition}; filename="${encodeURIComponent(file.filename)}"`,
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
       },
