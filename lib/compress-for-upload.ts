@@ -36,6 +36,13 @@ function formatMb(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** Copy into a plain ArrayBuffer so `File`/`Blob` accept it under strict DOM typings. */
+function toBlobPart(bytes: Uint8Array): BlobPart {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
+
 async function compressImage(
   file: File,
   onProgress?: (p: CompressProgress) => void
@@ -136,7 +143,7 @@ async function renderPdfToCompressedFile(
 
   const bytes = await outPdf.save({ useObjectStreams: true });
   return new File(
-    [bytes],
+    [toBlobPart(bytes)],
     file.name.toLowerCase().endsWith(".pdf") ? file.name : `${file.name}.pdf`,
     {
       type: "application/pdf",
