@@ -37,6 +37,26 @@ export async function sendOtpEmail(to: string, otp: string) {
   });
 }
 
+export async function sendCredentialUnlockOtpEmail(to: string, otp: string) {
+  ensureEmailConfigured();
+  const transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: smtpPort,
+    secure: smtpPort === 465,
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASS,
+    },
+  });
+
+  await transporter.sendMail({
+    from: SMTP_FROM,
+    to,
+    subject: "Credential vault unlock OTP",
+    text: `Your OTP to view saved credentials is ${otp}. It expires in 10 minutes. If you did not request this, contact an administrator immediately.`,
+  });
+}
+
 interface EmailConfig {
   host: string;
   port: number;

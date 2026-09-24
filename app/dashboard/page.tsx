@@ -71,6 +71,13 @@ const sections: Section[] = [
     ],
   },
   {
+    name: "Credentials",
+    icon: "🔐",
+    subsections: [
+      { label: "All Credentials", href: "/dashboard/credentials" },
+    ],
+  },
+  {
     name: "Users",
     icon: "👥",
     subsections: [
@@ -105,6 +112,7 @@ export default function DashboardPage() {
     "Our Own Data",
     "Accounts",
     "Orders",
+    "Credentials",
   ]);
 
   const visibleSections = isAdmin

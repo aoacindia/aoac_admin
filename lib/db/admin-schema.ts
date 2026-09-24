@@ -238,6 +238,63 @@ export const importedOrderItemsRelations = relations(importedOrderItems, ({ one 
   }),
 }));
 
+/**
+ * Stored credentials (ADMIN only). Sensitive values live in AES-256-GCM ciphertext.
+ * Reveal requires OTP verification against the signed-in admin's email.
+ */
+export const credentials = pgTable(
+  "Credential",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    title: text("title").notNull(),
+    ciphertext: text("ciphertext").notNull(),
+    iv: text("iv").notNull(),
+    authTag: text("authTag").notNull(),
+    createdByUserId: text("createdByUserId").notNull(),
+    createdAt: timestamp("createdAt", { precision: 3, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" }).notNull(),
+  },
+  (t) => [
+    index("Credential_createdByUserId_idx").on(t.createdByUserId),
+    index("Credential_title_idx").on(t.title),
+  ]
+);
+
+/** Short-lived OTP / unlock tokens for viewing decrypted credentials */
+export const credentialUnlocks = pgTable(
+  "CredentialUnlock",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("userId").notNull(),
+    email: text("email").notNull(),
+    /** Challenge token returned to client when OTP is sent */
+    challengeToken: text("challengeToken").notNull(),
+    otp: text("otp").notNull(),
+    /** Set after successful OTP verify; hashed unlock token */
+    unlockTokenHash: text("unlockTokenHash"),
+    expiresAt: timestamp("expiresAt", { precision: 3, mode: "date" }).notNull(),
+    unlockExpiresAt: timestamp("unlockExpiresAt", {
+      precision: 3,
+      mode: "date",
+    }),
+    createdAt: timestamp("createdAt", { precision: 3, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("CredentialUnlock_challengeToken_key").on(t.challengeToken),
+    index("CredentialUnlock_userId_idx").on(t.userId),
+    index("CredentialUnlock_email_idx").on(t.email),
+  ]
+);
+
 export type AdminUserRow = typeof adminUsers.$inferSelect;
 export type NewAdminUserRow = typeof adminUsers.$inferInsert;
 export type OfficeRow = typeof offices.$inferSelect;
@@ -254,3 +311,7 @@ export type ImportedOrderRow = typeof importedOrders.$inferSelect;
 export type NewImportedOrderRow = typeof importedOrders.$inferInsert;
 export type ImportedOrderItemRow = typeof importedOrderItems.$inferSelect;
 export type NewImportedOrderItemRow = typeof importedOrderItems.$inferInsert;
+export type CredentialRow = typeof credentials.$inferSelect;
+export type NewCredentialRow = typeof credentials.$inferInsert;
+export type CredentialUnlockRow = typeof credentialUnlocks.$inferSelect;
+export type NewCredentialUnlockRow = typeof credentialUnlocks.$inferInsert;
