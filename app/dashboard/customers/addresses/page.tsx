@@ -206,6 +206,34 @@ export default function AddressesPage() {
     setEditingAddress(null);
   };
 
+  const handleDeleteAddress = async (address: Address) => {
+    if (
+      !confirm(
+        `Delete this ${address.type} address for ${address.user.name}? This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/addresses/${address.id}`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        await fetchAddresses();
+      } else {
+        alert("Error deleting address: " + data.error);
+      }
+    } catch (err: unknown) {
+      alert(
+        "Error deleting address: " +
+          (err instanceof Error ? err.message : "Unknown error")
+      );
+    }
+  };
+
   const handleUpdateAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingAddress) return;
@@ -591,12 +619,20 @@ export default function AddressesPage() {
                       )}
                     </TableCell>
                     <TableCell className="py-3 px-4">
-                      <Button
-                        onClick={() => handleEditAddress(address)}
-                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
-                      >
-                        Edit
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          onClick={() => handleEditAddress(address)}
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          onClick={() => handleDeleteAddress(address)}
+                          className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors"
+                        >
+                          Delete
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
