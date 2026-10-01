@@ -53,6 +53,7 @@ export default function CredentialsPage() {
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
   const [maskedEmail, setMaskedEmail] = useState<string | null>(null);
   const [otp, setOtp] = useState("");
+  const [otpSending, setOtpSending] = useState(false);
   const [unlockBusy, setUnlockBusy] = useState(false);
   const [unlockError, setUnlockError] = useState<string | null>(null);
 
@@ -160,7 +161,8 @@ export default function CredentialsPage() {
   }, [fetchList]);
 
   const requestOtp = async () => {
-    setUnlockBusy(true);
+    setShowUnlock(true);
+    setOtpSending(true);
     setUnlockError(null);
     setOtp("");
     try {
@@ -174,11 +176,10 @@ export default function CredentialsPage() {
       }
       setChallengeToken(data.challengeToken);
       setMaskedEmail(data.email);
-      setShowUnlock(true);
     } catch (err: unknown) {
       setUnlockError(err instanceof Error ? err.message : "Failed to send OTP");
     } finally {
-      setUnlockBusy(false);
+      setOtpSending(false);
     }
   };
 
@@ -436,9 +437,9 @@ export default function CredentialsPage() {
               type="button"
               variant="outline"
               onClick={requestOtp}
-              disabled={unlockBusy}
+              disabled={otpSending || unlockBusy}
             >
-              {unlockBusy ? "Sending OTP…" : "Unlock to view"}
+              {otpSending ? "Sending OTP…" : "Unlock to view"}
             </Button>
           )}
           <Button type="button" onClick={openCreate}>
@@ -482,7 +483,7 @@ export default function CredentialsPage() {
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled={revealBusy}
+                        disabled={revealBusy || otpSending}
                         onClick={() => viewCredential(item.id)}
                       >
                         View
@@ -491,7 +492,7 @@ export default function CredentialsPage() {
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled={revealBusy}
+                        disabled={revealBusy || otpSending}
                         onClick={() => openEdit(item.id)}
                       >
                         Edit
@@ -516,49 +517,78 @@ export default function CredentialsPage() {
       {showUnlock && (
         <Modal
           title="Verify OTP to unlock vault"
+          disableClose={otpSending || unlockBusy}
           onClose={() => {
-            if (unlockBusy) return;
+            if (otpSending || unlockBusy) return;
             setShowUnlock(false);
           }}
           maxWidthClassName="max-w-md"
         >
-          <form onSubmit={verifyOtp} className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              An OTP was sent to{" "}
-              <span className="font-medium text-foreground">
-                {maskedEmail || "your email"}
-              </span>
-              . Enter it to view or edit credentials.
-            </p>
-            {unlockError && (
-              <p className="text-sm text-red-600">{unlockError}</p>
+          <div className="relative min-h-[220px]">
+            <form onSubmit={verifyOtp} className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {otpSending
+                  ? "Sending OTP to your email…"
+                  : (
+                    <>
+                      An OTP was sent to{" "}
+                      <span className="font-medium text-foreground">
+                        {maskedEmail || "your email"}
+                      </span>
+                      . Enter it to view or edit credentials.
+                    </>
+                  )}
+              </p>
+              {unlockError && !otpSending && (
+                <p className="text-sm text-red-600">{unlockError}</p>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="credential-otp">OTP</Label>
+                <Input
+                  id="credential-otp"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  required
+                  disabled={otpSending || unlockBusy}
+                  placeholder="Enter 6-digit OTP"
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={otpSending || unlockBusy}
+                  onClick={requestOtp}
+                >
+                  {otpSending ? "Sending OTP…" : "Resend OTP"}
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={unlockBusy || otpSending || otp.trim().length < 4}
+                >
+                  {unlockBusy ? "Verifying…" : "Unlock"}
+                </Button>
+              </div>
+            </form>
+
+            {otpSending && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-md bg-white/90 dark:bg-zinc-950/90">
+                <div
+                  className="h-10 w-10 animate-spin rounded-full border-2 border-zinc-300 border-t-blue-600 dark:border-zinc-600 dark:border-t-blue-400"
+                  aria-hidden
+                />
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                  Sending OTP…
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Please wait while we email your code
+                </p>
+              </div>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="credential-otp">OTP</Label>
-              <Input
-                id="credential-otp"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={6}
-                required
-              />
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={unlockBusy}
-                onClick={requestOtp}
-              >
-                Resend OTP
-              </Button>
-              <Button type="submit" disabled={unlockBusy || otp.trim().length < 4}>
-                {unlockBusy ? "Verifying…" : "Unlock"}
-              </Button>
-            </div>
-          </form>
+          </div>
         </Modal>
       )}
 

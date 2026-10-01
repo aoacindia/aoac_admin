@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 
 import { requireValidCredentialUnlock } from "@/lib/credential-unlock";
 import {
+  CredentialDecryptError,
   decryptCredentialSecrets,
   encryptCredentialSecrets,
   normalizeExtras,
@@ -87,9 +88,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
     });
   } catch (error: unknown) {
     console.error("Error revealing credential:", error);
+    const message =
+      error instanceof CredentialDecryptError
+        ? error.message
+        : "Failed to load credential";
     return NextResponse.json(
-      { success: false, error: "Failed to load credential" },
-      { status: 500 }
+      { success: false, error: message },
+      { status: error instanceof CredentialDecryptError ? 422 : 500 }
     );
   }
 }

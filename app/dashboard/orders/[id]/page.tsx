@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Modal from "@/app/components/Modal";
 import OrderActionsModal from "@/app/components/OrderActionsModal";
+import PrintInvoiceModal from "@/app/components/PrintInvoiceModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -114,6 +115,7 @@ export default function ViewOrderPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showDownloadPopup, setShowDownloadPopup] = useState(false);
+  const [showPrintPopup, setShowPrintPopup] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadItemsOnly, setDownloadItemsOnly] = useState(false);
   const [invoiceCopies, setInvoiceCopies] = useState({
@@ -846,12 +848,20 @@ export default function ViewOrderPage() {
           showViewButton={false}
           onClose={() => setShowActionsPopup(false)}
           onDownloadPdf={() => setShowDownloadPopup(true)}
+          onPrintInvoice={() => setShowPrintPopup(true)}
           onSendPi={() => setShowSendPIPopup(true)}
           onDelete={handleDeleteOrder}
           deleting={deleting}
           onPaymentLinkGenerated={(paymentLink) => {
             setOrder((prev) => (prev ? { ...prev, paymentLinkUrl: paymentLink } : prev));
           }}
+        />
+      )}
+
+      {showPrintPopup && (
+        <PrintInvoiceModal
+          orderId={orderId}
+          onClose={() => setShowPrintPopup(false)}
         />
       )}
 

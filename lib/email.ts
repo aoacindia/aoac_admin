@@ -7,9 +7,12 @@ const {
   SMTP_USER,
   SMTP_PASS,
   SMTP_FROM,
+  OTP_SMTP_USER,
+  OTP_SMTP_PASS,
 } = process.env;
 
 const smtpPort = SMTP_PORT ? Number(SMTP_PORT) : undefined;
+const OTP_FROM_DEFAULT = "otp@mail.aoac.in";
 
 export function ensureEmailConfigured() {
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS || !SMTP_FROM || !smtpPort) {
@@ -17,20 +20,37 @@ export function ensureEmailConfigured() {
   }
 }
 
-export async function sendOtpEmail(to: string, otp: string) {
-  ensureEmailConfigured();
-  const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: smtpPort,
-    secure: smtpPort === 465,
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },
-  });
+function getOtpMailConfig() {
+  const user = (OTP_SMTP_USER || OTP_FROM_DEFAULT).trim();
+  const pass = OTP_SMTP_PASS?.trim() || "";
+  if (!SMTP_HOST || !smtpPort || !user || !pass) {
+    throw new Error(
+      "OTP email is not configured (OTP_SMTP_PASS, and SMTP_HOST / SMTP_PORT)"
+    );
+  }
+  return { host: SMTP_HOST, port: smtpPort, user, pass, from: user };
+}
 
+function createOtpTransporter() {
+  const config = getOtpMailConfig();
+  return {
+    from: config.from,
+    transporter: nodemailer.createTransport({
+      host: config.host,
+      port: config.port,
+      secure: config.port === 465,
+      auth: {
+        user: config.user,
+        pass: config.pass,
+      },
+    }),
+  };
+}
+
+export async function sendOtpEmail(to: string, otp: string) {
+  const { from, transporter } = createOtpTransporter();
   await transporter.sendMail({
-    from: SMTP_FROM,
+    from,
     to,
     subject: "Your Admin Login OTP",
     text: `Your OTP is ${otp}. It expires in 10 minutes.`,
@@ -38,19 +58,9 @@ export async function sendOtpEmail(to: string, otp: string) {
 }
 
 export async function sendCredentialUnlockOtpEmail(to: string, otp: string) {
-  ensureEmailConfigured();
-  const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: smtpPort,
-    secure: smtpPort === 465,
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },
-  });
-
+  const { from, transporter } = createOtpTransporter();
   await transporter.sendMail({
-    from: SMTP_FROM,
+    from,
     to,
     subject: "Credential vault unlock OTP",
     text: `Your OTP to view saved credentials is ${otp}. It expires in 10 minutes. If you did not request this, contact an administrator immediately.`,

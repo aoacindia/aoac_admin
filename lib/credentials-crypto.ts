@@ -13,23 +13,77 @@ export type CredentialSecretPayload = {
 
 const ALGO = "aes-256-gcm";
 const IV_LENGTH = 12;
+const AUTH_TAG_LENGTH = 16;
+const GCM_OPTIONS = { authTagLength: AUTH_TAG_LENGTH } as const;
 
-function getEncryptionKey(): Buffer {
+export class CredentialDecryptError extends Error {
+  constructor(
+    message = "Could not decrypt this credential. It was saved with a different encryption key than this server is using. Set CREDENTIALS_ENCRYPTION_KEY (or AUTH_SECRET) to the same value used when the credential was saved, then restart the app."
+  ) {
+    super(message);
+    this.name = "CredentialDecryptError";
+  }
+}
+
+function addKey(keys: Buffer[], seen: Set<string>, key: Buffer) {
+  const id = key.toString("hex");
+  if (seen.has(id) || key.length !== 32) return;
+  seen.add(id);
+  keys.push(key);
+}
+
+/** Keys to try for decrypt, including older derivation paths. */
+function candidateDecryptKeys(): Buffer[] {
+  const keys: Buffer[] = [];
+  const seen = new Set<string>();
+
   const raw = process.env.CREDENTIALS_ENCRYPTION_KEY?.trim();
   if (raw) {
-    // Prefer 64-char hex (32 bytes). Also accept any string via SHA-256.
     if (/^[0-9a-fA-F]{64}$/.test(raw)) {
-      return Buffer.from(raw, "hex");
+      addKey(keys, seen, Buffer.from(raw, "hex"));
     }
-    return createHash("sha256").update(raw).digest();
+    addKey(keys, seen, createHash("sha256").update(raw).digest());
+    addKey(keys, seen, scryptSync(raw, "aoac-credentials-v1", 32));
   }
 
-  const secret = process.env.AUTH_SECRET;
-  if (!secret) {
-    throw new Error("CREDENTIALS_ENCRYPTION_KEY or AUTH_SECRET is required");
+  for (const secret of [process.env.AUTH_SECRET, process.env.NEXTAUTH_SECRET]) {
+    if (!secret) continue;
+    addKey(keys, seen, scryptSync(secret, "aoac-credentials-v1", 32));
+    addKey(keys, seen, createHash("sha256").update(secret).digest());
+    const stripped = secret.replace(/^["']|["']$/g, "");
+    if (stripped !== secret) {
+      addKey(keys, seen, scryptSync(stripped, "aoac-credentials-v1", 32));
+      addKey(keys, seen, createHash("sha256").update(stripped).digest());
+    }
   }
 
-  return scryptSync(secret, "aoac-credentials-v1", 32);
+  return keys;
+}
+
+function getEncryptionKey(): Buffer {
+  const keys = candidateDecryptKeys();
+  if (keys[0]) return keys[0];
+  throw new Error("CREDENTIALS_ENCRYPTION_KEY or AUTH_SECRET is required");
+}
+
+function decodePart(value: string) {
+  const trimmed = value.trim().replace(/\s/g, "");
+  const padded = trimmed.replace(/-/g, "+").replace(/_/g, "/");
+  return Buffer.from(padded, "base64");
+}
+
+function decryptWithKey(
+  key: Buffer,
+  iv: Buffer,
+  authTag: Buffer,
+  ciphertext: Buffer
+): string {
+  const decipher = createDecipheriv(ALGO, key, iv, GCM_OPTIONS);
+  decipher.setAuthTag(authTag);
+  return Buffer.concat([
+    decipher.update(ciphertext),
+    decipher.final(),
+  ]).toString("utf8");
 }
 
 export function encryptCredentialSecrets(payload: CredentialSecretPayload): {
@@ -39,7 +93,7 @@ export function encryptCredentialSecrets(payload: CredentialSecretPayload): {
 } {
   const key = getEncryptionKey();
   const iv = randomBytes(IV_LENGTH);
-  const cipher = createCipheriv(ALGO, key, iv);
+  const cipher = createCipheriv(ALGO, key, iv, GCM_OPTIONS);
   const plaintext = JSON.stringify({
     email: payload.email,
     password: payload.password,
@@ -66,17 +120,25 @@ export function decryptCredentialSecrets(parts: {
   iv: string;
   authTag: string;
 }): CredentialSecretPayload {
-  const key = getEncryptionKey();
-  const decipher = createDecipheriv(
-    ALGO,
-    key,
-    Buffer.from(parts.iv, "base64")
-  );
-  decipher.setAuthTag(Buffer.from(parts.authTag, "base64"));
-  const decrypted = Buffer.concat([
-    decipher.update(Buffer.from(parts.ciphertext, "base64")),
-    decipher.final(),
-  ]).toString("utf8");
+  const iv = decodePart(parts.iv);
+  const authTag = decodePart(parts.authTag);
+  const ciphertext = decodePart(parts.ciphertext);
+  if (iv.length !== IV_LENGTH || authTag.length !== AUTH_TAG_LENGTH) {
+    throw new CredentialDecryptError();
+  }
+
+  let decrypted: string | null = null;
+  for (const key of candidateDecryptKeys()) {
+    try {
+      decrypted = decryptWithKey(key, iv, authTag, ciphertext);
+      break;
+    } catch {
+      // Wrong key or corrupted payload — try the next derivation.
+    }
+  }
+  if (decrypted === null) {
+    throw new CredentialDecryptError();
+  }
 
   const parsed = JSON.parse(decrypted) as Partial<CredentialSecretPayload>;
   return {

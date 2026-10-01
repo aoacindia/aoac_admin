@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Modal from "@/app/components/Modal";
 import OrderActionsModal from "@/app/components/OrderActionsModal";
+import PrintInvoiceModal from "@/app/components/PrintInvoiceModal";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,6 +117,7 @@ export default function OrdersPage() {
   const [totalOrders, setTotalOrders] = useState(0);
   const [loadedTabs, setLoadedTabs] = useState<Set<TabType>>(new Set());
   const [showDownloadPopup, setShowDownloadPopup] = useState(false);
+  const [showPrintPopup, setShowPrintPopup] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadItemsOnly, setDownloadItemsOnly] = useState(false);
@@ -1145,6 +1147,10 @@ export default function OrdersPage() {
             setSelectedOrderId(selectedOrderForActions.id);
             setShowDownloadPopup(true);
           }}
+          onPrintInvoice={() => {
+            setSelectedOrderId(selectedOrderForActions.id);
+            setShowPrintPopup(true);
+          }}
           onSendPi={() => {
             setSelectedOrderForPI(selectedOrderForActions);
             setShowSendPIPopup(true);
@@ -1163,6 +1169,16 @@ export default function OrdersPage() {
             setSelectedOrderForActions((prev) =>
               prev ? { ...prev, paymentLinkUrl: paymentLink } : prev
             );
+          }}
+        />
+      )}
+
+      {showPrintPopup && selectedOrderId && (
+        <PrintInvoiceModal
+          orderId={selectedOrderId}
+          onClose={() => {
+            setShowPrintPopup(false);
+            setSelectedOrderId(null);
           }}
         />
       )}

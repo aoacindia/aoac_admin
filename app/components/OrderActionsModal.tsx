@@ -28,6 +28,7 @@ type OrderActionsModalProps = {
   onClose: () => void;
   showViewButton?: boolean;
   onDownloadPdf: () => void;
+  onPrintInvoice: () => void;
   onSendPi: () => void;
   onDelete: () => void;
   deleting?: boolean;
@@ -39,6 +40,7 @@ export default function OrderActionsModal({
   onClose,
   showViewButton = true,
   onDownloadPdf,
+  onPrintInvoice,
   onSendPi,
   onDelete,
   deleting = false,
@@ -140,6 +142,16 @@ export default function OrderActionsModal({
           className={`${actionButtonClass} bg-green-600 hover:bg-green-700`}
         >
           Download PDF
+        </Button>
+        <Button
+          onClick={() => {
+            onClose();
+            onPrintInvoice();
+          }}
+          disabled={busy}
+          className={`${actionButtonClass} bg-teal-600 hover:bg-teal-700`}
+        >
+          Print Invoice
         </Button>
         <Button
           onClick={() => {

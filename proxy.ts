@@ -12,6 +12,7 @@ const roleBasedRoutes: Record<string, string[]> = {
   "/dashboard/our-own-data": ["ADMIN"],
   "/dashboard/accounts": ["ADMIN"],
   "/dashboard/orders": ["ADMIN"],
+  "/print-invoice": ["ADMIN"],
   "/dashboard/credentials": ["ADMIN"],
   // "/dashboard/products/categories": ["ADMIN", "MANAGER"],
   // "/dashboard/products/create": ["ADMIN", "MANAGER"],
