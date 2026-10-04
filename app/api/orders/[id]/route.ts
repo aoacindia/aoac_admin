@@ -14,6 +14,7 @@ import {
   getFinancialYear,
   getFinancialYearStart,
 } from "@/lib/order-helpers";
+import { maybeSendOrderDispatchedEmail } from "@/lib/order-dispatch-email";
 import { requireAdminApi } from "@/lib/require-admin";
 
 const orderUserColumns = {
@@ -183,6 +184,7 @@ export async function PUT(
         shippingAmount: orders.shippingAmount,
         userId: orders.orderBy,
         businessId: orders.businessId,
+        status: orders.status,
       })
       .from(orders)
       .where(eq(orders.id, id))
@@ -498,6 +500,7 @@ export async function PUT(
         },
       });
 
+      await maybeSendOrderDispatchedEmail(existingOrder.status, updatedOrder);
       return NextResponse.json({ success: true, data: updatedOrder });
     }
 
@@ -514,6 +517,7 @@ export async function PUT(
       },
     });
 
+    await maybeSendOrderDispatchedEmail(existingOrder.status, order);
     return NextResponse.json({ success: true, data: order });
   } catch (error: unknown) {
     console.error("Error updating order:", error);

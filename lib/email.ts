@@ -1,34 +1,43 @@
 import nodemailer from "nodemailer";
 import { Transporter } from "nodemailer";
 
-const {
-  SMTP_HOST,
-  SMTP_PORT,
-  SMTP_USER,
-  SMTP_PASS,
-  SMTP_FROM,
-  OTP_SMTP_USER,
-  OTP_SMTP_PASS,
-} = process.env;
-
-const smtpPort = SMTP_PORT ? Number(SMTP_PORT) : undefined;
 const OTP_FROM_DEFAULT = "otp@mail.aoac.in";
+const ORDERS_FROM_DEFAULT = "orders@mail.aoac.in";
+
+function trimEnv(value: string | undefined): string {
+  return value?.trim() || "";
+}
+
+function smtpPort(): number | undefined {
+  const raw = trimEnv(process.env.SMTP_PORT);
+  if (!raw) return undefined;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
 
 export function ensureEmailConfigured() {
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS || !SMTP_FROM || !smtpPort) {
+  if (
+    !trimEnv(process.env.SMTP_HOST) ||
+    !trimEnv(process.env.SMTP_USER) ||
+    !trimEnv(process.env.SMTP_PASS) ||
+    !trimEnv(process.env.SMTP_FROM) ||
+    !smtpPort()
+  ) {
     throw new Error("Email is not configured");
   }
 }
 
 function getOtpMailConfig() {
-  const user = (OTP_SMTP_USER || OTP_FROM_DEFAULT).trim();
-  const pass = OTP_SMTP_PASS?.trim() || "";
-  if (!SMTP_HOST || !smtpPort || !user || !pass) {
+  const host = trimEnv(process.env.SMTP_HOST);
+  const port = smtpPort();
+  const user = trimEnv(process.env.OTP_SMTP_USER) || OTP_FROM_DEFAULT;
+  const pass = trimEnv(process.env.OTP_SMTP_PASS);
+  if (!host || !port || !user || !pass) {
     throw new Error(
       "OTP email is not configured (OTP_SMTP_PASS, and SMTP_HOST / SMTP_PORT)"
     );
   }
-  return { host: SMTP_HOST, port: smtpPort, user, pass, from: user };
+  return { host, port, user, pass, from: user };
 }
 
 function createOtpTransporter() {
@@ -54,6 +63,46 @@ export async function sendOtpEmail(to: string, otp: string) {
     to,
     subject: "Your Admin Login OTP",
     text: `Your OTP is ${otp}. It expires in 10 minutes.`,
+  });
+}
+
+function getOrdersMailConfig() {
+  const host = trimEnv(process.env.SMTP_HOST);
+  const port = smtpPort();
+  const user = trimEnv(process.env.ORDERS_SMTP_USER) || ORDERS_FROM_DEFAULT;
+  const pass = trimEnv(process.env.ORDERS_SMTP_PASS);
+  if (!host || !port || !user || !pass) {
+    throw new Error(
+      "Orders email is not configured (ORDERS_SMTP_PASS, and SMTP_HOST / SMTP_PORT)"
+    );
+  }
+  return { host, port, user, pass, from: user };
+}
+
+export async function sendOrderDispatchedEmail(params: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}) {
+  const config = getOrdersMailConfig();
+  const transporter = nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.port === 465,
+    auth: {
+      user: config.user,
+      pass: config.pass,
+    },
+  });
+
+  await transporter.sendMail({
+    from: `AOAC Orders <${config.from}>`,
+    to: params.to,
+    subject: params.subject,
+    html: params.html,
+    text: params.text,
+    date: new Date(),
   });
 }
 
@@ -89,13 +138,14 @@ export async function createTransporter(config?: EmailConfig): Promise<Transport
   }
 
   ensureEmailConfigured();
+  const port = smtpPort()!;
   return nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: smtpPort!,
-    secure: smtpPort === 465,
+    host: process.env.SMTP_HOST,
+    port,
+    secure: port === 465,
     auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
     },
   });
 }
@@ -108,7 +158,7 @@ export async function sendEmail(
   cc?: string | string[]
 ) {
   const transporter = await createTransporter(config);
-  const fromEmail = config?.from || SMTP_FROM!;
+  const fromEmail = config?.from || process.env.SMTP_FROM!;
 
   await transporter.sendMail({
     from: fromEmail,

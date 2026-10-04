@@ -25,6 +25,7 @@ import {
   countOrdersListDrizzle,
   selectOrderIdsPageDrizzle,
 } from "@/lib/orders-list-drizzle";
+import { maybeSendOrderDispatchedEmail } from "@/lib/order-dispatch-email";
 import { requireAdminApi } from "@/lib/require-admin";
 
 const orderUserColumns = {
@@ -426,6 +427,8 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    await maybeSendOrderDispatchedEmail(null, order);
 
     return NextResponse.json(
       {
