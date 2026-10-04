@@ -3,6 +3,7 @@ import { and, desc, gte, inArray, lte, sql } from "drizzle-orm";
 
 import { dbUser } from "@/lib/db";
 import { orders, orderStatusEnum } from "@/lib/db/user-schema";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 type SummaryRow = {
   paymentMethod: string;
@@ -11,6 +12,14 @@ type SummaryRow = {
 };
 
 export async function GET(request: NextRequest) {
+  const authResult = await requirePermissionApi("settings.view");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const searchParams = request.nextUrl.searchParams;
 

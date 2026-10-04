@@ -3,7 +3,7 @@ import { asc, eq, ilike, or } from "drizzle-orm";
 
 import { dbUser } from "@/lib/db";
 import { businesses, users } from "@/lib/db/user-schema";
-import { requireAdminApi } from "@/lib/require-admin";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 export type OrderCustomerSearchOption = {
   key: string;
@@ -31,7 +31,7 @@ function businessLabel(
 
 // GET — search customers/businesses for order creation picker
 export async function GET(request: NextRequest) {
-  const authResult = await requireAdminApi();
+  const authResult = await requirePermissionApi("orders.view");
   if ("error" in authResult) {
     return NextResponse.json(
       { success: false, error: authResult.error },

@@ -17,7 +17,7 @@ import {
   bucketsToSortedArray,
 } from "@/lib/order-tax";
 import { aggregateHsnSummary, type OrderForHsn } from "@/lib/hsn-summary";
-import { requireAdminApi } from "@/lib/require-admin";
+import { requirePermissionApi } from "@/lib/require-admin";
 import { dbAdmin, dbProduct, dbUser } from "@/lib/db";
 import { offices } from "@/lib/db/admin-schema";
 import { products } from "@/lib/db/product-schema";
@@ -189,7 +189,7 @@ function computeCombinedTaxTotals(
 }
 
 export async function GET(request: NextRequest) {
-  const authResult = await requireAdminApi();
+  const authResult = await requirePermissionApi("orders.view");
   if ("error" in authResult) {
     return NextResponse.json(
       { success: false, error: authResult.error },

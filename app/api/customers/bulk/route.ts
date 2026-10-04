@@ -5,6 +5,7 @@ import { generateNextBusinessId } from "@/lib/business-id";
 import { dbUser } from "@/lib/db";
 import { billingAddresses, businesses, users } from "@/lib/db/user-schema";
 import { formatUserId, getIdPrefix, getMaxSequence } from "@/lib/user-id";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 type RawBulkRecord = {
   name?: string;
@@ -220,6 +221,14 @@ async function buildPreviewRows(records: RawBulkRecord[]) {
 }
 
 export async function POST(request: NextRequest) {
+  const authResult = await requirePermissionApi("customers.create");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const body = await request.json();
     const records = Array.isArray(body?.records) ? (body.records as RawBulkRecord[]) : [];

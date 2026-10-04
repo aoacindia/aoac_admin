@@ -16,9 +16,18 @@ import { generateNextBusinessId } from "@/lib/business-id";
 import { dbUser } from "@/lib/db";
 import { billingAddresses, businesses, users } from "@/lib/db/user-schema";
 import { generateNextUserId } from "@/lib/user-id";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 // GET all customers
 export async function GET(request: NextRequest) {
+  const authResult = await requirePermissionApi("customers.view");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
@@ -174,6 +183,14 @@ export async function GET(request: NextRequest) {
 
 // POST create new customer (optional first business)
 export async function POST(request: NextRequest) {
+  const authResult = await requirePermissionApi("customers.create");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const body = await request.json();
     const {

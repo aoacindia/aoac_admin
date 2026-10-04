@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireAdminApi } from "@/lib/require-admin";
+import { requirePermissionApi } from "@/lib/require-admin";
 import { dbUser } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
-  const authResult = await requireAdminApi();
+  const authResult = await requirePermissionApi("orders.view");
   if ("error" in authResult) {
     return NextResponse.json(
       { success: false, error: authResult.error },

@@ -4,11 +4,20 @@ import { eq } from "drizzle-orm";
 import { dbUser } from "@/lib/db";
 import { users } from "@/lib/db/user-schema";
 import { generateCustomerPDF } from "@/lib/pdf-generator";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requirePermissionApi("customers.view");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { id } = await params;
     const body = await request.json();

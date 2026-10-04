@@ -3,8 +3,17 @@ import { desc } from "drizzle-orm";
 
 import { dbAdmin } from "@/lib/db";
 import { accounts } from "@/lib/db/admin-schema";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 export async function GET(request: NextRequest) {
+  const authResult = await requirePermissionApi("settings.view");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const rows = await dbAdmin
       .select()
@@ -22,6 +31,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const authResult = await requirePermissionApi("settings.manage");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const body = await request.json();
     const {

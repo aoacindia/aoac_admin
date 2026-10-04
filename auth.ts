@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { eq, or } from "drizzle-orm";
 
+import { getLiveAdminUser } from "@/lib/current-admin";
 import { dbAdmin } from "@/lib/db";
 import { adminOtpVerifications, adminUsers } from "@/lib/db/admin-schema";
 
@@ -92,19 +93,39 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   session: {
     strategy: "jwt",
+    maxAge: 60 * 60 * 12,
   },
   callbacks: {
     jwt: async ({ token, user }) => {
-      if (user) {
-        token.id = user.id;
-        token.role = (user as { role?: string }).role;
+      const userId = user?.id ?? (typeof token.id === "string" ? token.id : null);
+      if (!userId) {
+        return {};
       }
+
+      const live = await getLiveAdminUser(userId);
+      if (!live) {
+        return {};
+      }
+
+      token.id = live.id;
+      token.role = live.role;
+      token.name = live.name;
+      token.email = live.email;
       return token;
     },
     session: async ({ session, token }) => {
+      if (!token.id || !token.role) {
+        return session;
+      }
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
+        session.user.id = token.id;
+        session.user.role = token.role;
+        if (typeof token.name === "string") {
+          session.user.name = token.name;
+        }
+        if (typeof token.email === "string") {
+          session.user.email = token.email;
+        }
       }
       return session;
     },

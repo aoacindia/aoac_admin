@@ -14,7 +14,7 @@ import {
   deleteFromInternalFiles,
   uploadToInternalFiles,
 } from "@/lib/internal-files";
-import { requireAdminApi } from "@/lib/require-admin";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 const ALLOWED_MIME = new Set([
   "application/pdf",
@@ -38,7 +38,7 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireAdminApi();
+  const authResult = await requirePermissionApi("settings.view");
   if ("error" in authResult) {
     return NextResponse.json(
       { success: false, error: authResult.error },
@@ -84,7 +84,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireAdminApi();
+  const authResult = await requirePermissionApi("settings.manage");
   if ("error" in authResult) {
     return NextResponse.json(
       { success: false, error: authResult.error },

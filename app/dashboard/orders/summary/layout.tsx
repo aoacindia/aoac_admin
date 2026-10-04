@@ -1,14 +1,10 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { requirePagePermission } from "@/lib/page-auth";
 
 export default async function OrderSummaryLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
-    redirect("/dashboard");
-  }
+  await requirePagePermission("orders.view");
   return <>{children}</>;
 }

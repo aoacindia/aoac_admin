@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminApi } from "@/lib/require-admin";
+import { requirePermissionApi } from "@/lib/require-admin";
 import {
   parseMonthYearParams,
   parseStatusesParam,
@@ -11,7 +11,7 @@ import { selectOrdersSummariesForMonthDrizzle } from "@/lib/orders-list-drizzle"
  * (tab, month/year, optional search & status). Used by the orders dashboard summary strip.
  */
 export async function GET(request: NextRequest) {
-  const authResult = await requireAdminApi();
+  const authResult = await requirePermissionApi("orders.view");
   if ("error" in authResult) {
     return NextResponse.json(
       { success: false, error: authResult.error },

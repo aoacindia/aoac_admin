@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import Modal from "@/app/components/Modal";
+import { hasPermission } from "@/lib/permissions";
 import { INDIAN_STATES } from "@/lib/indian-states";
 import {
   OFFICE_CUSTOM_DOC_TYPE,
@@ -79,6 +81,8 @@ const FILE_ACCEPT =
   ".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp";
 
 export default function OfficesPage() {
+  const { data: session } = useSession();
+  const canManage = hasPermission(session?.user?.role, "settings.manage");
   const [offices, setOffices] = useState<Office[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -408,12 +412,14 @@ export default function OfficesPage() {
             Manage office records and documents
           </p>
         </div>
-        <Button
-          onClick={handleOpenPopup}
-          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-center"
-        >
-          Add Office
-        </Button>
+        {canManage && (
+          <Button
+            onClick={handleOpenPopup}
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-center"
+          >
+            Add Office
+          </Button>
+        )}
       </div>
 
       {error && (
@@ -505,20 +511,24 @@ export default function OfficesPage() {
                         >
                           Documents
                         </Button>
-                        <Button
-                          onClick={() => handleEditPopup(office)}
-                          className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
-                          title="Edit"
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          onClick={() => handleDelete(office.id)}
-                          className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
-                          title="Delete"
-                        >
-                          Delete
-                        </Button>
+                        {canManage && (
+                          <>
+                            <Button
+                              onClick={() => handleEditPopup(office)}
+                              className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+                              title="Edit"
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              onClick={() => handleDelete(office.id)}
+                              className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
+                              title="Delete"
+                            >
+                              Delete
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -658,9 +668,9 @@ export default function OfficesPage() {
           panelClassName="max-h-[90vh] overflow-y-auto"
         >
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
-            Upload the required documents below, or add more with a custom name.
-            PDF, JPG, PNG, or WEBP — max 10 MB after automatic compression (larger
-            files are compressed before upload).
+            {canManage
+              ? "Upload the required documents below, or add more with a custom name. PDF, JPG, PNG, or WEBP — max 10 MB after automatic compression."
+              : "View and download office documents. Editing is restricted."}
           </p>
 
           {loadingDocs ? (
@@ -682,17 +692,19 @@ export default function OfficesPage() {
                       <Label className="block text-sm font-medium">
                         {field.label}
                       </Label>
-                      <Input
-                        type="file"
-                        accept={FILE_ACCEPT}
-                        disabled={busy}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] || null;
-                          void handleFixedUpload(field.type, file);
-                          e.target.value = "";
-                        }}
-                        className="w-full"
-                      />
+                      {canManage && (
+                        <Input
+                          type="file"
+                          accept={FILE_ACCEPT}
+                          disabled={busy}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
+                            void handleFixedUpload(field.type, file);
+                            e.target.value = "";
+                          }}
+                          className="w-full"
+                        />
+                      )}
                       <div className="flex flex-wrap items-center gap-2 text-sm">
                         {busy ? (
                           <span className="text-amber-600 dark:text-amber-400">
@@ -721,13 +733,15 @@ export default function OfficesPage() {
                             >
                               Download
                             </Button>
-                            <Button
-                              type="button"
-                              onClick={() => void handleDeleteDoc(doc)}
-                              className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-                            >
-                              Remove
-                            </Button>
+                            {canManage && (
+                              <Button
+                                type="button"
+                                onClick={() => void handleDeleteDoc(doc)}
+                                className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                              >
+                                Remove
+                              </Button>
+                            )}
                           </>
                         ) : (
                           <span className="text-zinc-400">No file uploaded</span>
@@ -769,19 +783,22 @@ export default function OfficesPage() {
                         >
                           Download
                         </Button>
-                        <Button
-                          type="button"
-                          onClick={() => void handleDeleteDoc(doc)}
-                          className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
-                        >
-                          Remove
-                        </Button>
+                        {canManage && (
+                          <Button
+                            type="button"
+                            onClick={() => void handleDeleteDoc(doc)}
+                            className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                          >
+                            Remove
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
               )}
 
+              {canManage && (
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                   Add more documents
@@ -872,6 +889,7 @@ export default function OfficesPage() {
                   Add more
                 </Button>
               </div>
+              )}
             </div>
           )}
         </Modal>

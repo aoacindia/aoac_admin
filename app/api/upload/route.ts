@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 const UPLOAD_URL = "https://files.aoac.in/upload.php";
 const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB in bytes
 
 export async function POST(request: NextRequest) {
+  const authResult = await requirePermissionApi("files.upload");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File;

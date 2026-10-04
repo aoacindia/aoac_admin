@@ -6,13 +6,13 @@ import { dbAdmin, dbProduct, dbUser } from "@/lib/db";
 import { offices } from "@/lib/db/admin-schema";
 import { products } from "@/lib/db/product-schema";
 import { orders } from "@/lib/db/user-schema";
-import { requireAdminApi } from "@/lib/require-admin";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireAdminApi();
+  const authResult = await requirePermissionApi("orders.view");
   if ("error" in authResult) {
     return NextResponse.json(
       { success: false, error: authResult.error },

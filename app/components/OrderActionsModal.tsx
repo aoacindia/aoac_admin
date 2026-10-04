@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 import Modal from "@/app/components/Modal";
 import { Button } from "@/components/ui/button";
+import { hasPermission } from "@/lib/permissions";
 
 export const PAYMENT_LINK_ELIGIBLE_STATUSES = [
   "PENDING",
@@ -47,6 +49,8 @@ export default function OrderActionsModal({
   onPaymentLinkGenerated,
 }: OrderActionsModalProps) {
   const router = useRouter();
+  const { data: session } = useSession();
+  const canDelete = hasPermission(session?.user?.role, "orders.delete");
   const [generatingLink, setGeneratingLink] = useState(false);
   const [paymentLink, setPaymentLink] = useState<string | null>(order.paymentLinkUrl);
   const [linkError, setLinkError] = useState<string | null>(null);
@@ -172,16 +176,18 @@ export default function OrderActionsModal({
             {generatingLink ? "Generating link..." : "Generate Payment Link"}
           </Button>
         )}
-        <Button
-          onClick={() => {
-            onClose();
-            onDelete();
-          }}
-          disabled={busy}
-          className={`${actionButtonClass} bg-red-600 hover:bg-red-700`}
-        >
-          {deleting ? "Deleting..." : "Delete"}
-        </Button>
+        {canDelete && (
+          <Button
+            onClick={() => {
+              onClose();
+              onDelete();
+            }}
+            disabled={busy}
+            className={`${actionButtonClass} bg-red-600 hover:bg-red-700`}
+          >
+            {deleting ? "Deleting..." : "Delete"}
+          </Button>
+        )}
       </div>
 
       {linkError && (

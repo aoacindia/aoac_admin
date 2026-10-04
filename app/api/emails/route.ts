@@ -3,8 +3,17 @@ import { and, count, desc, eq } from "drizzle-orm";
 
 import { dbAdmin } from "@/lib/db";
 import { emailAccounts } from "@/lib/db/admin-schema";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 export async function GET(request: NextRequest) {
+  const authResult = await requirePermissionApi("settings.manage");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const isActive = searchParams.get("isActive");
@@ -71,6 +80,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const authResult = await requirePermissionApi("settings.manage");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const body = await request.json();
     const {

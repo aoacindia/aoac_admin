@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 import DashboardShell from "@/app/components/DashboardShell";
-import { auth } from "@/auth";
+import { requirePagePermission } from "@/lib/page-auth";
 
 const menuItems = [
   { label: "All Users", href: "/dashboard/users" },
@@ -12,10 +11,7 @@ export default async function UsersLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
-    redirect("/dashboard");
-  }
+  await requirePagePermission("users.view");
 
   return (
     <DashboardShell sectionName="Users" menuItems={menuItems}>

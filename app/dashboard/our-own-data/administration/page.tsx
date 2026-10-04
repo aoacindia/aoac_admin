@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { INDIAN_STATES } from "@/lib/indian-states";
+import { hasPermission } from "@/lib/permissions";
 import { COMPANY_DOC_FIELDS, type CompanyDocPathKey } from "@/lib/company-administration-docs";
 import {
   compressFileForUpload,
@@ -52,6 +54,8 @@ const EMPTY_FORM: FormState = {
 };
 
 export default function AdministrationPage() {
+  const { data: session } = useSession();
+  const canManage = hasPermission(session?.user?.role, "settings.manage");
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -177,6 +181,7 @@ export default function AdministrationPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManage) return;
     setSaving(true);
     try {
       const res = await fetch("/api/company-administration", {
@@ -219,6 +224,7 @@ export default function AdministrationPage() {
         </h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Company legal details and statutory documents.
+          {!canManage && " View only — editing is not allowed."}
         </p>
       </div>
 
@@ -232,6 +238,7 @@ export default function AdministrationPage() {
         onSubmit={handleSubmit}
         className="space-y-8 bg-white dark:bg-zinc-900 rounded-lg shadow-md border border-zinc-200 dark:border-zinc-800 p-4 md:p-6"
       >
+        <fieldset disabled={!canManage} className="space-y-8 border-0 p-0">
         <section className="space-y-4">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
             Company
@@ -364,13 +371,15 @@ export default function AdministrationPage() {
           </div>
         </section>
 
+        </fieldset>
         <section className="space-y-4">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
             Documents
           </h2>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            PDF, JPG, PNG, or WEBP — larger files are auto-compressed to 10 MB or
-            below before upload. Files are stored on internalfiles.aoac.in.
+            {canManage
+              ? "PDF, JPG, PNG, or WEBP — larger files are auto-compressed to 10 MB or below before upload."
+              : "View or download uploaded statutory documents."}
           </p>
           <div className="space-y-5">
             {COMPANY_DOC_FIELDS.map((field) => {
@@ -382,17 +391,19 @@ export default function AdministrationPage() {
                   className="rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 space-y-3"
                 >
                   <Label className="block text-sm font-medium">{field.label}</Label>
-                  <Input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
-                    disabled={busy || saving}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] || null;
-                      void handleUpload(field.uploadKey, field.key, file);
-                      e.target.value = "";
-                    }}
-                    className="w-full"
-                  />
+                  {canManage && (
+                    <Input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+                      disabled={busy || saving}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        void handleUpload(field.uploadKey, field.key, file);
+                        e.target.value = "";
+                      }}
+                      className="w-full"
+                    />
+                  )}
                   <div className="flex flex-wrap items-center gap-3 text-sm">
                     {busy ? (
                       <span className="text-amber-600 dark:text-amber-400">
@@ -421,13 +432,15 @@ export default function AdministrationPage() {
                         >
                           Download
                         </Button>
-                        <Button
-                          type="button"
-                          onClick={() => setPath(field.key, null)}
-                          className="px-3 py-1 text-sm bg-zinc-600 text-white rounded hover:bg-zinc-700"
-                        >
-                          Remove
-                        </Button>
+                        {canManage && (
+                          <Button
+                            type="button"
+                            onClick={() => setPath(field.key, null)}
+                            className="px-3 py-1 text-sm bg-zinc-600 text-white rounded hover:bg-zinc-700"
+                          >
+                            Remove
+                          </Button>
+                        )}
                       </>
                     ) : (
                       <span className="text-zinc-400">No file uploaded</span>
@@ -439,15 +452,17 @@ export default function AdministrationPage() {
           </div>
         </section>
 
-        <div className="flex justify-end pt-2">
-          <Button
-            type="submit"
-            disabled={saving || uploadingKey !== null}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
-          >
-            {saving ? "Saving…" : "Save"}
-          </Button>
-        </div>
+        {canManage && (
+          <div className="flex justify-end pt-2">
+            <Button
+              type="submit"
+              disabled={saving || uploadingKey !== null}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        )}
       </form>
     </div>
   );

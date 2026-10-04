@@ -3,12 +3,22 @@ import { and, eq, ne, or } from "drizzle-orm";
 
 import { dbUser } from "@/lib/db";
 import { users } from "@/lib/db/user-schema";
+import { requirePermissionApi } from "@/lib/require-admin";
+import { omitCustomerPassword } from "@/lib/sanitize-customer";
 
 // GET customer by id
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requirePermissionApi("customers.view");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { id } = await params;
     const customer = await dbUser.query.users.findFirst({
@@ -44,7 +54,10 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ success: true, data: customer });
+    return NextResponse.json({
+      success: true,
+      data: omitCustomerPassword(customer),
+    });
   } catch (error: unknown) {
     console.error("Error fetching customer:", error);
     const message = error instanceof Error ? error.message : "Server error";
@@ -60,6 +73,14 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requirePermissionApi("customers.update");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { id } = await params;
     const body = await request.json();

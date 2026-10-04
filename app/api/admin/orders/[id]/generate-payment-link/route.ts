@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { dbUser } from "@/lib/db";
 import { orders } from "@/lib/db/user-schema";
 import { createPaymentToken } from "@/lib/payment-token";
-import { requireAdminApi } from "@/lib/require-admin";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 const ALLOWED_STATUSES = new Set([
   "PENDING",
@@ -44,7 +44,7 @@ export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireAdminApi();
+  const authResult = await requirePermissionApi("orders.update");
   if ("error" in authResult) {
     return NextResponse.json(
       { success: false, error: authResult.error },

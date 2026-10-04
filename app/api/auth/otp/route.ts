@@ -3,9 +3,11 @@ import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { eq, or } from "drizzle-orm";
 
+import { jsonError, rateLimitResponse } from "@/lib/api-response";
 import { dbAdmin } from "@/lib/db";
 import { adminOtpVerifications, adminUsers } from "@/lib/db/admin-schema";
 import { sendOtpEmail } from "@/lib/email";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 const OTP_EXPIRY_MINUTES = 10;
 
@@ -22,11 +24,14 @@ export async function POST(request: NextRequest) {
     const identifier = String(body?.identifier || "").trim().toLowerCase();
 
     if (!identifier) {
-      return NextResponse.json(
-        { success: false, error: "Identifier is required" },
-        { status: 400 }
-      );
+      return jsonError("Identifier is required", 400);
     }
+
+    const ip = clientIp(request);
+    const ipLimit = rateLimit(`otp:ip:${ip}`, 10, 15 * 60 * 1000);
+    const idLimit = rateLimit(`otp:id:${identifier}`, 5, 15 * 60 * 1000);
+    if (!ipLimit.ok) return rateLimitResponse(ipLimit.retryAfterSec);
+    if (!idLimit.ok) return rateLimitResponse(idLimit.retryAfterSec);
 
     const [user] = await dbAdmin
       .select({
@@ -44,18 +49,14 @@ export async function POST(request: NextRequest) {
       )
       .limit(1);
 
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: "User not found" },
-        { status: 404 }
-      );
-    }
-
-    if (user.suspended || user.terminated) {
-      return NextResponse.json(
-        { success: false, error: "Account is not active" },
-        { status: 403 }
-      );
+    if (!user || user.suspended || user.terminated) {
+      return NextResponse.json({
+        success: true,
+        token: randomBytes(32).toString("hex"),
+        email: maskEmail(
+          identifier.includes("@") ? identifier : "user@aoac.in"
+        ),
+      });
     }
 
     const otp = String(Math.floor(100000 + Math.random() * 900000));

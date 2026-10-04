@@ -1,35 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { and, count, desc, eq, ilike, or } from "drizzle-orm";
 
-import { auth } from "@/auth";
+import { audit } from "@/lib/audit";
+import { authErrorResponse, jsonError, serverErrorResponse } from "@/lib/api-response";
 import { dbAdmin } from "@/lib/db";
 import type { AdminRole } from "@/lib/db/admin-schema";
 import { adminUsers } from "@/lib/db/admin-schema";
-
-const ALLOWED_ROLES = ["ADMIN", "MANAGER", "STAFF"] as const;
-
-function isAllowedRole(role: string) {
-  return ALLOWED_ROLES.includes(role as (typeof ALLOWED_ROLES)[number]);
-}
-
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user) {
-    return { error: "Unauthorized", status: 401 };
-  }
-  if (session.user.role !== "ADMIN") {
-    return { error: "Forbidden", status: 403 };
-  }
-  return { session };
-}
+import { canAssignRole, isAdminRole } from "@/lib/permissions";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 export async function GET(request: NextRequest) {
-  const authResult = await requireAdmin();
+  const authResult = await requirePermissionApi("users.view");
   if ("error" in authResult) {
-    return NextResponse.json(
-      { success: false, error: authResult.error },
-      { status: authResult.status }
-    );
+    return authErrorResponse(authResult);
   }
 
   try {
@@ -56,7 +39,7 @@ export async function GET(request: NextRequest) {
         )
       );
     }
-    if (role && isAllowedRole(role)) {
+    if (role && isAdminRole(role)) {
       whereParts.push(eq(adminUsers.role, role as AdminRole));
     }
 
@@ -98,22 +81,14 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: unknown) {
-    console.error("Error fetching admin users:", error);
-    const message = error instanceof Error ? error.message : "Server error";
-    return NextResponse.json(
-      { success: false, error: message },
-      { status: 500 }
-    );
+    return serverErrorResponse(error, "Error fetching admin users:");
   }
 }
 
 export async function POST(request: NextRequest) {
-  const authResult = await requireAdmin();
+  const authResult = await requirePermissionApi("users.create");
   if ("error" in authResult) {
-    return NextResponse.json(
-      { success: false, error: authResult.error },
-      { status: authResult.status }
-    );
+    return authErrorResponse(authResult);
   }
 
   try {
@@ -124,17 +99,18 @@ export async function POST(request: NextRequest) {
     const role = String(body?.role || "STAFF").toUpperCase();
 
     if (!name || !email || !phone) {
-      return NextResponse.json(
-        { success: false, error: "Name, email, and phone are required" },
-        { status: 400 }
-      );
+      return jsonError("Name, email, and phone are required", 400);
     }
 
-    if (!isAllowedRole(role)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid role" },
-        { status: 400 }
-      );
+    if (!canAssignRole(authResult.actor.role, role)) {
+      audit({
+        action: "users.create",
+        actorId: authResult.actor.id,
+        actorRole: authResult.actor.role,
+        outcome: "denied",
+        meta: { requestedRole: role },
+      });
+      return jsonError("Forbidden", 403);
     }
 
     const [existingUser] = await dbAdmin
@@ -171,13 +147,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    audit({
+      action: "users.create",
+      actorId: authResult.actor.id,
+      actorRole: authResult.actor.role,
+      targetType: "admin_user",
+      targetId: user.id,
+      outcome: "success",
+      meta: { role: user.role },
+    });
+
     return NextResponse.json({ success: true, data: user }, { status: 201 });
   } catch (error: unknown) {
-    console.error("Error creating admin user:", error);
-    const message = error instanceof Error ? error.message : "Server error";
-    return NextResponse.json(
-      { success: false, error: message },
-      { status: 500 }
-    );
+    return serverErrorResponse(error, "Error creating admin user:");
   }
 }

@@ -8,6 +8,7 @@ import {
   products,
   productWeightDiscounts,
 } from "@/lib/db/product-schema";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 async function generateProductCode(
   vegetable: boolean,
@@ -48,6 +49,14 @@ async function generateProductCode(
 
 // GET all products
 export async function GET(request: NextRequest) {
+  const authResult = await requirePermissionApi("products.view");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const approved = searchParams.get("approved");
@@ -76,6 +85,14 @@ type NutritionBody = { name?: string; grams?: number | string };
 
 // POST create new product
 export async function POST(request: NextRequest) {
+  const authResult = await requirePermissionApi("products.create");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const body = await request.json();
     const {

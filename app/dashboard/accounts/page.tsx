@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import Modal from "@/app/components/Modal";
+import { hasPermission } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +35,8 @@ const EMPTY_FORM = {
 };
 
 export default function AccountsPage() {
+  const { data: session } = useSession();
+  const canManage = hasPermission(session?.user?.role, "settings.manage");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -191,12 +195,14 @@ export default function AccountsPage() {
           >
             Credit Summary
           </Link>
-          <Button
-            onClick={handleOpenPopup}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-center"
-          >
-            Add Account
-          </Button>
+          {canManage && (
+            <Button
+              onClick={handleOpenPopup}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-center"
+            >
+              Add Account
+            </Button>
+          )}
         </div>
       </div>
 
@@ -277,22 +283,26 @@ export default function AccountsPage() {
                       </span>
                     </TableCell>
                     <TableCell className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => handleEditPopup(account)}
-                          className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
-                          title="Edit"
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          onClick={() => handleDelete(account.id)}
-                          className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
-                          title="Delete"
-                        >
-                          Delete
-                        </Button>
-                      </div>
+                      {canManage ? (
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => handleEditPopup(account)}
+                            className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+                            title="Edit"
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            onClick={() => handleDelete(account.id)}
+                            className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
+                            title="Delete"
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-zinc-400">View only</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

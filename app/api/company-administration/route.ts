@@ -8,7 +8,7 @@ import {
   type CompanyDocPathKey,
 } from "@/lib/company-administration-docs";
 import { isSafeInternalPath } from "@/lib/internal-files";
-import { requireAdminApi } from "@/lib/require-admin";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 const DOC_KEYS = new Set(
   COMPANY_DOC_FIELDS.map((f) => f.key) as CompanyDocPathKey[]
@@ -36,7 +36,7 @@ function emptyCompanyPayload() {
 }
 
 export async function GET() {
-  const authResult = await requireAdminApi();
+  const authResult = await requirePermissionApi("settings.view");
   if ("error" in authResult) {
     return NextResponse.json(
       { success: false, error: authResult.error },
@@ -66,7 +66,7 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
-  const authResult = await requireAdminApi();
+  const authResult = await requirePermissionApi("settings.manage");
   if ("error" in authResult) {
     return NextResponse.json(
       { success: false, error: authResult.error },

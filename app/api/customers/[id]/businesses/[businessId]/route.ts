@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 
 import { dbUser } from "@/lib/db";
 import { billingAddresses, businesses } from "@/lib/db/user-schema";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 type BillingBody = {
   houseNo: string;
@@ -21,6 +22,14 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; businessId: string }> }
 ) {
+  const authResult = await requirePermissionApi("customers.update");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { id, businessId } = await params;
     const body = await request.json();
@@ -151,6 +160,14 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string; businessId: string }> }
 ) {
+  const authResult = await requirePermissionApi("customers.update");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { id, businessId } = await params;
 

@@ -1,16 +1,12 @@
-import { redirect } from "next/navigation";
 import DashboardShell from "@/app/components/DashboardShell";
-import { auth } from "@/auth";
+import { requirePagePermission } from "@/lib/page-auth";
 
 export default async function OrdersLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
-    redirect("/dashboard");
-  }
+  await requirePagePermission("orders.view");
 
   const menuItems = [
     { label: "All Orders", href: "/dashboard/orders" },

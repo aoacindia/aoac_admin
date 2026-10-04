@@ -3,9 +3,18 @@ import { asc, count, eq } from "drizzle-orm";
 
 import { dbProduct } from "@/lib/db";
 import { categories, products } from "@/lib/db/product-schema";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 // GET all categories
 export async function GET() {
+  const authResult = await requirePermissionApi("products.view");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const cats = await dbProduct
       .select()
@@ -40,6 +49,14 @@ export async function GET() {
 
 // POST create new category
 export async function POST(request: NextRequest) {
+  const authResult = await requirePermissionApi("products.create");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const body = await request.json();
     const { name } = body;

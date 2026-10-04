@@ -15,7 +15,7 @@ import {
   getFinancialYearStart,
 } from "@/lib/order-helpers";
 import { maybeSendOrderDispatchedEmail } from "@/lib/order-dispatch-email";
-import { requireAdminApi } from "@/lib/require-admin";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 const orderUserColumns = {
   id: true,
@@ -40,7 +40,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireAdminApi();
+  const authResult = await requirePermissionApi("orders.view");
   if ("error" in authResult) {
     return NextResponse.json(
       { success: false, error: authResult.error },
@@ -129,7 +129,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireAdminApi();
+  const authResult = await requirePermissionApi("orders.update");
   if ("error" in authResult) {
     return NextResponse.json(
       { success: false, error: authResult.error },
@@ -534,7 +534,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireAdminApi();
+  const authResult = await requirePermissionApi("orders.delete");
   if ("error" in authResult) {
     return NextResponse.json(
       { success: false, error: authResult.error },

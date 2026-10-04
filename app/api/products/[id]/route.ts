@@ -8,6 +8,7 @@ import {
   products,
   productWeightDiscounts,
 } from "@/lib/db/product-schema";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 type NutritionBody = { name?: string; grams?: number | string };
 
@@ -16,6 +17,14 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requirePermissionApi("products.view");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { id } = await params;
     const product = await dbProduct.query.products.findFirst({
@@ -51,6 +60,14 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requirePermissionApi("products.update");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -202,6 +219,14 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requirePermissionApi("products.delete");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { id } = await params;
 

@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { hasPermission } from "@/lib/permissions";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -70,6 +72,8 @@ export default function CustomersPage() {
   const [personalCount, setPersonalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const router = useRouter();
+  const { data: session } = useSession();
+  const canDeleteCustomers = hasPermission(session?.user?.role, "customers.delete");
 
   useEffect(() => {
     setPage(1);
@@ -416,7 +420,7 @@ export default function CustomersPage() {
                         >
                           Edit
                         </Link>
-                        {!customer.terminated && (
+                        {canDeleteCustomers && !customer.terminated && (
                           <>
                             {customer.suspended ? (
                               <Button

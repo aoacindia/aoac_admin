@@ -1,34 +1,15 @@
 import { auth } from "@/auth";
+import { permissionForPath } from "@/lib/permissions";
+import { hasPermission } from "@/lib/permissions";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const publicRoutes = ["/login", "/api/auth"];
+const publicPrefixes = ["/login", "/api/auth"];
 
-const authRoutes = ["/login"];
-
-const roleBasedRoutes: Record<string, string[]> = {
-  "/dashboard/users": ["ADMIN"],
-  "/dashboard/users/create": ["ADMIN"],
-  "/dashboard/our-own-data": ["ADMIN"],
-  "/dashboard/accounts": ["ADMIN"],
-  "/dashboard/orders": ["ADMIN"],
-  "/print-invoice": ["ADMIN"],
-  "/dashboard/credentials": ["ADMIN"],
-  // "/dashboard/products/categories": ["ADMIN", "MANAGER"],
-  // "/dashboard/products/create": ["ADMIN", "MANAGER"],
-  // "/dashboard/products/[id]/edit": ["ADMIN", "MANAGER"],
-  "/dashboard/products/discounts": ["ADMIN", "MANAGER"],
-  // "/dashboard/customers": ["ADMIN", "MANAGER"],
-};
-
-function hasRoleAccess(pathname: string, userRole?: string | null) {
-  const role = userRole?.toUpperCase();
-  for (const [routePrefix, roles] of Object.entries(roleBasedRoutes)) {
-    if (pathname.startsWith(routePrefix)) {
-      return Boolean(role && roles.includes(role));
-    }
-  }
-  return true;
+function isPublicPath(pathname: string) {
+  return publicPrefixes.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
 }
 
 export async function proxy(request: NextRequest) {
@@ -42,38 +23,42 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (pathname.startsWith("/api") && !pathname.startsWith("/api/auth")) {
+  if (isPublicPath(pathname)) {
     return NextResponse.next();
   }
-
-  const isPublicRoute = publicRoutes.some((route) =>
-    pathname.startsWith(route)
-  );
 
   const session = await auth();
-  const isAuthenticated = Boolean(session);
-  const userRole = session?.user?.role ?? null;
+  const isAuthenticated = Boolean(session?.user?.id && session.user.role);
 
-  if (isAuthenticated) {
-    if (!hasRoleAccess(pathname, userRole)) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/dashboard/unauthorized";
-      return NextResponse.redirect(url);
+  if (pathname.startsWith("/api")) {
+    if (!isAuthenticated) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
     }
-
-    if (authRoutes.some((route) => pathname.startsWith(route))) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
-      return NextResponse.redirect(url);
-    }
-
     return NextResponse.next();
   }
 
-  if (!isPublicRoute) {
+  if (!isAuthenticated) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("from", pathname);
+    return NextResponse.redirect(url);
+  }
+
+  if (pathname === "/login" || pathname.startsWith("/login/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dashboard";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  const required = permissionForPath(pathname);
+  if (required && !hasPermission(session?.user?.role, required)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dashboard/unauthorized";
+    url.search = "";
     return NextResponse.redirect(url);
   }
 
@@ -86,4 +71,3 @@ export const config = {
     "/api/:path*",
   ],
 };
-

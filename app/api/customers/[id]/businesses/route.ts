@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { generateNextBusinessId } from "@/lib/business-id";
 import { dbUser } from "@/lib/db";
 import { billingAddresses, businesses, users } from "@/lib/db/user-schema";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 type BillingBody = {
   houseNo: string;
@@ -30,6 +31,14 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requirePermissionApi("customers.view");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { id } = await params;
     const [user] = await dbUser
@@ -62,6 +71,14 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requirePermissionApi("customers.update");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { id } = await params;
     const body = await request.json();

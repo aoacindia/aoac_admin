@@ -27,6 +27,8 @@ interface AdminUser {
   email: string;
   phone: string;
   role: string;
+  suspended: boolean;
+  terminated: boolean;
   createdAt: string;
 }
 
@@ -39,6 +41,7 @@ export default function UsersPage() {
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
     setPage(1);
@@ -73,8 +76,8 @@ export default function UsersPage() {
       } else {
         setError(data.error || "Failed to fetch users");
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch users");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to fetch users");
     } finally {
       setLoading(false);
     }
@@ -88,6 +91,49 @@ export default function UsersPage() {
   const handlePageChange = (nextPage: number) => {
     if (nextPage < 1 || nextPage > totalPages || nextPage === page) return;
     fetchUsers(nextPage);
+  };
+
+  const patchUser = async (id: string, body: Record<string, unknown>) => {
+    setUpdatingId(id);
+    setError(null);
+    try {
+      const response = await fetch(`/api/admin-users/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || "Failed to update user");
+      }
+      fetchUsers(page);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update user");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const deactivateUser = async (id: string, name: string) => {
+    if (!window.confirm(`Deactivate ${name}? Their session will stop working.`)) {
+      return;
+    }
+    setUpdatingId(id);
+    setError(null);
+    try {
+      const response = await fetch(`/api/admin-users/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || "Failed to deactivate user");
+      }
+      fetchUsers(page);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to deactivate user");
+    } finally {
+      setUpdatingId(null);
+    }
   };
 
   return (
@@ -131,13 +177,15 @@ export default function UsersPage() {
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-sm">
+                  <TableCell colSpan={7} className="text-center text-sm">
                     No users found.
                   </TableCell>
                 </TableRow>
@@ -147,9 +195,48 @@ export default function UsersPage() {
                     <TableCell>{user.name}</TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>{user.phone}</TableCell>
-                    <TableCell>{user.role}</TableCell>
+                    <TableCell>
+                      <Select
+                        value={user.role}
+                        disabled={updatingId === user.id || user.terminated}
+                        onChange={(e) =>
+                          patchUser(user.id, { role: e.target.value })
+                        }
+                      >
+                        <option value="ADMIN">Admin</option>
+                        <option value="MANAGER">Manager</option>
+                        <option value="STAFF">Staff</option>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      {user.terminated
+                        ? "Deactivated"
+                        : user.suspended
+                          ? "Suspended"
+                          : "Active"}
+                    </TableCell>
                     <TableCell>
                       {new Date(user.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          disabled={updatingId === user.id || user.terminated}
+                          onClick={() =>
+                            patchUser(user.id, { suspended: !user.suspended })
+                          }
+                        >
+                          {user.suspended ? "Unsuspend" : "Suspend"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          disabled={updatingId === user.id || user.terminated}
+                          onClick={() => deactivateUser(user.id, user.name)}
+                        >
+                          Deactivate
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

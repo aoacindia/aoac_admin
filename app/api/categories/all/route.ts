@@ -3,9 +3,18 @@ import { asc } from "drizzle-orm";
 
 import { dbProduct } from "@/lib/db";
 import { categories } from "@/lib/db/product-schema";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 // GET all categories
 export async function GET() {
+  const authResult = await requirePermissionApi("products.view");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const rows = await dbProduct
       .select({

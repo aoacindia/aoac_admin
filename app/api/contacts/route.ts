@@ -3,9 +3,18 @@ import { count, desc } from "drizzle-orm";
 
 import { dbUser } from "@/lib/db";
 import { contacts } from "@/lib/db/user-schema";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 // GET all contacts
 export async function GET(request: NextRequest) {
+  const authResult = await requirePermissionApi("contacts.view");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const page = Number(searchParams.get("page") || "1");

@@ -1,5 +1,5 @@
 import DashboardShell from "@/app/components/DashboardShell";
-
+import { requirePagePermission } from "@/lib/page-auth";
 
 const menuItems = [
   { label: "All Customers", href: "/dashboard/customers" },
@@ -8,11 +8,12 @@ const menuItems = [
   { label: "Addresses", href: "/dashboard/customers/addresses" },
 ];
 
-export default function CustomersLayout({
+export default async function CustomersLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  await requirePagePermission("customers.view");
   return (
     <DashboardShell sectionName="Customers" menuItems={menuItems}>
       {children}

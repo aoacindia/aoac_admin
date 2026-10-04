@@ -3,9 +3,18 @@ import { desc, eq, or } from "drizzle-orm";
 
 import { dbUser } from "@/lib/db";
 import { suppliers } from "@/lib/db/user-schema";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 // GET all suppliers
 export async function GET(request: NextRequest) {
+  const authResult = await requirePermissionApi("suppliers.view");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const rows = await dbUser
       .select()
@@ -25,6 +34,14 @@ export async function GET(request: NextRequest) {
 
 // POST create new supplier
 export async function POST(request: NextRequest) {
+  const authResult = await requirePermissionApi("suppliers.create");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const body = await request.json();
     const {

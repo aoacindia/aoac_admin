@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 import DashboardShell from "@/app/components/DashboardShell";
-import { auth } from "@/auth";
+import { requirePagePermission } from "@/lib/page-auth";
 
 const menuItems = [
   { label: "All Credentials", href: "/dashboard/credentials" },
@@ -11,10 +10,7 @@ export default async function CredentialsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
-    redirect("/dashboard");
-  }
+  await requirePagePermission("credentials.view");
 
   return (
     <DashboardShell sectionName="Credentials" menuItems={menuItems}>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { COMPANY_DOC_FIELDS } from "@/lib/company-administration-docs";
 import { uploadToInternalFiles } from "@/lib/internal-files";
-import { requireAdminApi } from "@/lib/require-admin";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 const ALLOWED_MIME = new Set([
   "application/pdf",
@@ -14,7 +14,7 @@ const ALLOWED_MIME = new Set([
 const MAX_BYTES = 10 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
-  const authResult = await requireAdminApi();
+  const authResult = await requirePermissionApi("settings.manage");
   if ("error" in authResult) {
     return NextResponse.json(
       { success: false, error: authResult.error },

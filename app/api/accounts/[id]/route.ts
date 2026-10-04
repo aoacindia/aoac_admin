@@ -3,11 +3,20 @@ import { eq } from "drizzle-orm";
 
 import { dbAdmin } from "@/lib/db";
 import { accounts } from "@/lib/db/admin-schema";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requirePermissionApi("settings.view");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { id } = await params;
     const [account] = await dbAdmin
@@ -38,6 +47,14 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requirePermissionApi("settings.manage");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -132,6 +149,14 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requirePermissionApi("settings.manage");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { id } = await params;
 

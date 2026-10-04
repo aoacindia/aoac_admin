@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/auth";
 import DashboardShell from "@/app/components/DashboardShell";
+import { requirePagePermission } from "@/lib/page-auth";
 
 const menuItems = [
   { label: "All Products", href: "/dashboard/products" },
@@ -16,13 +15,7 @@ export default async function CategoryDiscountLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
-  if (!session?.user) {
-    redirect("/dashboard");
-  }
-  if (session.user.role !== "ADMIN") {
-    redirect("/dashboard/unauthorized");
-  }
+  await requirePagePermission("products.manage_discounts");
 
   return (
     <DashboardShell sectionName="Products" menuItems={menuItems}>

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { asc, eq, inArray } from "drizzle-orm";
 
-import { auth } from "@/auth";
 import { dbProduct } from "@/lib/db";
+import { requirePermissionApi } from "@/lib/require-admin";
 import {
   categories,
   categoryWeightDiscounts,
@@ -13,17 +13,11 @@ import {
 // GET category discounts by categoryId
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const authResult = await requirePermissionApi("products.manage_discounts");
+    if ("error" in authResult) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (session.user.role !== "ADMIN") {
-      return NextResponse.json(
-        { success: false, error: "Forbidden" },
-        { status: 403 }
+        { success: false, error: authResult.error },
+        { status: authResult.status }
       );
     }
 
@@ -72,17 +66,11 @@ export async function GET(request: NextRequest) {
 // POST create/update category discounts
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const authResult = await requirePermissionApi("products.manage_discounts");
+    if ("error" in authResult) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (session.user.role !== "ADMIN") {
-      return NextResponse.json(
-        { success: false, error: "Forbidden" },
-        { status: 403 }
+        { success: false, error: authResult.error },
+        { status: authResult.status }
       );
     }
 

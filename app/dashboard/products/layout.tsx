@@ -1,5 +1,5 @@
 import DashboardShell from "@/app/components/DashboardShell";
-
+import { requirePagePermission } from "@/lib/page-auth";
 
 const menuItems = [
   { label: "All Products", href: "/dashboard/products" },
@@ -10,11 +10,12 @@ const menuItems = [
   { label: "Product Discounts", href: "/dashboard/products/product-discount" },
 ];
 
-export default function ProductsLayout({
+export default async function ProductsLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  await requirePagePermission("products.view");
   return (
     <DashboardShell sectionName="Products" menuItems={menuItems}>
       {children}

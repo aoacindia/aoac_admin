@@ -4,12 +4,21 @@ import { and, count, eq, ne, or } from "drizzle-orm";
 import { dbUser } from "@/lib/db";
 import { orders, suppliers } from "@/lib/db/user-schema";
 import type { NewSupplierRow } from "@/lib/db/user-schema";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 // GET supplier by id
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requirePermissionApi("suppliers.view");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { id } = await params;
     const [supplier] = await dbUser
@@ -41,6 +50,14 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requirePermissionApi("suppliers.update");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -167,6 +184,14 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requirePermissionApi("suppliers.delete");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { id } = await params;
 

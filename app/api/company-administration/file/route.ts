@@ -4,10 +4,10 @@ import {
   fetchFromInternalFiles,
   isSafeInternalPath,
 } from "@/lib/internal-files";
-import { requireAdminApi } from "@/lib/require-admin";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 export async function GET(request: NextRequest) {
-  const authResult = await requireAdminApi();
+  const authResult = await requirePermissionApi("settings.view");
   if ("error" in authResult) {
     return NextResponse.json(
       { success: false, error: authResult.error },

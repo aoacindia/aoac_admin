@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Modal from "@/app/components/Modal";
 import Header from "@/app/components/Header";
+import { hasPermission, type Permission } from "@/lib/permissions";
 
 interface Section {
   name: string;
@@ -106,21 +107,28 @@ export default function DashboardPage() {
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const router = useRouter();
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "ADMIN";
-  const adminOnlySections = new Set([
-    "Users",
-    "Our Own Data",
-    "Accounts",
-    "Orders",
-    "Credentials",
-  ]);
+  const role = session?.user?.role;
+  const sectionPermission: Record<string, Permission> = {
+    Products: "products.view",
+    Orders: "orders.view",
+    Customers: "customers.view",
+    Suppliers: "suppliers.view",
+    "Our Own Data": "settings.view",
+    Accounts: "settings.view",
+    Credentials: "credentials.view",
+    Users: "users.view",
+    Contacts: "contacts.view",
+    Email: "settings.manage",
+  };
 
-  const visibleSections = isAdmin
-    ? sections
-    : sections.filter((section) => !adminOnlySections.has(section.name));
+  const visibleSections = sections.filter((section) =>
+    hasPermission(role, sectionPermission[section.name] ?? "dashboard.view")
+  );
 
   const handleSectionClick = (section: Section) => {
-    if (adminOnlySections.has(section.name) && !isAdmin) {
+    if (
+      !hasPermission(role, sectionPermission[section.name] ?? "dashboard.view")
+    ) {
       return;
     }
     setSelectedSection(section);

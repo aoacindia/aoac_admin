@@ -7,6 +7,8 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test:permissions": "npx --yes tsx scripts/test-permissions.ts",
     "db:generate": "drizzle-kit generate --config=drizzle.config.user.ts && drizzle-kit generate --config=drizzle.config.admin.ts && drizzle-kit generate --config=drizzle.config.product.ts",
     "db:push": "drizzle-kit push --config=drizzle.config.user.ts && drizzle-kit push --config=drizzle.config.admin.ts && drizzle-kit push --config=drizzle.config.product.ts",
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.user.ts && drizzle-kit migrate --config=drizzle.config.admin.ts && drizzle-kit migrate --config=drizzle.config.product.ts",

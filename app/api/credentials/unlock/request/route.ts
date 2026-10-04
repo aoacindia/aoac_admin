@@ -10,6 +10,8 @@ import {
 import { dbAdmin } from "@/lib/db";
 import { credentialUnlocks } from "@/lib/db/admin-schema";
 import { sendCredentialUnlockOtpEmail } from "@/lib/email";
+import { rateLimitResponse } from "@/lib/api-response";
+import { rateLimit } from "@/lib/rate-limit";
 import { requireAdminApi } from "@/lib/require-admin";
 
 export async function POST() {
@@ -19,6 +21,15 @@ export async function POST() {
       { success: false, error: authResult.error },
       { status: authResult.status }
     );
+  }
+
+  const unlockLimit = rateLimit(
+    `credential-unlock:${authResult.session.user.id}`,
+    5,
+    15 * 60 * 1000
+  );
+  if (!unlockLimit.ok) {
+    return rateLimitResponse(unlockLimit.retryAfterSec);
   }
 
   const userId = authResult.session.user.id;

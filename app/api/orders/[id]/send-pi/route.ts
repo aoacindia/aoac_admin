@@ -6,7 +6,7 @@ import { dbAdmin, dbProduct, dbUser } from "@/lib/db";
 import { accounts, emailAccounts, offices } from "@/lib/db/admin-schema";
 import { products } from "@/lib/db/product-schema";
 import { orders } from "@/lib/db/user-schema";
-import { requireAdminApi } from "@/lib/require-admin";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 function formatWeightLabel(weightGrams?: number | null): string | null {
   if (weightGrams === null || weightGrams === undefined) {
@@ -460,7 +460,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireAdminApi();
+  const authResult = await requirePermissionApi("orders.update");
   if ("error" in authResult) {
     return NextResponse.json(
       { success: false, error: authResult.error },

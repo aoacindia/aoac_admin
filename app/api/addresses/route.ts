@@ -3,6 +3,7 @@ import { and, desc, eq, exists, ilike, inArray, or, sql } from "drizzle-orm";
 
 import { dbUser } from "@/lib/db";
 import { addresses, businesses, users } from "@/lib/db/user-schema";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 const userListCols = {
   id: users.id,
@@ -40,6 +41,14 @@ async function usersWithBusinessFlag(
 
 // GET all addresses with search
 export async function GET(request: NextRequest) {
+  const authResult = await requirePermissionApi("customers.view");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
@@ -112,6 +121,14 @@ export async function GET(request: NextRequest) {
 
 // POST create new address
 export async function POST(request: NextRequest) {
+  const authResult = await requirePermissionApi("customers.update");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const body = await request.json();
     const {

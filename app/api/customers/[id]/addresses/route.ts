@@ -3,12 +3,21 @@ import { desc, eq } from "drizzle-orm";
 
 import { dbUser } from "@/lib/db";
 import { users } from "@/lib/db/user-schema";
+import { requirePermissionApi } from "@/lib/require-admin";
 
 // GET all addresses for a customer
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authResult = await requirePermissionApi("customers.view");
+  if ("error" in authResult) {
+    return NextResponse.json(
+      { success: false, error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
   try {
     const { id } = await params;
 
