@@ -1,3 +1,4 @@
+import SessionLoadingGate from "@/app/components/SessionLoadingGate";
 import { requirePagePermission } from "@/lib/page-auth";
 
 export default async function DashboardLayout({
@@ -6,6 +7,6 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   await requirePagePermission("dashboard.view");
-  return <>{children}</>;
+  return <SessionLoadingGate>{children}</SessionLoadingGate>;
 }
 
