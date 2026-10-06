@@ -10,6 +10,7 @@ import { hasPermission } from "@/lib/permissions";
 
 export const PAYMENT_LINK_ELIGIBLE_STATUSES = [
   "PENDING",
+  "PAYMENT_PENDING",
   "ORDER_SHIPPED_WITHOUT_PAYMENT",
 ] as const;
 

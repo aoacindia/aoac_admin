@@ -8,8 +8,9 @@ import { requirePermissionApi } from "@/lib/require-admin";
 
 const ALLOWED_STATUSES = new Set([
   "PENDING",
+  "PAYMENT_PENDING",
   "ORDER_SHIPPED_WITHOUT_PAYMENT",
-] as const);
+]);
 
 const PAID_STATUSES = new Set(["PAID"] as const);
 
@@ -81,11 +82,11 @@ export async function POST(
       );
     }
 
-    if (!ALLOWED_STATUSES.has(order.status as "PENDING" | "ORDER_SHIPPED_WITHOUT_PAYMENT")) {
+    if (!ALLOWED_STATUSES.has(order.status)) {
       return NextResponse.json(
         {
           success: false,
-          error: `Payment link cannot be generated for order status: ${order.status}. Allowed statuses: PENDING, ORDER_SHIPPED_WITHOUT_PAYMENT`,
+          error: `Payment link cannot be generated for order status: ${order.status}. Allowed statuses: PENDING, PAYMENT_PENDING, ORDER_SHIPPED_WITHOUT_PAYMENT`,
         },
         { status: 400 }
       );
