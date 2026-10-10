@@ -12,8 +12,9 @@ export type OrderItemTaxInput = {
 export function lineGross(item: OrderItemTaxInput): number {
   const rate = Number(item.price ?? 0);
   const qty = Number(item.quantity ?? 0);
-  const discount = Number(item.discount ?? 0);
-  return Math.max(0, rate * qty - discount);
+  // `price` is already the final discounted unit amount (same as invoice PDF).
+  // Do not subtract `discount` again — it is informational only.
+  return Math.max(0, rate * qty);
 }
 
 export function lineTaxableFromGross(gross: number, taxPercent: number): number {
