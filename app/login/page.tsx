@@ -7,19 +7,32 @@ import { signIn, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+function RedirectingToDashboard() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-50 dark:bg-black px-4">
+      <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#168e2d] border-t-transparent" />
+      <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+        Taking you to dashboard…
+      </p>
+    </div>
+  );
+}
+
 export default function LoginPage() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [identifier, setIdentifier] = useState("");
   const [otp, setOtp] = useState("");
   const [token, setToken] = useState("");
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [step, setStep] = useState<"request" | "verify">("request");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (session?.user) {
+      setRedirecting(true);
       router.replace("/dashboard");
     }
   }, [session, router]);
@@ -62,6 +75,7 @@ export default function LoginPage() {
       setError("Please enter the OTP.");
       return;
     }
+    let succeeded = false;
     try {
       setLoading(true);
       const result = await signIn("credentials", {
@@ -74,13 +88,21 @@ export default function LoginPage() {
         setError("Invalid OTP or account not allowed.");
         return;
       }
-      router.push("/dashboard");
+      succeeded = true;
+      setRedirecting(true);
+      router.replace("/dashboard");
     } catch (err: any) {
       setError(err.message || "Login failed.");
     } finally {
-      setLoading(false);
+      if (!succeeded) {
+        setLoading(false);
+      }
     }
   };
+
+  if (redirecting || status === "authenticated") {
+    return <RedirectingToDashboard />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-black px-4">

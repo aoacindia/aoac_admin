@@ -23,7 +23,20 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (isPublicPath(pathname)) {
+  const isLogin = pathname === "/login" || pathname.startsWith("/login/");
+
+  if (isPublicPath(pathname) && !isLogin) {
+    return NextResponse.next();
+  }
+
+  if (isLogin) {
+    const loginSession = await auth();
+    if (loginSession?.user?.id && loginSession.user.role) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
     return NextResponse.next();
   }
 
@@ -44,13 +57,6 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("from", pathname);
-    return NextResponse.redirect(url);
-  }
-
-  if (pathname === "/login" || pathname.startsWith("/login/")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    url.search = "";
     return NextResponse.redirect(url);
   }
 

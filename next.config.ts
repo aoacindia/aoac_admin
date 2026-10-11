@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["@neondatabase/serverless", "ws"],
   turbopack: {
     root: process.cwd(),
   },

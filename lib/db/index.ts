@@ -1,9 +1,12 @@
-import { Pool } from "@neondatabase/serverless";
+import { Pool, neonConfig } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
+import ws from "ws";
 
 import * as adminSchema from "./admin-schema";
 import * as productSchema from "./product-schema";
 import * as userSchema from "./user-schema";
+
+neonConfig.webSocketConstructor = ws;
 
 declare global {
   // eslint-disable-next-line no-var
@@ -14,13 +17,20 @@ declare global {
   var __productDbPool: Pool | undefined;
 }
 
-function poolFromEnv(url: string | undefined, key: "__userDbPool" | "__adminDbPool" | "__productDbPool"): Pool {
+function poolFromEnv(
+  url: string | undefined,
+  key: "__userDbPool" | "__adminDbPool" | "__productDbPool"
+): Pool {
   if (!url) {
     throw new Error("Database URL env var is not set");
   }
   const g = globalThis as typeof globalThis & Record<typeof key, Pool | undefined>;
   if (!g[key]) {
-    g[key] = new Pool({ connectionString: url });
+    const pool = new Pool({ connectionString: url });
+    pool.on("error", () => {
+      g[key] = undefined;
+    });
+    g[key] = pool;
   }
   return g[key];
 }
