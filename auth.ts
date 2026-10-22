@@ -93,7 +93,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   session: {
     strategy: "jwt",
-    maxAge: 60 * 60 * 12,
+    maxAge: 60 * 60 * 24 * 7,
+    // Extend the cookie on every session read (app open / tab focus / refetch).
+    updateAge: 0,
   },
   callbacks: {
     jwt: async ({ token, user }) => {
