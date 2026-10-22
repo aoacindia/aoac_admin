@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@neondatabase/serverless", "ws"],
+  serverExternalPackages: ["@neondatabase/serverless", "ws", "@pdf-lib/fontkit"],
+  outputFileTracingIncludes: {
+    "/api/**": ["./lib/fonts/**"],
+  },
   turbopack: {
     root: process.cwd(),
   },

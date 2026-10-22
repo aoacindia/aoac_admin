@@ -1,6 +1,7 @@
 import 'server-only';
 import fs from 'fs';
 import path from 'path';
+import fontkit from '@pdf-lib/fontkit';
 import { PDFDocument, PageSizes, StandardFonts, rgb, PDFPage, PDFFont, PDFImage } from 'pdf-lib';
 import { eq } from 'drizzle-orm';
 import { dbAdmin } from '@/lib/db';
@@ -151,6 +152,53 @@ const BODY_FONT_SIZE = 7;
 const COMPANY_ADDRESS_SIZE = 6;
 const LINE_HEIGHT = 9;
 
+/** Helvetica (WinAnsi) → Noto Sans JP TTF for characters Helvetica cannot encode. */
+const unicodeCompanion = new WeakMap<PDFFont, PDFFont>();
+
+function canEncode(font: PDFFont, text: string): boolean {
+  if (!text) return true;
+  try {
+    font.encodeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function unicodeFontFor(font: PDFFont): PDFFont {
+  return unicodeCompanion.get(font) ?? font;
+}
+
+function splitFontRuns(
+  text: string,
+  latinFont: PDFFont,
+  unicodeFont: PDFFont
+): Array<{ text: string; font: PDFFont }> {
+  if (!text) return [];
+  const runs: Array<{ text: string; font: PDFFont }> = [];
+  for (const ch of Array.from(text)) {
+    const font = canEncode(latinFont, ch) ? latinFont : unicodeFont;
+    const last = runs[runs.length - 1];
+    if (last && last.font === font) {
+      last.text += ch;
+    } else {
+      runs.push({ text: ch, font });
+    }
+  }
+  return runs;
+}
+
+function widthOfText(font: PDFFont, text: string, size: number): number {
+  const unicodeFont = unicodeFontFor(font);
+  if (unicodeFont === font) {
+    return font.widthOfTextAtSize(text, size);
+  }
+  return splitFontRuns(text, font, unicodeFont).reduce(
+    (sum, run) => sum + run.font.widthOfTextAtSize(run.text, size),
+    0
+  );
+}
+
 function drawPageBorder(ctx: PdfContext) {
   ctx.page.drawRectangle({
     x: ctx.margin / 2,
@@ -251,10 +299,10 @@ function truncateText(text: string, maxWidth: number, font: PDFFont, fontSize: n
   const value = text ?? '';
   if (!value) return '';
   if (maxWidth <= 0) return '';
-  if (font.widthOfTextAtSize(value, fontSize) <= maxWidth) return value;
+  if (widthOfText(font, value, fontSize) <= maxWidth) return value;
 
   const ellipsis = '...';
-  const ellipsisWidth = font.widthOfTextAtSize(ellipsis, fontSize);
+  const ellipsisWidth = widthOfText(font, ellipsis, fontSize);
   if (ellipsisWidth >= maxWidth) return '';
 
   let low = 0;
@@ -263,7 +311,7 @@ function truncateText(text: string, maxWidth: number, font: PDFFont, fontSize: n
   while (low <= high) {
     const mid = Math.floor((low + high) / 2);
     const candidate = value.slice(0, mid) + ellipsis;
-    if (font.widthOfTextAtSize(candidate, fontSize) <= maxWidth) {
+    if (widthOfText(font, candidate, fontSize) <= maxWidth) {
       best = candidate;
       low = mid + 1;
     } else {
@@ -282,17 +330,24 @@ function drawTextLine(
   font: PDFFont = ctx.font,
   color = rgb(0, 0, 0)
 ) {
-  ctx.page.drawText(text, {
-    x,
-    y: toPdfY(ctx, yFromTop, size),
-    size,
-    font,
-    color
-  });
+  if (!text) return;
+  const y = toPdfY(ctx, yFromTop, size);
+  const unicodeFont = unicodeFontFor(font);
+  let cursorX = x;
+  for (const run of splitFontRuns(text, font, unicodeFont)) {
+    ctx.page.drawText(run.text, {
+      x: cursorX,
+      y,
+      size,
+      font: run.font,
+      color
+    });
+    cursorX += run.font.widthOfTextAtSize(run.text, size);
+  }
 }
 
 function drawCenteredText(ctx: PdfContext, text: string, yFromTop: number, size: number, font: PDFFont = ctx.font) {
-  const textWidth = font.widthOfTextAtSize(text, size);
+  const textWidth = widthOfText(font, text, size);
   const x = Math.max(ctx.margin, (ctx.pageWidth - textWidth) / 2);
   drawTextLine(ctx, text, x, yFromTop, size, font);
 }
@@ -322,19 +377,40 @@ function drawHorizontalLine(ctx: PdfContext, yFromTop: number) {
   });
 }
 
+function wrapLongToken(token: string, maxWidth: number, font: PDFFont, fontSize: number): string[] {
+  if (!token) return [''];
+  if (widthOfText(font, token, fontSize) <= maxWidth) return [token];
+  const chars = Array.from(token);
+  const lines: string[] = [];
+  let chunk = '';
+  for (const ch of chars) {
+    const next = chunk + ch;
+    if (chunk && widthOfText(font, next, fontSize) > maxWidth) {
+      lines.push(chunk);
+      chunk = ch;
+    } else {
+      chunk = next;
+    }
+  }
+  if (chunk) lines.push(chunk);
+  return lines.length ? lines : [''];
+}
+
 function wrapText(text: string, maxWidth: number, font: PDFFont, fontSize: number): string[] {
   if (!text) return [''];
-  const words = text.split(/\s+/);
+  const words = text.split(/\s+/).filter((word) => word.length > 0);
   const lines: string[] = [];
   let line = '';
   words.forEach((word) => {
     const testLine = line ? `${line} ${word}` : word;
-    if (font.widthOfTextAtSize(testLine, fontSize) <= maxWidth) {
+    if (widthOfText(font, testLine, fontSize) <= maxWidth) {
       line = testLine;
       return;
     }
     if (line) lines.push(line);
-    line = word;
+    const broken = wrapLongToken(word, maxWidth, font, fontSize);
+    lines.push(...broken.slice(0, -1));
+    line = broken[broken.length - 1] ?? '';
   });
   if (line) lines.push(line);
   return lines.length ? lines : [''];
@@ -441,7 +517,7 @@ function drawTermsBlock(
     const signatureTopY = yFromTop + blockHeight - padding - signHeight - signTextSize - 2;
     drawImageAtTopLeft(ctx, signImage, signatureX + (signatureAreaWidth - signWidth) / 2, signatureTopY, signWidth, signHeight);
     const signText = 'Authorized Signatory';
-    const signTextWidth = ctx.font.widthOfTextAtSize(signText, signTextSize);
+    const signTextWidth = widthOfText(ctx.font,signText, signTextSize);
     const signTextX = signatureX + (signatureAreaWidth - signTextWidth) / 2;
     drawTextLine(ctx, signText, signTextX, signatureTopY + signHeight + 2, signTextSize, ctx.font);
   }
@@ -476,7 +552,7 @@ function drawCellText(
   const truncated = truncateText(text, width - 6, ctx.font, size);
   let textX = x + 3;
   if (align !== 'left') {
-    const textWidth = ctx.font.widthOfTextAtSize(truncated, size);
+    const textWidth = widthOfText(ctx.font,truncated, size);
     if (align === 'right') {
       textX = x + width - textWidth - 3;
     } else {
@@ -497,7 +573,7 @@ function drawCellLines(
 ) {
   let lineY = yFromTop;
   lines.forEach((line) => {
-    const textWidth = ctx.font.widthOfTextAtSize(line, size);
+    const textWidth = widthOfText(ctx.font,line, size);
     let textX = x + 3;
     if (align === 'right') {
       textX = x + width - textWidth - 3;
@@ -852,12 +928,34 @@ function printSection(
   return y;
 }
 
+const INVOICE_FONTS_DIR = path.join(process.cwd(), 'lib', 'fonts');
+let regularFontBytes: Uint8Array | undefined;
+let boldFontBytes: Uint8Array | undefined;
+
+function readInvoiceFont(fileName: string, cache: Uint8Array | undefined): Uint8Array {
+  if (cache) return cache;
+  return new Uint8Array(fs.readFileSync(path.join(INVOICE_FONTS_DIR, fileName)));
+}
+
+function invoiceRegularFontBytes(): Uint8Array {
+  regularFontBytes = readInvoiceFont('NotoSansJP-Regular.ttf', regularFontBytes);
+  return regularFontBytes;
+}
+
+function invoiceBoldFontBytes(): Uint8Array {
+  boldFontBytes = readInvoiceFont('NotoSansJP-Bold.ttf', boldFontBytes);
+  return boldFontBytes;
+}
+
 async function createPdfBuffer(build: (ctx: PdfContext) => void | Promise<void>): Promise<Uint8Array> {
-  // PDFKit can fail in bundled environments when Helvetica.afm is missing at runtime.
-  // pdf-lib embeds StandardFonts directly, avoiding external font files.
   const pdfDoc = await PDFDocument.create();
+  pdfDoc.registerFontkit(fontkit);
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const unicodeFont = await pdfDoc.embedFont(invoiceRegularFontBytes(), { subset: true });
+  const unicodeBoldFont = await pdfDoc.embedFont(invoiceBoldFontBytes(), { subset: true });
+  unicodeCompanion.set(font, unicodeFont);
+  unicodeCompanion.set(boldFont, unicodeBoldFont);
   const page = pdfDoc.addPage(PageSizes.A4);
   const { width, height } = page.getSize();
 
@@ -1230,8 +1328,8 @@ export async function generateInvoicePDF(
       const copyLabel = INVOICE_COPY_LABELS[copyType];
       const copyLabelSize = BODY_FONT_SIZE + 2;
       const headerTitleGap = 6;
-      const titleWidth = ctx.font.widthOfTextAtSize(invoiceTitle, HEADER_FONT_SIZE);
-      const copyLabelWidth = ctx.font.widthOfTextAtSize(copyLabel, copyLabelSize);
+      const titleWidth = widthOfText(ctx.font,invoiceTitle, HEADER_FONT_SIZE);
+      const copyLabelWidth = widthOfText(ctx.font,copyLabel, copyLabelSize);
       const headerRightLimit = Math.min(
         ctx.pageWidth - ctx.margin - titleWidth,
         ctx.pageWidth - ctx.margin - copyLabelWidth
@@ -1327,7 +1425,7 @@ export async function generateInvoicePDF(
       const invoiceNoValue = order.InvoiceNumber || order.id;
       const invoiceNoLabel = 'Invoice No:';
       drawTextLine(ctx, invoiceNoLabel, infoLeftX, infoLineY, BODY_FONT_SIZE, ctx.boldFont);
-      const invoiceNoLabelWidth = ctx.boldFont.widthOfTextAtSize(invoiceNoLabel, BODY_FONT_SIZE);
+      const invoiceNoLabelWidth = widthOfText(ctx.boldFont,invoiceNoLabel, BODY_FONT_SIZE);
       drawTextLine(
         ctx,
         ` ${invoiceNoValue}`,
@@ -1338,8 +1436,8 @@ export async function generateInvoicePDF(
 
       const invoiceDateValue = order.orderDate.toLocaleDateString('en-IN');
       const invoiceDateLabel = 'Invoice Date:';
-      const invoiceDateLabelWidth = ctx.boldFont.widthOfTextAtSize(invoiceDateLabel, BODY_FONT_SIZE);
-      const invoiceDateValueWidth = ctx.font.widthOfTextAtSize(invoiceDateValue, BODY_FONT_SIZE);
+      const invoiceDateLabelWidth = widthOfText(ctx.boldFont,invoiceDateLabel, BODY_FONT_SIZE);
+      const invoiceDateValueWidth = widthOfText(ctx.font,invoiceDateValue, BODY_FONT_SIZE);
       const invoiceDateX = infoRightX - invoiceDateLabelWidth - invoiceDateValueWidth;
       drawTextLine(ctx, invoiceDateLabel, invoiceDateX, infoLineY, BODY_FONT_SIZE, ctx.boldFont);
       drawTextLine(
@@ -1352,7 +1450,7 @@ export async function generateInvoicePDF(
 
       const orderIdLabel = 'Order ID:';
       drawTextLine(ctx, orderIdLabel, infoLeftX, infoLineY + LINE_HEIGHT, BODY_FONT_SIZE, ctx.boldFont);
-      const orderIdLabelWidth = ctx.boldFont.widthOfTextAtSize(orderIdLabel, BODY_FONT_SIZE);
+      const orderIdLabelWidth = widthOfText(ctx.boldFont,orderIdLabel, BODY_FONT_SIZE);
       drawTextLine(
         ctx,
         ` ${order.id}`,
@@ -1362,8 +1460,8 @@ export async function generateInvoicePDF(
       );
 
       const placeLabel = 'Place of Supply:';
-      const placeLabelWidth = ctx.boldFont.widthOfTextAtSize(placeLabel, BODY_FONT_SIZE);
-      const placeValueWidth = ctx.font.widthOfTextAtSize(placeOfSupply, BODY_FONT_SIZE);
+      const placeLabelWidth = widthOfText(ctx.boldFont,placeLabel, BODY_FONT_SIZE);
+      const placeValueWidth = widthOfText(ctx.font,placeOfSupply, BODY_FONT_SIZE);
       const placeX = infoRightX - placeLabelWidth - placeValueWidth;
       drawTextLine(ctx, placeLabel, placeX, infoLineY + LINE_HEIGHT, BODY_FONT_SIZE, ctx.boldFont);
       drawTextLine(
@@ -1815,7 +1913,7 @@ export async function generateInvoicePDF(
 
       let valueLineY = summaryY;
       valueLines.forEach((valueLine) => {
-        const textWidth = (isInvoiceAmount ? ctx.boldFont : ctx.font).widthOfTextAtSize(valueLine, rowSize);
+        const textWidth = widthOfText(isInvoiceAmount ? ctx.boldFont : ctx.font, valueLine, rowSize);
         const textX = summaryX + summaryPadding + labelColumnWidth + valueColumnWidth - textWidth;
         drawTextLine(
           ctx,
@@ -1918,7 +2016,7 @@ export async function generateOrderItemsPDF(order: InvoiceOrder): Promise<Uint8A
     }
 
     const title = 'ORDER ITEMS';
-    const titleWidth = ctx.boldFont.widthOfTextAtSize(title, HEADER_FONT_SIZE);
+    const titleWidth = widthOfText(ctx.boldFont,title, HEADER_FONT_SIZE);
     drawTextLine(ctx, title, ctx.pageWidth - ctx.margin - titleWidth, headerTop + 6, HEADER_FONT_SIZE, ctx.boldFont);
 
     const headerBottom = headerTop + 54;
@@ -1927,13 +2025,13 @@ export async function generateOrderItemsPDF(order: InvoiceOrder): Promise<Uint8A
 
     const invoiceNoValue = order.InvoiceNumber || order.id;
     drawTextLine(ctx, 'Order ID:', ctx.margin + leftWidth, y, BODY_FONT_SIZE, ctx.boldFont);
-    drawTextLine(ctx, ` ${order.id}`, ctx.margin + leftWidth + ctx.boldFont.widthOfTextAtSize('Order ID:', BODY_FONT_SIZE), y, BODY_FONT_SIZE);
+    drawTextLine(ctx, ` ${order.id}`, ctx.margin + leftWidth + widthOfText(ctx.boldFont,'Order ID:', BODY_FONT_SIZE), y, BODY_FONT_SIZE);
     y += LINE_HEIGHT;
     drawTextLine(ctx, 'Invoice No:', ctx.margin + leftWidth, y, BODY_FONT_SIZE, ctx.boldFont);
     drawTextLine(
       ctx,
       ` ${invoiceNoValue}`,
-      ctx.margin + leftWidth + ctx.boldFont.widthOfTextAtSize('Invoice No:', BODY_FONT_SIZE),
+      ctx.margin + leftWidth + widthOfText(ctx.boldFont,'Invoice No:', BODY_FONT_SIZE),
       y,
       BODY_FONT_SIZE
     );
